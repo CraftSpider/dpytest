@@ -25,8 +25,6 @@ if version.endswith(("a", "b")):
 with open("README.md", "r") as file:
     long_description = file.read()
 
-print(version)
-
 setuptools.setup(
     name="dpytest",
     version=version,
