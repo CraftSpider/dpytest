@@ -110,6 +110,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = self._get_higher_locs(1)
         me = locs.get("self", None)
 
+        me.nick = nickname
         await _dispatch_event("nickname", nickname, me, reason=reason)
 
         return {"nick": nickname}
