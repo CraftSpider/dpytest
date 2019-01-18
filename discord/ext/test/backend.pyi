@@ -1,5 +1,5 @@
 
-from typing import List, Union, Dict, Callable, Coroutine, Any, Optional, NoReturn, BinaryIO, Tuple
+from typing import List, Union, Dict, Callable, Coroutine, Any, Optional, NoReturn, BinaryIO, Tuple, overload
 import pathlib
 import asyncio
 import discord
@@ -68,6 +68,9 @@ def make_message(content: str, author: Union[discord.User, discord.Member], chan
 
 def make_attachment(filename: pathlib.Path, name: str = ...) -> discord.Attachment: ...
 
+@overload
 def configure(client: discord.Client) -> None: ...
+@overload
+def configure(client: Optional[discord.Client], *, use_dummy: bool = ...) -> None: ...
 
 def main() -> None: ...

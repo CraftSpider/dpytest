@@ -161,6 +161,10 @@ class FakeState(state.ConnectionState):
         self._get_websocket = lambda x: client.ws
 
 
+class FakeClient(discord.Client):
+    pass
+
+
 def get_state():
     if _cur_config is None:
         raise ValueError("Discord class factories not configured")
@@ -281,8 +285,12 @@ def make_attachment(filename, name=None, id_num=-1):
     )
 
 
-def configure(client):
+def configure(client, *, use_dummy=False):
     global _cur_config
+
+    if client is None and use_dummy:
+        log.info("None passed to backend configuration, dummy client will be used")
+        client = FakeClient()
 
     if not isinstance(client, discord.Client):
         raise TypeError("Runner client must be an instance of discord.Client")

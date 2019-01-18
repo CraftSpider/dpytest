@@ -5,7 +5,7 @@ import logging
 import discord
 import typing
 
-from dpytest import backend as back
+from . import backend as back
 
 
 class RunnerConfig(typing.NamedTuple):
