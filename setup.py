@@ -2,7 +2,7 @@
 import setuptools
 import re
 
-with open("dpytest/__init__.py", "r") as file:
+with open("discord/ext/test/__init__.py", "r") as file:
     try:
         version = re.search(r"^__version__\s*=\s*[\"']([^\"']*)[\"']", file.read(), re.MULTILINE).group(1)
     except Exception as e:
@@ -34,7 +34,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CraftSpider/dpytest",
-    packages=setuptools.find_packages(),
+    packages=["discord.ext.test"],
     classifiers=[
         "Programming Language :: Python :: 3.7",
         "License :: OSI Approved :: MIT License",
