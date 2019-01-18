@@ -8,7 +8,7 @@ It is only compatible with the rewrite version, and is still in early alpha.
 dpytest can be used for projects using the default commands.Bot, or those defining their own subclass of bot.
 For someone using a custom class, code would look something like this:
 ```python
-import dpytest
+import discord.ext.test as dpytest
 import yourbot
 
 def test_bot():
