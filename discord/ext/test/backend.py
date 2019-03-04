@@ -12,7 +12,7 @@ import discord.state as state
 import discord.http as dhttp
 import discord.gateway as gate
 
-from dpytest import factories as facts
+from . import factories as facts
 
 
 class BackendConfig(typing.NamedTuple):
