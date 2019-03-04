@@ -163,7 +163,7 @@ def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, 
         kwargs["guild_id"] = channel.guild.id
     if isinstance(author, discord.Member):
         author = author._user
-        kwargs["member"] = author
+        kwargs["member"] = dict_from_user(author)
     if timestamp is None:
         timestamp = discord.utils.snowflake_time(id_num)
     if mentions is None:
