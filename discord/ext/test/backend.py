@@ -101,7 +101,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         copy = data.copy()
         copy["owner"] = discord.User(state=get_state(), data=data["owner"])
-        appinfo = discord.AppInfo(**copy)
+        appinfo = discord.AppInfo(self.state, copy)
         await _dispatch_event("info", appinfo)
 
         return data
