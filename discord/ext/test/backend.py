@@ -62,7 +62,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         embeds = []
         if embed:
-            embeds = [discord.Embed.from_data(embed)]
+            embeds = [discord.Embed.from_dict(embed)]
         data = facts.make_message_dict(channel, self.state.user, attachments=attachments, content=content, tts=tts,
                                        embeds=embeds, nonce=nonce)
 
@@ -77,7 +77,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         embeds = []
         if embed:
-            embeds = [discord.Embed.from_data(embed)]
+            embeds = [discord.Embed.from_dict(embed)]
         data = facts.make_message_dict(channel, self.state.user, content=content, tts=tts, embeds=embeds, nonce=nonce)
 
         message = self.state.create_message(channel=channel, data=data)
