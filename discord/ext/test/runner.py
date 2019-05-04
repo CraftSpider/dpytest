@@ -31,7 +31,7 @@ async def run_all_events():
             await task
 
 
-def verify_message(text=None, equals=True):
+def verify_message(text=None, equals=True, assert_nothing=False):
     if text is None:
         equals = not equals
     try:
@@ -44,7 +44,7 @@ def verify_message(text=None, equals=True):
         raise AssertionError("No message returned by command")
 
 
-def verify_embed(embed=None, allow_text=False, equals=True):
+def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False):
     if embed is None:
         equals = not equals
     try:
@@ -60,10 +60,13 @@ def verify_embed(embed=None, allow_text=False, equals=True):
         else:
             assert emb != embed, "Found unexpected embed"
     except asyncio.QueueEmpty:
-        raise AssertionError("No message returned by command")
+        if assert_nothing:
+            assert True
+        else:
+            raise AssertionError("No message returned by command")
 
 
-def verify_file(file=None, allow_text=False, equals=True):
+def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
     if file is None:
         equals = not equals
     try:
@@ -79,7 +82,10 @@ def verify_file(file=None, allow_text=False, equals=True):
         else:
             assert attach != file, "Found unexpected file"
     except asyncio.QueueEmpty:
-        raise AssertionError("No message returned by command")
+        if assert_nothing:
+            assert True
+        else:
+            raise AssertionError("No message returned by command")
 
 
 def verify_activity(activity=None, equals=True):
