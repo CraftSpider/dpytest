@@ -41,7 +41,10 @@ def verify_message(text=None, equals=True, assert_nothing=False):
         else:
             assert message.content != text, f"Found unexpected text. Expected something not matching {text}"
     except asyncio.QueueEmpty:
-        raise AssertionError("No message returned by command")
+        if assert_nothing:
+            assert True
+        else:
+            raise AssertionError("No message returned by command")
 
 
 def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False):
