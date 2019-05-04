@@ -35,7 +35,7 @@ def verify_message(text=None, equals=True, assert_nothing=False):
     if text is None:
         equals = not equals
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sentbut this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
 
     try:
         message = sent_queue.get_nowait()
@@ -51,7 +51,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False
     if embed is None:
         equals = not equals
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sentbut this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
 
     try:
         message = sent_queue.get_nowait()
@@ -73,7 +73,7 @@ def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
     if file is None:
         equals = not equals
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sentbut this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
 
     try:
         message = sent_queue.get_nowait()
