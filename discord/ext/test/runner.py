@@ -34,6 +34,9 @@ async def run_all_events():
 def verify_message(text=None, equals=True, assert_nothing=False):
     if text is None:
         equals = not equals
+    if assert_nothing:
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sentbut this message was sent {sent_queue.get_nowait().content}"
+
     try:
         message = sent_queue.get_nowait()
         if equals:
@@ -41,15 +44,15 @@ def verify_message(text=None, equals=True, assert_nothing=False):
         else:
             assert message.content != text, f"Found unexpected text. Expected something not matching {text}"
     except asyncio.QueueEmpty:
-        if assert_nothing:
-            assert True
-        else:
-            raise AssertionError("No message returned by command")
+        raise AssertionError("No message returned by command")
 
 
 def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False):
     if embed is None:
         equals = not equals
+    if assert_nothing:
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sentbut this message was sent {sent_queue.get_nowait().content}"
+
     try:
         message = sent_queue.get_nowait()
         if not allow_text:
@@ -63,15 +66,15 @@ def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False
         else:
             assert emb != embed, "Found unexpected embed"
     except asyncio.QueueEmpty:
-        if assert_nothing:
-            assert True
-        else:
-            raise AssertionError("No message returned by command")
+        raise AssertionError("No message returned by command")
 
 
 def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
     if file is None:
         equals = not equals
+    if assert_nothing:
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sentbut this message was sent {sent_queue.get_nowait().content}"
+
     try:
         message = sent_queue.get_nowait()
         if not allow_text:
@@ -85,10 +88,7 @@ def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
         else:
             assert attach != file, "Found unexpected file"
     except asyncio.QueueEmpty:
-        if assert_nothing:
-            assert True
-        else:
-            raise AssertionError("No message returned by command")
+        raise AssertionError("No message returned by command")
 
 
 def verify_activity(activity=None, equals=True):
