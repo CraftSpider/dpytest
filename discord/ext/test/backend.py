@@ -99,9 +99,7 @@ class FakeHttp(dhttp.HTTPClient):
             "owner": facts.make_user_dict("TestOwner", "0001", None)
         }
 
-        copy = data.copy()
-        copy["owner"] = discord.User(state=get_state(), data=data["owner"])
-        appinfo = discord.AppInfo(self.state, copy)
+        appinfo = discord.AppInfo(self.state, data)
         await _dispatch_event("info", appinfo)
 
         return data
