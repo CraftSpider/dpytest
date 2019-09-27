@@ -16,7 +16,7 @@ class BackendConfig:
     callbacks: Dict[str, Callable[[...], Coroutine]]
     state: "FakeState"
 
-_cur_config: BackendConfig
+_cur_config: Optional[BackendConfig]
 
 class FakeHttp(dhttp.HTTPClient):
 
