@@ -167,11 +167,13 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
         old_error = client.on_command_error
 
     async def on_command_error(ctx, error):
-        if old_error:
-            await old_error(ctx, error)
-        await error_queue.put((ctx, error))
+        try:
+            if old_error:
+                await old_error(ctx, error)
+        finally:
+            await error_queue.put((ctx, error))
 
-    on_command_error.__old__ = client.on_command_error
+    on_command_error.__old__ = old_error
     client.on_command_error = on_command_error
 
     # Configure the factories module
