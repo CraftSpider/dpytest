@@ -11,6 +11,7 @@ For someone using a custom class, code would look something like this:
 import discord.ext.test as dpytest
 import yourbot
 
+
 def test_bot():
     bot = yourbot.BotClass()
     

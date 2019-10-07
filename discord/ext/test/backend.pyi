@@ -16,7 +16,7 @@ class BackendConfig:
     callbacks: Dict[str, Callable[[...], Coroutine]]
     state: "FakeState"
 
-_cur_config: BackendConfig
+_cur_config: Optional[BackendConfig]
 
 class FakeHttp(dhttp.HTTPClient):
 
@@ -29,7 +29,7 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def request(self, *args, **kwargs) -> NoReturn: ...
 
-    async def send_files(self, channel_id: int, *, files: Tuple[BinaryIO, ...], content: str = ..., tts: bool = ..., embed: JsonDict = ..., nonce: int = ...) -> JsonDict: ...
+    async def send_files(self, channel_id: int, *, files: Tuple[discord.File], content: str = ..., tts: bool = ..., embed: JsonDict = ..., nonce: int = ...) -> JsonDict: ...
 
     async def send_message(self, channel_id: int, content: str, *, tts: bool = ..., embed: JsonDict = ..., nonce: int = ...) -> JsonDict: ...
 

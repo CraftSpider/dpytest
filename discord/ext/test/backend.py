@@ -50,14 +50,14 @@ class FakeHttp(dhttp.HTTPClient):
         channel = locs.get("channel", None)
 
         attachments = []
-        for file, name in files:
+        for file in files:
             path = pathlib.Path(f"./temp_{self.fileno}.dat")
             self.fileno += 1
-            if file.seekable():
-                file.seek(0)
+            if file.fp.seekable():
+                file.fp.seek(0)
             with open(path, "wb") as nfile:
-                nfile.write(file.read())
-            attachments.append((path, name))
+                nfile.write(file.fp.read())
+            attachments.append((path, file.filename))
         attachments = list(map(lambda x: make_attachment(*x), attachments))
 
         embeds = []
@@ -99,9 +99,7 @@ class FakeHttp(dhttp.HTTPClient):
             "owner": facts.make_user_dict("TestOwner", "0001", None)
         }
 
-        copy = data.copy()
-        copy["owner"] = discord.User(state=get_state(), data=data["owner"])
-        appinfo = discord.AppInfo(self.state, copy)
+        appinfo = discord.AppInfo(self.state, data)
         await _dispatch_event("info", appinfo)
 
         return data
