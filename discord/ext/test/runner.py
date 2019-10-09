@@ -5,7 +5,7 @@ import logging
 import discord
 import typing
 
-from . import backend as back
+from . import backend as back, factories as fact
 
 
 class RunnerConfig(typing.NamedTuple):
@@ -19,6 +19,16 @@ log = logging.getLogger("discord.ext.tests")
 _cur_config = None
 sent_queue = asyncio.queues.Queue()
 error_queue = asyncio.queues.Queue()
+
+
+def require_config(func):
+    def wrapper(*args, **kwargs):
+        if _cur_config is None:
+            log.error("Attempted to make call before runner configured")
+            return
+        return func(*args, **kwargs)
+    wrapper.__wrapped__ = func
+    return wrapper
 
 
 async def run_all_events():
@@ -124,11 +134,8 @@ async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
 
 
+@require_config
 async def message(content, client=None, channel=0, member=0):
-    if _cur_config is None:
-        log.error("Attempted to make call before runner configured")
-        return
-
     if client is None:
         client = _cur_config.client
 
@@ -145,6 +152,19 @@ async def message(content, client=None, channel=0, member=0):
     if not error_queue.empty():
         err = await error_queue.get()
         raise err[1]
+
+
+@require_config
+async def add_role(member, role, client=None):
+    if client is None:
+        client = _cur_config.client
+
+    if isinstance(member, int):
+        member = _cur_config.members[member]
+    if not isinstance(role, discord.Role):
+        raise TypeError("Role argument must be of type discord.Role")
+
+    state = back.get_state()
 
 
 def get_config():

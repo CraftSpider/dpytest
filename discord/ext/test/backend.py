@@ -51,7 +51,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         attachments = []
         for file in files:
-            path = pathlib.Path(f"./temp_{self.fileno}.dat")
+            path = pathlib.Path(f"./dpytest_{self.fileno}.dat")
             self.fileno += 1
             if file.fp.seekable():
                 file.fp.seek(0)
@@ -207,37 +207,41 @@ def make_guild(name, members=None, channels=None, roles=None, owner=False, id_nu
 
     owner_id = state.user.id if owner else 0
 
-    guild = discord.Guild(
-        state=state,
-        data=facts.make_guild_dict(name, owner_id, roles, id_num=id_num, member_count=member_count, members=members,
-                                   channels=channels)
+    data = facts.make_guild_dict(
+        name, owner_id, roles, id_num=id_num, member_count=member_count, members=members, channels=channels
     )
-    state._add_guild(guild)
-    return guild
+
+    state.parse_guild_create(data)
+
+    return state._get_guild(id_num)
 
 
 def make_role(name, guild, id_num=-1, colour=0, permissions=104324161, hoist=False, mentionable=False):
-    role = discord.Role(
-        state=get_state(),
-        guild=guild,
-        data=facts.make_role_dict(
-            name, id_num=id_num, colour=colour, permissions=permissions, hoist=hoist, mentionable=mentionable
-        )
+    r_dict = facts.make_role_dict(
+        name, id_num=id_num, colour=colour, permissions=permissions, hoist=hoist, mentionable=mentionable
     )
-    guild._add_role(role)
-    return role
+
+    data = {
+        "guild_id": guild.id,
+        "role": r_dict
+    }
+
+    state = get_state()
+    state.parse_guild_role_create(data)
+
+    return guild.get_role(r_dict["id"])
 
 
 def make_text_channel(name, guild, position=-1, id_num=-1):
     if position == -1:
         position = len(guild.channels) + 1
-    channel = discord.TextChannel(
-        state=get_state(),
-        guild=guild,
-        data=facts.make_text_channel_dict(name, id_num, position=position)
-    )
-    guild._add_channel(channel)
-    return channel
+
+    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id)
+
+    state = get_state()
+    state.parse_channel_create(c_dict)
+
+    return guild.get_channel(c_dict["id"])
 
 
 def make_user(username, discrim, avatar=None, id_num=-1):
