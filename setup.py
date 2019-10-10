@@ -41,5 +41,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
         "Development Status :: 2 - Pre-Alpha",
         "Topic :: Software Development :: Testing"
-    ]
+    ],
+    keywords="discord discord.py test"
 )
