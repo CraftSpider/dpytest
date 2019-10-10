@@ -5,7 +5,7 @@ import logging
 import discord
 import typing
 
-from . import backend as back, factories as fact
+from . import backend as back
 
 
 class RunnerConfig(typing.NamedTuple):
@@ -134,21 +134,19 @@ async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
 
 
-async def add_role_callback(member, role):
-    pass  # TODO
+async def add_role_callback(member, role, reason=None):
+    roles = member.roles + [role]
+    back.update_member(member, roles=roles)
 
 
 @require_config
-async def message(content, client=None, channel=0, member=0):
-    if client is None:
-        client = _cur_config.client
-
+async def message(content, channel=0, member=0):
     if isinstance(channel, int):
         channel = _cur_config.channels[channel]
     if isinstance(member, int):
         member = _cur_config.members[member]
 
-    message = back.make_message(content, member, channel)
+    back.make_message(content, member, channel)
 
     await run_all_events()
 
@@ -158,10 +156,7 @@ async def message(content, client=None, channel=0, member=0):
 
 
 @require_config
-async def add_role(member, role, client=None):
-    if client is None:
-        client = _cur_config.client
-
+async def add_role(member, role):
     if isinstance(member, int):
         member = _cur_config.members[member]
     if not isinstance(role, discord.Role):

@@ -134,7 +134,7 @@ class FakeHttp(dhttp.HTTPClient):
         member = locs.get("self", None)
         role = locs.get("role", None)
 
-        await _dispatch_event("add_role", member, role, reason)
+        await _dispatch_event("add_role", member, role, reason=reason)
 
 
 class FakeWebSocket(gate.DiscordWebSocket):
