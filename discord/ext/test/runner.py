@@ -134,6 +134,10 @@ async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
 
 
+async def add_role_callback(member, role):
+    pass  # TODO
+
+
 @require_config
 async def message(content, client=None, channel=0, member=0):
     if client is None:
@@ -146,7 +150,6 @@ async def message(content, client=None, channel=0, member=0):
 
     message = back.make_message(content, member, channel)
 
-    client.dispatch("message", message)
     await run_all_events()
 
     if not error_queue.empty():
@@ -164,7 +167,8 @@ async def add_role(member, role, client=None):
     if not isinstance(role, discord.Role):
         raise TypeError("Role argument must be of type discord.Role")
 
-    state = back.get_state()
+    roles = [x for x in member.roles] + [role]
+    back.update_member(member, roles=roles)
 
 
 def get_config():
@@ -198,6 +202,9 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
 
     # Configure the factories module
     back.set_callback(message_callback, "message")
+    back.set_callback(add_role_callback, "add_role")
+
+    back.get_state().stop_dispatch()
 
     guilds = []
     for num in range(num_guilds):
@@ -215,5 +222,7 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
             member = back.make_member(user, guild)
             members.append(member)
         back.make_member(back.get_state().user, guild)
+
+    back.get_state().start_dispatch()
 
     _cur_config = RunnerConfig(client, guilds, channels, members)

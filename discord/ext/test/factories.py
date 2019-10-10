@@ -70,8 +70,9 @@ def dict_from_user(user):
     return out
 
 
-def make_member_dict(user, roles, joined=0, deaf=False, mute=False, **kwargs):
+def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, **kwargs):
     out = {
+        'guild_id': guild.id,
         'user': dict_from_user(user),
         'roles': roles,
         'joined_at': joined,
@@ -84,22 +85,29 @@ def make_member_dict(user, roles, joined=0, deaf=False, mute=False, **kwargs):
 
 
 def dict_from_member(member):
+    voice_state = member.voice
     out = {
+        'guild_id': member.guild.id,
         'user': dict_from_user(member._user),
         'roles': member.roles,
         'joined_at': member.joined_at,
-        'deaf': member.deaf,
-        'mute': member.mute
     }
+    if voice_state is not None:
+        out['deaf'] = voice_state.deaf
+        out['mute'] = voice_state.mute
     items = ("nick",)
     _fill_optional(out, member, items)
     return out
 
 
-def make_role_dict(name, id_num=-1, colour=0, hoist=False, position=-1, permissions=104324161, managed=False,
+def make_role_dict(name, id_num=-1, colour=0, color=None, hoist=False, position=-1, permissions=104324161, managed=False,
                    mentionable=False):
     if id_num < 0:
         id_num = make_id()
+    if color is not None:
+        if colour != 0:
+            raise ValueError("Both 'colour' and 'color' can be supplied at the same time")
+        colour = color
     return {
         'id': id_num,
         'name': name,
@@ -180,7 +188,7 @@ def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, 
 
     out = {
         'id': id_num,
-        'channel_id': channel,
+        'channel_id': channel.id,
         'author': dict_from_user(author),
         'content': content,
         'timestamp': timestamp,

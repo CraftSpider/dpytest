@@ -43,7 +43,7 @@ class FakeHttp(dhttp.HTTPClient):
         return locs
 
     async def request(self, *args, **kwargs):
-        raise NotImplementedError("Operation occured that isn't captured by the tests framework")
+        raise NotImplementedError(f"Operation occured that isn't captured by the tests framework. {args[0].url} {kwargs}")
 
     async def send_files(self, channel_id, *, files, content=None, tts=False, embed=None, nonce=None):
         locs = self._get_higher_locs(1)
@@ -117,9 +117,24 @@ class FakeHttp(dhttp.HTTPClient):
         locs = self._get_higher_locs(1)
         member = locs.get("self", None)
 
-        await _dispatch_event("edit", fields, member, reason=reason)
+        await _dispatch_event("edit_member", fields, member, reason=reason)
 
-        print(fields)
+    async def create_role(self, guild_id, *, reason=None, **fields):
+        locs = self._get_higher_locs(1)
+        guild = locs.get("self", None)
+
+        data = facts.make_role_dict(**fields)
+        role = discord.Role(state=get_state(), data=data, guild=guild)
+        await _dispatch_event("edit_role", fields, role, reason=reason)
+
+        return data
+
+    async def add_role(self, guild_id, user_id, role_id, *, reason=None):
+        locs = self._get_higher_locs(1)
+        member = locs.get("self", None)
+        role = locs.get("role", None)
+
+        await _dispatch_event("add_role", member, role, reason)
 
 
 class FakeWebSocket(gate.DiscordWebSocket):
@@ -157,6 +172,22 @@ class FakeState(state.ConnectionState):
         self.user = user
         self.shard_count = client.shard_count
         self._get_websocket = lambda x: client.ws
+        self._do_dispatch = True
+
+        real_disp = self.dispatch
+
+        def dispatch(*args, **kwargs):
+            if not self._do_dispatch:
+                return
+            return real_disp(*args, **kwargs)
+
+        self.dispatch = dispatch
+
+    def stop_dispatch(self):
+        self._do_dispatch = False
+
+    def start_dispatch(self):
+        self._do_dispatch = True
 
 
 class FakeClient(discord.Client):
@@ -247,31 +278,49 @@ def make_text_channel(name, guild, position=-1, id_num=-1):
 def make_user(username, discrim, avatar=None, id_num=-1):
     if id_num == -1:
         id_num = facts.make_id()
-    return discord.User(
-        state=get_state(),
-        data=facts.make_user_dict(username, discrim, avatar, id_num)
-    )
+
+    data = facts.make_user_dict(username, discrim, avatar, id_num)
+
+    state = get_state()
+    user = state.store_user(data)
+
+    return user
 
 
 def make_member(user, guild, nick=None, roles=None):
     if roles is None:
         roles = []
     roles = list(map(lambda x: x.id, roles))
-    member = discord.Member(
-        state=get_state(),
-        guild=guild,
-        data=facts.make_member_dict(user, roles, nick=nick)
-    )
-    guild._add_member(member)
+
+    data = facts.make_member_dict(guild, user, roles, nick=nick)
+
+    state = get_state()
+    state.parse_guild_member_add(data)
+
+    return guild.get_member(user.id)
+
+
+def update_member(member, nick=None, roles=None):
+    data = facts.dict_from_member(member)
+    if nick:
+        data["nick"] = nick
+    if roles:
+        data["roles"] = list(map(lambda x: x.id, roles))
+
+    state = get_state()
+    state.parse_guild_member_update(data)
+
     return member
 
 
 def make_message(content, author, channel, id_num=-1):
-    return discord.Message(
-        state=get_state(),
-        channel=channel,
-        data=facts.make_message_dict(channel, author, id_num, content=content, guild_id=channel.guild.id)
-    )
+    guild_id = channel.guild.id if channel.guild else None
+    data = facts.make_message_dict(channel, author, id_num, content=content, guild_id=guild_id)
+
+    state = get_state()
+    state.parse_message_create(data)
+
+    return state._get_message(data["id"])
 
 
 def make_attachment(filename, name=None, id_num=-1):
