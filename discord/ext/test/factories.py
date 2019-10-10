@@ -124,7 +124,7 @@ def dict_from_role(role):
     return {
         'id': role.id,
         'name': role.name,
-        'color': role.colour,
+        'color': int(role.colour),
         'hoist': role.hoist,
         'position': role.position,
         'permissions': role.permissions.value,
@@ -247,6 +247,15 @@ def dict_from_attachment(attachment):
 
 # TODO: dict_from_emoji and make_emoji_dict
 
+def make_emoji_dict():
+    pass
+
+
+def dict_from_emoji(emoji):
+    return {
+
+    }
+
 
 def make_guild_dict(name, owner_id, roles, id_num=-1, emojis=None, icon=None, splash=None, region="en_north",
                     afk_channel_id=None, afk_timeout=600, verification_level=0, default_message_notifications=0,
@@ -272,6 +281,7 @@ def make_guild_dict(name, owner_id, roles, id_num=-1, emojis=None, icon=None, sp
         'explicit_content_filter': explicit_content_filter,
         'roles': roles,
         'emojis': emojis,
+        'members': [],
         'features': features,
         'mfa_level': mfa_level,
         'application_id': application_id,
@@ -281,3 +291,26 @@ def make_guild_dict(name, owner_id, roles, id_num=-1, emojis=None, icon=None, sp
              "joined_at", "large", "unavailable", "member_count", "voice_states", "members", "channels", "presences")
     _fill_optional(out, kwargs, items)
     return out
+
+
+def dict_from_guild(guild: discord.Guild):
+    return {
+        'id': guild.id,
+        'name': guild.name,
+        'icon': guild.icon,
+        'splash': guild.splash,
+        'owner_id': guild.owner_id,
+        'region': guild.region,
+        'afk_channel_id': guild.afk_channel.id if guild.afk_channel else None,
+        'afk_timeout': guild.afk_timeout,
+        'verification_level': guild.verification_level,
+        'default_message_notifications': guild.default_notifications.value,
+        'explicit_content_filter': guild.explicit_content_filter,
+        'roles': list(map(dict_from_role, guild.roles)),
+        'emojis': list(map(dict_from_emoji, guild.emojis)),
+        'features': guild.features,
+        'mfa_level': guild.mfa_level,
+        'application_id': None,
+        'system_channel_id': guild.system_channel.id if guild.system_channel else None,
+        'owner': guild.owner_id == guild.me.id
+    }

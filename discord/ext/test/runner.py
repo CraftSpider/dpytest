@@ -134,8 +134,28 @@ async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
 
 
+async def create_role_callback(guild, role, reason=None):
+    roles = [role] + guild.roles
+    if role.position == -1:
+        for r in roles:
+            if r.position != 0:
+                r.position += 1
+        role.position = 1
+    back.update_guild(guild, roles=roles)
+
+
+async def move_role_callback(guild, role, positions, reason=None):
+    for pair in positions:
+        guild._roles[pair["id"]].position = pair["position"]
+
+
 async def add_role_callback(member, role, reason=None):
-    roles = member.roles + [role]
+    roles = [role] + [x for x in member.roles if x.id != member.guild.id]
+    back.update_member(member, roles=roles)
+
+
+async def remove_role_callback(member, role, reason=None):
+    roles = [x for x in member.roles if x != role]
     back.update_member(member, roles=roles)
 
 
@@ -162,7 +182,7 @@ async def add_role(member, role):
     if not isinstance(role, discord.Role):
         raise TypeError("Role argument must be of type discord.Role")
 
-    roles = [x for x in member.roles] + [role]
+    roles = [role] + [x for x in member.roles if x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
 
@@ -195,9 +215,12 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
     on_command_error.__old__ = old_error
     client.on_command_error = on_command_error
 
-    # Configure the factories module
-    back.set_callback(message_callback, "message")
+    # Configure the backend module
+    back.set_callback(message_callback, "send_message")
+    back.set_callback(create_role_callback, "create_role")
+    back.set_callback(move_role_callback, "move_role")
     back.set_callback(add_role_callback, "add_role")
+    back.set_callback(remove_role_callback, "remove_role")
 
     back.get_state().stop_dispatch()
 

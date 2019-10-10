@@ -45,6 +45,20 @@ class FakeHttp(dhttp.HTTPClient):
     async def request(self, *args, **kwargs):
         raise NotImplementedError(f"Operation occured that isn't captured by the tests framework. {args[0].url} {kwargs}")
 
+    async def send_message(self, channel_id, content, *, tts=False, embed=None, nonce=None):
+        locs = self._get_higher_locs(1)
+        channel = locs.get("channel", None)
+
+        embeds = []
+        if embed:
+            embeds = [discord.Embed.from_dict(embed)]
+        data = facts.make_message_dict(channel, self.state.user, content=content, tts=tts, embeds=embeds, nonce=nonce)
+
+        message = self.state.create_message(channel=channel, data=data)
+        await _dispatch_event("send_message", message)
+
+        return data
+
     async def send_files(self, channel_id, *, files, content=None, tts=False, embed=None, nonce=None):
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
@@ -67,23 +81,55 @@ class FakeHttp(dhttp.HTTPClient):
                                        embeds=embeds, nonce=nonce)
 
         message = self.state.create_message(channel=channel, data=data)
-        await _dispatch_event("message", message)
+        await _dispatch_event("send_message", message)
 
         return data
 
-    async def send_message(self, channel_id, content, *, tts=False, embed=None, nonce=None):
+    async def change_my_nickname(self, guild_id, nickname, *, reason=None):
         locs = self._get_higher_locs(1)
-        channel = locs.get("channel", None)
+        me = locs.get("self", None)
 
-        embeds = []
-        if embed:
-            embeds = [discord.Embed.from_dict(embed)]
-        data = facts.make_message_dict(channel, self.state.user, content=content, tts=tts, embeds=embeds, nonce=nonce)
+        me.nick = nickname
+        await _dispatch_event("change_nickname", nickname, me, reason=reason)
 
-        message = self.state.create_message(channel=channel, data=data)
-        await _dispatch_event("message", message)
+        return {"nick": nickname}
+
+    async def edit_member(self, guild_id, user_id, *, reason=None, **fields):
+        locs = self._get_higher_locs(1)
+        member = locs.get("self", None)
+
+        await _dispatch_event("edit_member", fields, member, reason=reason)
+
+    async def create_role(self, guild_id, *, reason=None, **fields):
+        locs = self._get_higher_locs(1)
+        guild = locs.get("self", None)
+
+        data = facts.make_role_dict(**fields)
+        role = discord.Role(state=get_state(), data=data, guild=guild)
+        await _dispatch_event("create_role", guild, role, reason=reason)
 
         return data
+
+    async def move_role_position(self, guild_id, positions, *, reason=None):
+        locs = self._get_higher_locs(1)
+        role = locs.get("self", None)
+        guild = role.guild
+
+        await _dispatch_event("move_role", guild, role, positions, reason=reason)
+
+    async def add_role(self, guild_id, user_id, role_id, *, reason=None):
+        locs = self._get_higher_locs(1)
+        member = locs.get("self", None)
+        role = locs.get("role", None)
+
+        await _dispatch_event("add_role", member, role, reason=reason)
+
+    async def remove_role(self, guild_id, user_id, role_id, *, reason=None):
+        locs = self._get_higher_locs(1)
+        member = locs.get("self", None)
+        role = locs.get("role", None)
+
+        await _dispatch_event("remove_role", member, role, reason=reason)
 
     async def application_info(self):
         # TODO: make these values configurable
@@ -100,41 +146,9 @@ class FakeHttp(dhttp.HTTPClient):
         }
 
         appinfo = discord.AppInfo(self.state, data)
-        await _dispatch_event("info", appinfo)
+        await _dispatch_event("app_info", appinfo)
 
         return data
-
-    async def change_my_nickname(self, guild_id, nickname, *, reason=None):
-        locs = self._get_higher_locs(1)
-        me = locs.get("self", None)
-
-        me.nick = nickname
-        await _dispatch_event("nickname", nickname, me, reason=reason)
-
-        return {"nick": nickname}
-
-    async def edit_member(self, guild_id, user_id, *, reason=None, **fields):
-        locs = self._get_higher_locs(1)
-        member = locs.get("self", None)
-
-        await _dispatch_event("edit_member", fields, member, reason=reason)
-
-    async def create_role(self, guild_id, *, reason=None, **fields):
-        locs = self._get_higher_locs(1)
-        guild = locs.get("self", None)
-
-        data = facts.make_role_dict(**fields)
-        role = discord.Role(state=get_state(), data=data, guild=guild)
-        await _dispatch_event("edit_role", fields, role, reason=reason)
-
-        return data
-
-    async def add_role(self, guild_id, user_id, role_id, *, reason=None):
-        locs = self._get_higher_locs(1)
-        member = locs.get("self", None)
-        role = locs.get("role", None)
-
-        await _dispatch_event("add_role", member, role, reason=reason)
 
 
 class FakeWebSocket(gate.DiscordWebSocket):
@@ -227,7 +241,7 @@ def make_guild(name, members=None, channels=None, roles=None, owner=False, id_nu
     if id_num == -1:
         id_num = facts.make_id()
     if roles is None:
-        roles = [facts.make_role_dict("@everyone", id_num)]
+        roles = [facts.make_role_dict("@everyone", id_num, position=0)]
     if channels is None:
         channels = []
     if members is None:
@@ -247,10 +261,23 @@ def make_guild(name, members=None, channels=None, roles=None, owner=False, id_nu
     return state._get_guild(id_num)
 
 
+def update_guild(guild, roles=None):
+    data = facts.dict_from_guild(guild)
+
+    if roles:
+        data["roles"] = list(map(facts.dict_from_role, roles))
+
+    state = get_state()
+    state.parse_guild_update(data)
+
+    return guild
+
+
 def make_role(name, guild, id_num=-1, colour=0, permissions=104324161, hoist=False, mentionable=False):
     r_dict = facts.make_role_dict(
         name, id_num=id_num, colour=colour, permissions=permissions, hoist=hoist, mentionable=mentionable
     )
+    r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
 
     data = {
         "guild_id": guild.id,
