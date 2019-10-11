@@ -293,7 +293,7 @@ def make_guild_dict(name, owner_id, roles, id_num=-1, emojis=None, icon=None, sp
     return out
 
 
-def dict_from_guild(guild: discord.Guild):
+def dict_from_guild(guild):
     return {
         'id': guild.id,
         'name': guild.name,
