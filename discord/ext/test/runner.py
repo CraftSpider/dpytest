@@ -138,6 +138,14 @@ async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
 
 
+async def kick_callback(guild, member, reason=None):
+    back.delete_member(member)
+
+
+async def ban_callback(guild, member, days, reason=None):
+    back.delete_member(member)
+
+
 async def edit_role_callback(guild, role, fields, reason=None):
     back.update_role(role, **fields)
 
@@ -211,6 +219,22 @@ async def remove_role(member, role):
     back.update_member(member, roles=roles)
 
 
+@require_config
+async def member_join(guild=0, user=None, *, name=None, discrim=None):
+    import random
+    if isinstance(guild, int):
+        guild = _cur_config.guilds[guild]
+
+    if user is None:
+        if name is None:
+            name = "TestUser"
+        if discrim is None:
+            discrim = random.randint(1, 9999)
+        user = back.make_user("TestUser", discrim)
+    member = back.make_member(user, guild)
+    return member
+
+
 def get_config():
     return _cur_config
 
@@ -243,6 +267,8 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
     # Configure the backend module
     back.set_callback(message_callback, "send_message")
     back.set_callback(delete_message_callback, "delete_message")
+    back.set_callback(kick_callback, "kick")
+    back.set_callback(ban_callback, "ban")
     back.set_callback(edit_role_callback, "edit_role")
     back.set_callback(delete_role_callback, "delete_role")
     back.set_callback(create_role_callback, "create_role")

@@ -113,6 +113,20 @@ class FakeHttp(dhttp.HTTPClient):
                 start = next(i for i, v in enumerate(messages) if v["id"] == before)
             return messages[start - limit:start]
 
+    async def kick(self, user_id, guild_id, reason=None):
+        locs = self._get_higher_locs(1)
+        guild = locs.get("self", None)
+        member = locs.get("user", None)
+
+        await _dispatch_event("kick", guild, member, reason=reason)
+
+    async def ban(self, user_id, guild_id, delete_message_days=1, reason=None):
+        locs = self._get_higher_locs(1)
+        guild = locs.get("self", None)
+        member = locs.get("user", None)
+
+        await _dispatch_event("ban", guild, member, delete_message_days, reason=reason)
+
     async def change_my_nickname(self, guild_id, nickname, *, reason=None):
         locs = self._get_higher_locs(1)
         me = locs.get("self", None)
@@ -406,6 +420,12 @@ def update_member(member, nick=None, roles=None):
     state.parse_guild_member_update(data)
 
     return member
+
+
+def delete_member(member):
+    out = facts.dict_from_member(member)
+    state = get_state()
+    state.parse_guild_member_remove(out)
 
 
 def make_message(content, author, channel, id_num=-1):
