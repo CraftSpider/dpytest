@@ -130,6 +130,10 @@ async def message_callback(message):
     await sent_queue.put(message)
 
 
+async def delete_message_callback(channel, message, reason=None):
+    back.delete_message(message)
+
+
 async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
 
@@ -174,13 +178,15 @@ async def message(content, channel=0, member=0):
     if isinstance(member, int):
         member = _cur_config.members[member]
 
-    back.make_message(content, member, channel)
+    mes = back.make_message(content, member, channel)
 
     await run_all_events()
 
     if not error_queue.empty():
         err = await error_queue.get()
         raise err[1]
+
+    return mes
 
 
 @require_config
@@ -191,6 +197,17 @@ async def add_role(member, role):
         raise TypeError("Role argument must be of type discord.Role")
 
     roles = [role] + [x for x in member.roles if x.id != member.guild.id]
+    back.update_member(member, roles=roles)
+
+
+@require_config
+async def remove_role(member, role):
+    if isinstance(member, int):
+        member = _cur_config.members[member]
+    if not isinstance(role, discord.Role):
+        raise TypeError("Role argument must be of type discord.Role")
+
+    roles = [x for x in member.roles if x.id != role.id and x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
 
@@ -225,6 +242,7 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
 
     # Configure the backend module
     back.set_callback(message_callback, "send_message")
+    back.set_callback(delete_message_callback, "delete_message")
     back.set_callback(edit_role_callback, "edit_role")
     back.set_callback(delete_role_callback, "delete_role")
     back.set_callback(create_role_callback, "create_role")

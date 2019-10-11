@@ -17,6 +17,7 @@ from . import factories as facts
 
 class BackendConfig(typing.NamedTuple):
     callbacks: typing.Dict[str, typing.Callable[[typing.Any], typing.Coroutine]]
+    messages: typing.Dict[int, typing.List[typing.Dict[str, typing.Any]]]
     state: "FakeState"
 
 
@@ -84,6 +85,33 @@ class FakeHttp(dhttp.HTTPClient):
         await _dispatch_event("send_message", message)
 
         return data
+
+    async def delete_message(self, channel_id, message_id, *, reason=None):
+        locs = self._get_higher_locs(1)
+        message = locs.get("self", None)
+
+        await _dispatch_event("delete_message", message.channel, message, reason=reason)
+
+    async def logs_from(self, channel_id, limit, before=None, after=None, around=None):
+        locs = self._get_higher_locs(1)
+        his = locs.get("self", None)
+        channel = his.channel
+
+        await _dispatch_event("logs_from", channel, limit, before=None, after=None, around=None)
+
+        messages = _cur_config.messages[channel_id]
+        if after is not None:
+            start = next(i for i, v in enumerate(messages) if v["id"] == after)
+            return messages[start:start + limit]
+        elif around is not None:
+            start = next(i for i, v in enumerate(messages) if v["id"] == around)
+            return messages[start - limit // 2:start + limit // 2]
+        else:
+            if before is None:
+                start = len(messages)
+            else:
+                start = next(i for i, v in enumerate(messages) if v["id"] == before)
+            return messages[start - limit:start]
 
     async def change_my_nickname(self, guild_id, nickname, *, reason=None):
         locs = self._get_higher_locs(1)
@@ -387,7 +415,27 @@ def make_message(content, author, channel, id_num=-1):
     state = get_state()
     state.parse_message_create(data)
 
+    if channel.id not in _cur_config.messages:
+        _cur_config.messages[channel.id] = []
+    _cur_config.messages[channel.id].append(data)
+
     return state._get_message(data["id"])
+
+
+def delete_message(message):
+    data = {
+        "id": message.id,
+        "channel_id": message.channel.id
+    }
+    if message.guild is not None:
+        data["guild_id"] = message.guild.id
+
+    state = get_state()
+    state.parse_message_delete(data)
+
+    messages = _cur_config.messages[message.channel.id]
+    index = next(i for i, v in enumerate(messages) if v["id"] == message.id)
+    del _cur_config.messages[message.channel.id][index]
 
 
 def make_attachment(filename, name=None, id_num=-1):
@@ -404,7 +452,7 @@ def make_attachment(filename, name=None, id_num=-1):
 
 
 def configure(client, *, use_dummy=False):
-    global _cur_config
+    global _cur_config, _messages
 
     if client is None and use_dummy:
         log.info("None passed to backend configuration, dummy client will be used")
@@ -429,7 +477,7 @@ def configure(client, *, use_dummy=False):
 
     client._connection = test_state
 
-    _cur_config = BackendConfig({}, test_state)
+    _cur_config = BackendConfig({}, {}, test_state)
 
 
 def main():
