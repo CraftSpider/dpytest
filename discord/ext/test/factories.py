@@ -124,7 +124,7 @@ def dict_from_role(role):
     return {
         'id': role.id,
         'name': role.name,
-        'color': int(role.colour),
+        'color': role.colour.value,
         'hoist': role.hoist,
         'position': role.position,
         'permissions': role.permissions.value,

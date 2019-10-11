@@ -100,6 +100,22 @@ class FakeHttp(dhttp.HTTPClient):
 
         await _dispatch_event("edit_member", fields, member, reason=reason)
 
+    async def edit_role(self, guild_id, role_id, *, reason=None, **fields):
+        locs = self._get_higher_locs(1)
+        role = locs.get("self")
+        guild = role.guild
+
+        await _dispatch_event("edit_role", guild, role, fields, reason=reason)
+
+        return facts.dict_from_role(role)
+
+    async def delete_role(self, guild_id, role_id, *, reason=None):
+        locs = self._get_higher_locs(1)
+        role = locs.get("self")
+        guild = role.guild
+
+        await _dispatch_event("delete_role", guild, role, reason=reason)
+
     async def create_role(self, guild_id, *, reason=None, **fields):
         locs = self._get_higher_locs(1)
         guild = locs.get("self", None)
@@ -108,7 +124,7 @@ class FakeHttp(dhttp.HTTPClient):
         role = discord.Role(state=get_state(), data=data, guild=guild)
         await _dispatch_event("create_role", guild, role, reason=reason)
 
-        return data
+        return facts.dict_from_role(role)
 
     async def move_role_position(self, guild_id, positions, *, reason=None):
         locs = self._get_higher_locs(1)
@@ -264,7 +280,7 @@ def make_guild(name, members=None, channels=None, roles=None, owner=False, id_nu
 def update_guild(guild, roles=None):
     data = facts.dict_from_guild(guild)
 
-    if roles:
+    if roles is not None:
         data["roles"] = list(map(facts.dict_from_role, roles))
 
     state = get_state()
@@ -288,6 +304,30 @@ def make_role(name, guild, id_num=-1, colour=0, permissions=104324161, hoist=Fal
     state.parse_guild_role_create(data)
 
     return guild.get_role(r_dict["id"])
+
+
+def update_role(role, colour=None, color=None, permissions=None, hoist=None, mentionable=None):
+    data = facts.dict_from_role(role)
+    if color is not None:
+        colour = color
+    if colour is not None:
+        data["color"] = colour
+    if permissions is not None:
+        data["permissions"] = permissions
+    if hoist is not None:
+        data["hoist"] = hoist
+    if mentionable is not None:
+        data["mentionable"] = mentionable
+
+    state = get_state()
+    state.parse_guild_role_update(data)
+
+    return role
+
+
+def delete_role(role):
+    state = get_state()
+    state.parse_guild_role_delete({"guild_id": role.guild.id, "role_id": role.id})
 
 
 def make_text_channel(name, guild, position=-1, id_num=-1):
@@ -329,9 +369,9 @@ def make_member(user, guild, nick=None, roles=None):
 
 def update_member(member, nick=None, roles=None):
     data = facts.dict_from_member(member)
-    if nick:
+    if nick is not None:
         data["nick"] = nick
-    if roles:
+    if roles is not None:
         data["roles"] = list(map(lambda x: x.id, roles))
 
     state = get_state()

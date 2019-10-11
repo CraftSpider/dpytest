@@ -134,6 +134,14 @@ async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
 
 
+async def edit_role_callback(guild, role, fields, reason=None):
+    back.update_role(role, **fields)
+
+
+async def delete_role_callback(guild, role, reason=None):
+    back.delete_role(role)
+
+
 async def create_role_callback(guild, role, reason=None):
     roles = [role] + guild.roles
     if role.position == -1:
@@ -155,7 +163,7 @@ async def add_role_callback(member, role, reason=None):
 
 
 async def remove_role_callback(member, role, reason=None):
-    roles = [x for x in member.roles if x != role]
+    roles = [x for x in member.roles if x != role and x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
 
@@ -217,6 +225,8 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
 
     # Configure the backend module
     back.set_callback(message_callback, "send_message")
+    back.set_callback(edit_role_callback, "edit_role")
+    back.set_callback(delete_role_callback, "delete_role")
     back.set_callback(create_role_callback, "create_role")
     back.set_callback(move_role_callback, "move_role")
     back.set_callback(add_role_callback, "add_role")
