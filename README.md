@@ -2,6 +2,7 @@
 
 This is a package to allow testing of discord.py.
 It is only compatible with the rewrite version, and is still in early alpha.
+It relies on pytest-asyncio for asynchronous test running, as discord.py is coroutine driven.
 
 # Usage
 
@@ -10,16 +11,18 @@ For someone using a custom class, code would look something like this:
 ```python
 import discord.ext.test as dpytest
 import yourbot
+import pytest
 
 
-def test_bot():
+@pytest.mark.asyncio
+async def test_bot():
     bot = yourbot.BotClass()
     
     # Load any extensions/cogs you want to in here
     
     dpytest.configure(bot)
     
-    dpytest.message("!help")
+    await dpytest.message("!help")
     dpytest.verify_message("[Expected help output]")
 ```
 

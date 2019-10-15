@@ -42,5 +42,6 @@ setuptools.setup(
         "Development Status :: 3 - Alpha",
         "Topic :: Software Development :: Testing"
     ],
-    keywords="discord discord.py test"
+    keywords="discord discord.py test",
+    install_requires=["pytest-asyncio"]
 )
