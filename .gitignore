@@ -1,5 +1,8 @@
+*__pycache__/
+
 
 # Project Files
 .idea/
 build/
 dist/
+

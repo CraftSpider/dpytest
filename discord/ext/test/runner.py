@@ -46,6 +46,7 @@ def verify_message(text=None, equals=True, assert_nothing=False):
         equals = not equals
     if assert_nothing:
         assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        return
 
     try:
         message = sent_queue.get_nowait()
@@ -62,6 +63,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False
         equals = not equals
     if assert_nothing:
         assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        return
 
     try:
         message = sent_queue.get_nowait()
