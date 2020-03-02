@@ -5,6 +5,7 @@
 import asyncio
 import sys
 import logging
+import re
 import typing
 import pathlib
 import discord
@@ -430,7 +431,11 @@ def delete_member(member):
 
 def make_message(content, author, channel, id_num=-1):
     guild_id = channel.guild.id if channel.guild else None
-    data = facts.make_message_dict(channel, author, id_num, content=content, guild_id=guild_id)
+
+    mentions = find_mentions(content, channel.guild)
+
+    data = facts.make_message_dict(channel, author, id_num, content=content,
+                                   mentions=mentions, guild_id=guild_id)
 
     state = get_state()
     state.parse_message_create(data)
@@ -441,6 +446,10 @@ def make_message(content, author, channel, id_num=-1):
 
     return state._get_message(data["id"])
 
+
+def find_mentions(content, guild):
+    matches = re.findall(r"<@[0-9]{18}>", content, re.MULTILINE)
+    return [discord.utils.get(guild.members, mention=match) for match in matches]  # noqa: E501
 
 def delete_message(message):
     data = {
