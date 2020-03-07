@@ -3,3 +3,7 @@
 .idea/
 build/
 dist/
+
+*.pyc
+__pycache__
+.pytest_cache
