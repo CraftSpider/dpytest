@@ -198,6 +198,31 @@ async def message(content, channel=0, member=0):
 
 
 @require_config
+async def set_permission_overrides(
+    target: typing.Union[discord.abc.User, discord.Role],
+    channel: discord.abc.GuildChannel,
+    overrides: typing.Optional[discord.PermissionOverwrite] = None,
+    **kwars):
+    if kwars:
+        if overrides:
+            raise ValueError("either overrides parameter or kwargs")
+        else:
+            overrides = discord.PermissionOverwrite(**kwars)
+
+    if isinstance(target, int):
+        target = _cur_config.members[target]
+    if isinstance(channel, int):
+        channel = _cur_config.channels[channel]
+
+    if not isinstance(channel, discord.abc.GuildChannel):
+        raise TypeError(f"channel '{channel}' must be a abc.GuildChannel, not '{type(channel)}''")
+    if not isinstance(target, (discord.abc.User, discord.Role)):
+        raise TypeError(f"target '{target}' must be a abc.User or Role, not '{type(target)}''")
+
+    back.update_text_channel(channel, target, overrides)
+
+
+@require_config
 async def add_role(member, role):
     if isinstance(member, int):
         member = _cur_config.members[member]
