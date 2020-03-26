@@ -2,6 +2,7 @@
 import datetime as dt
 import discord
 
+import typing
 
 generated_ids = 0
 
@@ -151,13 +152,31 @@ def make_text_channel_dict(name, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
 
+def make_dict_from_overwrite(
+    target: typing.Union[discord.Member, discord.Role],
+    overwrite: discord.PermissionOverwrite):
+    allow, deny = overwrite.pair()
+    ovr = {
+        'id': target.id,
+        'allow': allow.value,
+        'deny': deny.value
+    }
+    if isinstance(target, discord.Role):
+        ovr['type'] = 'role'
+    else:
+        ovr['type'] = 'member'
+    return ovr
+
+
 # TODO: support all channel attributes
 def dict_from_channel(channel):
     if isinstance(channel, discord.TextChannel):
         return {
             'name': channel.name,
             'position': channel.position,
-            'id': channel.id
+            'id': channel.id,
+            'guild_id': channel.guild.id,
+            'permission_overwrites': [make_dict_from_overwrite(k, v) for k, v in channel.overwrites.items()]
         }
 
 

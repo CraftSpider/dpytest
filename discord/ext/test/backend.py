@@ -5,6 +5,7 @@
 import asyncio
 import sys
 import logging
+import re
 import typing
 import pathlib
 import discord
@@ -23,7 +24,11 @@ class BackendConfig(typing.NamedTuple):
 
 log = logging.getLogger("discord.ext.tests")
 _cur_config = None
+_undefined = object() # default value for when NoneType has special meaning
 
+class FakeRequest(typing.NamedTuple):
+    status: int
+    reason: str
 
 class FakeHttp(dhttp.HTTPClient):
 
@@ -53,7 +58,11 @@ class FakeHttp(dhttp.HTTPClient):
         embeds = []
         if embed:
             embeds = [discord.Embed.from_dict(embed)]
-        data = facts.make_message_dict(channel, self.state.user, content=content, tts=tts, embeds=embeds, nonce=nonce)
+        user = self.state.user
+        perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
+        if not ((perm.send_messages and perm.read_messages) or perm.administrator):
+            raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
+        data = facts.make_message_dict(channel, user, content=content, tts=tts, embeds=embeds, nonce=nonce)
 
         message = self.state.create_message(channel=channel, data=data)
         await _dispatch_event("send_message", message)
@@ -207,6 +216,31 @@ class FakeHttp(dhttp.HTTPClient):
         await _dispatch_event("app_info", appinfo)
 
         return data
+
+    async def delete_channel_permissions(self, channel_id, target_id, reason):
+        locs = self._get_higher_locs(1)
+        channel: discord.TextChannel = locs.get("self", None)
+        target = locs.get("target", None)
+
+        user = self.state.user
+        perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
+        if not (perm.administrator or perm.manage_permissions):
+            raise discord.errors.Forbidden(FakeRequest(403, "missing manage_roles"), "manage_roles")
+
+        update_text_channel(channel, target, None)
+
+    async def edit_channel_permissions(self, channel_id, target_id, allow_value, deny_value, perm_type, reason):
+        locs = self._get_higher_locs(1)
+        channel: discord.TextChannel = locs.get("self", None)
+        target = locs.get("target", None)
+
+        user = self.state.user
+        perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
+        if not (perm.administrator or perm.manage_permissions):
+            raise discord.errors.Forbidden(FakeRequest(403, "missing manage_roles"), "manage_roles")
+
+        ovr = discord.PermissionOverwrite.from_pair(discord.Permissions(allow_value), discord.Permissions(deny_value))
+        update_text_channel(channel, target, ovr)
 
 
 class FakeWebSocket(gate.DiscordWebSocket):
@@ -384,6 +418,21 @@ def make_text_channel(name, guild, position=-1, id_num=-1):
     return guild.get_channel(c_dict["id"])
 
 
+def update_text_channel(channel, target, override=_undefined):
+    c_dict = facts.dict_from_channel(channel)
+    if override is not _undefined:
+        ovr = c_dict.get("permission_overwrites", [])
+        existing = [o for o in ovr if o.get("id") == target.id]
+        if existing:
+            ovr.remove(existing[0])
+        if override:
+            ovr = ovr + [facts.make_dict_from_overwrite(target, override)]
+        c_dict["permission_overwrites"] = ovr
+
+    state = get_state()
+    state.parse_channel_update(c_dict)
+
+
 def make_user(username, discrim, avatar=None, id_num=-1):
     if id_num == -1:
         id_num = facts.make_id()
@@ -430,7 +479,11 @@ def delete_member(member):
 
 def make_message(content, author, channel, id_num=-1):
     guild_id = channel.guild.id if channel.guild else None
-    data = facts.make_message_dict(channel, author, id_num, content=content, guild_id=guild_id)
+
+    mentions = find_mentions(content, channel.guild)
+
+    data = facts.make_message_dict(channel, author, id_num, content=content,
+                                   mentions=mentions, guild_id=guild_id)
 
     state = get_state()
     state.parse_message_create(data)
@@ -441,6 +494,10 @@ def make_message(content, author, channel, id_num=-1):
 
     return state._get_message(data["id"])
 
+
+def find_mentions(content, guild):
+    matches = re.findall(r"<@[0-9]{18}>", content, re.MULTILINE)
+    return [discord.utils.get(guild.members, mention=match) for match in matches]  # noqa: E501
 
 def delete_message(message):
     data = {
