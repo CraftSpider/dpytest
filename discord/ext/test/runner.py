@@ -6,6 +6,7 @@ import discord
 import typing
 
 from . import backend as back
+from .utils import embed_eq
 
 
 class RunnerConfig(typing.NamedTuple):
@@ -46,6 +47,7 @@ def verify_message(text=None, equals=True, assert_nothing=False):
         equals = not equals
     if assert_nothing:
         assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        return
 
     try:
         message = sent_queue.get_nowait()
@@ -62,6 +64,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False
         equals = not equals
     if assert_nothing:
         assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        return
 
     try:
         message = sent_queue.get_nowait()
@@ -72,9 +75,9 @@ def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False
         if len(message.embeds) > 0:
             emb = message.embeds[0]
         if equals:
-            assert emb == embed, "Didn't find expected embed"
+            assert embed_eq(emb, embed), "Didn't find expected embed"
         else:
-            assert emb != embed, "Found unexpected embed"
+            assert not embed_eq(emb, embed), "Found unexpected embed"
     except asyncio.QueueEmpty:
         raise AssertionError("No message returned by command")
 
@@ -195,6 +198,31 @@ async def message(content, channel=0, member=0):
         raise err[1]
 
     return mes
+
+
+@require_config
+async def set_permission_overrides(
+    target: typing.Union[discord.abc.User, discord.Role],
+    channel: discord.abc.GuildChannel,
+    overrides: typing.Optional[discord.PermissionOverwrite] = None,
+    **kwars):
+    if kwars:
+        if overrides:
+            raise ValueError("either overrides parameter or kwargs")
+        else:
+            overrides = discord.PermissionOverwrite(**kwars)
+
+    if isinstance(target, int):
+        target = _cur_config.members[target]
+    if isinstance(channel, int):
+        channel = _cur_config.channels[channel]
+
+    if not isinstance(channel, discord.abc.GuildChannel):
+        raise TypeError(f"channel '{channel}' must be a abc.GuildChannel, not '{type(channel)}''")
+    if not isinstance(target, (discord.abc.User, discord.Role)):
+        raise TypeError(f"target '{target}' must be a abc.User or Role, not '{type(target)}''")
+
+    back.update_text_channel(channel, target, overrides)
 
 
 @require_config
