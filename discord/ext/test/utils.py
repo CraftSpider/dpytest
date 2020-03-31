@@ -1,7 +1,11 @@
+
 def embed_eq(embed1, embed2):
-    # fields = ['title', 'description']
-    # return all([getattr(embed1, f, None) == getattr(embed2, f, None)
-    #             for f in fields])
+    if embed1 == embed2:
+        return True
+    if embed1 is None and embed2 is not None:
+        return False
+    if embed2 is None and embed1 is not None:
+        return False
 
     return all([embed1.title == embed2.title,
                 embed1.description == embed2.description,
