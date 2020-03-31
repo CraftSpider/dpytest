@@ -209,7 +209,9 @@ class FakeHttp(dhttp.HTTPClient):
             "rpc_origins": None,
             "bot_public": True,
             "bot_require_code_grant": False,
-            "owner": facts.make_user_dict("TestOwner", "0001", None)
+            "owner": facts.make_user_dict("TestOwner", "0001", None),
+            "summary": None,
+            "verify_key": None
         }
 
         appinfo = discord.AppInfo(self.state, data)
