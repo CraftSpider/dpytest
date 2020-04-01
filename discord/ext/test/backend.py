@@ -59,9 +59,11 @@ class FakeHttp(dhttp.HTTPClient):
         if embed:
             embeds = [discord.Embed.from_dict(embed)]
         user = self.state.user
-        perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
-        if not ((perm.send_messages and perm.read_messages) or perm.administrator):
-            raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
+        # users may block a bot, but it can still send dms.
+        if not isinstance(channel, discord.DMChannel):
+            perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
+            if not ((perm.send_messages and perm.read_messages) or perm.administrator):
+                raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
         data = facts.make_message_dict(channel, user, content=content, tts=tts, embeds=embeds, nonce=nonce)
 
         message = self.state.create_message(channel=channel, data=data)
@@ -244,6 +246,14 @@ class FakeHttp(dhttp.HTTPClient):
         ovr = discord.PermissionOverwrite.from_pair(discord.Permissions(allow_value), discord.Permissions(deny_value))
         update_text_channel(channel, target, ovr)
 
+    async def start_private_message(self, user_id):
+        locs = self._get_higher_locs(1)
+        user: discord.User = locs.get("self", None)
+        return {
+            "id": facts.make_id(),
+            "recipients": [facts.dict_from_user(user)]
+        }
+
 
 class FakeWebSocket(gate.DiscordWebSocket):
 
@@ -329,6 +339,10 @@ async def _dispatch_event(event, *args, **kwargs):
             await cb(*args, **kwargs)
         except Exception as e:
             log.error(f"Error in handler for event {event}: {e}")
+
+
+def _has_guild(channel):
+    return isinstance(channel, discord.abc.GuildChannel) and channel.guild
 
 
 def make_guild(name, members=None, channels=None, roles=None, owner=False, id_num=-1):
@@ -480,9 +494,9 @@ def delete_member(member):
 
 
 def make_message(content, author, channel, id_num=-1):
-    guild_id = channel.guild.id if channel.guild else None
+    guild_id = channel.guild.id if _has_guild(channel) else None
 
-    mentions = find_mentions(content, channel.guild)
+    mentions = find_mentions(content, channel)
 
     data = facts.make_message_dict(channel, author, id_num, content=content,
                                    mentions=mentions, guild_id=guild_id)
@@ -497,9 +511,10 @@ def make_message(content, author, channel, id_num=-1):
     return state._get_message(data["id"])
 
 
-def find_mentions(content, guild):
+def find_mentions(content, channel):
+    members = channel.guild.members if _has_guild(channel) else [channel.recipient]
     matches = re.findall(r"<@[0-9]{18}>", content, re.MULTILINE)
-    return [discord.utils.get(guild.members, mention=match) for match in matches]  # noqa: E501
+    return [discord.utils.get(members, mention=match) for match in matches]  # noqa: E501
 
 def delete_message(message):
     data = {
