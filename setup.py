@@ -36,12 +36,15 @@ setuptools.setup(
     url="https://github.com/CraftSpider/dpytest",
     packages=["discord.ext.test"],
     classifiers=[
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Development Status :: 3 - Alpha",
         "Topic :: Software Development :: Testing"
     ],
     keywords="discord discord.py test",
-    install_requires=["pytest-asyncio"]
+    install_requires=["discord.py", "pytest-asyncio"]
 )

@@ -1,3 +1,8 @@
+"""
+    Main module for setting up and running tests using dpytest.
+    Handles configuration of a bot, and setup of the discord environment
+"""
+
 
 import sys
 import asyncio
@@ -10,6 +15,11 @@ from .utils import embed_eq
 
 
 class RunnerConfig(typing.NamedTuple):
+    """
+        Exposed discord test configuration
+        Contains the current client, and lists of faked objects
+    """
+
     client: discord.Client
     guilds: typing.List[discord.Guild]
     channels: typing.List[discord.abc.GuildChannel]
@@ -33,6 +43,9 @@ def require_config(func):
 
 
 async def run_all_events():
+    """
+        Ensure that all dpy related coroutines have completed or been cancelled
+    """
     if sys.version_info[1] >= 7:
         pending = filter(lambda x: x._coro.__name__ == "_run_event", asyncio.all_tasks())
     else:
@@ -43,6 +56,13 @@ async def run_all_events():
 
 
 def verify_message(text=None, equals=True, assert_nothing=False):
+    """
+        Assert that a message was sent with the given text, or that a message was sent that *doesn't* match the
+        given text
+    :param text: Text to match, or None to match anything
+    :param equals: Whether to negate the check
+    :param assert_nothing: Whether to assert that nothing was sent at all
+    """
     if text is None:
         equals = not equals
     if assert_nothing:
@@ -60,6 +80,14 @@ def verify_message(text=None, equals=True, assert_nothing=False):
 
 
 def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False):
+    """
+        Assert that a message was sent containing an embed, or that a message was sent not
+        containing an embed
+    :param embed: Embed to compare against
+    :param allow_text: Whether non-embed text is allowed
+    :param equals: Whether to invert the assertion
+    :param assert_nothing: Whether to assert that no message was sent
+    """
     if embed is None:
         equals = not equals
     if assert_nothing:

@@ -1,12 +1,11 @@
-import discord
-from discord.ext.commands import Bot, Cog, command, Context
+from discord.ext.commands import Cog, command
 
 
 class Echo(Cog):
     @command()
-    async def echo(self, ctx: Context, text: str):
+    async def echo(self, ctx, text: str):
         await ctx.send(text)
 
 
-def setup(bot: Bot):
+def setup(bot):
     bot.add_cog(Echo())

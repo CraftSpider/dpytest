@@ -26,9 +26,11 @@ log = logging.getLogger("discord.ext.tests")
 _cur_config = None
 _undefined = object() # default value for when NoneType has special meaning
 
+
 class FakeRequest(typing.NamedTuple):
     status: int
     reason: str
+
 
 class FakeHttp(dhttp.HTTPClient):
 
@@ -219,7 +221,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         return data
 
-    async def delete_channel_permissions(self, channel_id, target_id, *, reason):
+    async def delete_channel_permissions(self, channel_id, target_id, *, reason=None):
         locs = self._get_higher_locs(1)
         channel: discord.TextChannel = locs.get("self", None)
         target = locs.get("target", None)
@@ -231,7 +233,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         update_text_channel(channel, target, None)
 
-    async def edit_channel_permissions(self, channel_id, target_id, allow_value, deny_value, perm_type, *, reason):
+    async def edit_channel_permissions(self, channel_id, target_id, allow_value, deny_value, perm_type, *, reason=None):
         locs = self._get_higher_locs(1)
         channel: discord.TextChannel = locs.get("self", None)
         target = locs.get("target", None)
