@@ -9,8 +9,11 @@ Welcome to dpytest's documentation!
 .. toctree::
    :maxdepth: 2
 
+   tutorials/index
    modules/runner
-   :caption: Contents:
+   modules/backend
+   modules/factories
+   modules/utils
 
 
 Dpytest
