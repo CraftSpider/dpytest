@@ -6,14 +6,11 @@ from discord.ext.test import runner
 
 
 @pytest.mark.asyncio
-async def test_permission_setting():
+async def test_permission_setting(bot):
     """tests, that the framework sets overrides correctly"""
-    bot = Bot("!")
-    runner.configure(bot, num_members=2)
-
     g = bot.guilds[0]
     c = g.text_channels[0]
-    m = g.members[1]
+    m = g.members[0]
 
     await runner.set_permission_overrides(g.me, c, manage_roles=False)
     with pytest.raises(discord.errors.DiscordException):
@@ -41,11 +38,9 @@ async def test_permission_setting():
 
 
 @pytest.mark.asyncio
-async def test_bot_send_not_allowed():
+@pytest.mark.cogs("cogs.echo")
+async def test_bot_send_not_allowed(bot):
     """tests, that a bot gets an Exception, if not allowed to send a message"""
-    bot = Bot("!")
-    bot.load_extension('tests.internal.cogs.echo')
-    runner.configure(bot)
     g = bot.guilds[0]
     c = g.text_channels[0]
 

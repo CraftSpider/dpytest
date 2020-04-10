@@ -2,6 +2,7 @@ from discord.ext.commands import Cog, command
 
 
 class Echo(Cog):
+
     @command()
     async def echo(self, ctx, text: str):
         await ctx.send(text)
