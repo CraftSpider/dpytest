@@ -70,3 +70,11 @@ html_sidebars = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# Set the autodoc options
+autodoc_default_options = {
+    'members': True,
+    'special-members': '__init__,__slots__',
+    'undoc-members': True,
+    'member-order': 'bysource'
+}

@@ -1,7 +1,5 @@
 
-Utils Module
-============
+Utils
+=====
 
 .. automodule:: discord.ext.test.utils
-    :members:
-    :undoc-members:

@@ -1,7 +1,5 @@
 
-Runner Module
-=============
+Runner
+======
 
 .. automodule:: discord.ext.test.runner
-    :members:
-    :undoc-members:

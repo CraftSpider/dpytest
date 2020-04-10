@@ -1,7 +1,5 @@
 
-Backend Module
-==============
+Backend
+=======
 
 .. automodule:: discord.ext.test.backend
-    :members:
-    :undoc-members:
