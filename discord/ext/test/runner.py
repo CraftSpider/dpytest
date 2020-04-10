@@ -229,11 +229,7 @@ async def message(content, channel=0, member=0):
 
 
 @require_config
-async def set_permission_overrides(
-    target: typing.Union[discord.abc.User, discord.Role],
-    channel: discord.abc.GuildChannel,
-    overrides: typing.Optional[discord.PermissionOverwrite] = None,
-    **kwars):
+async def set_permission_overrides(target, channel, overrides=None, **kwars):
     if kwars:
         if overrides:
             raise ValueError("either overrides parameter or kwargs")
