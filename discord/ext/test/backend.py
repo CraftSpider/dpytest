@@ -493,12 +493,15 @@ def delete_member(member):
 
 
 def make_message(content, author, channel, id_num=-1):
-    guild_id = channel.guild.id if channel.guild else None
+    guild = channel.guild if hasattr(channel, "guild") else None
+    guild_id = guild.id if guild else None
 
-    mentions = find_mentions(content, channel.guild)
+    mentions = find_user_mentions(content, guild)
+    role_mentions = find_role_mentions(content, guild)
+    channel_mentions = find_channel_mentions(content, guild)
 
-    data = facts.make_message_dict(channel, author, id_num, content=content,
-                                   mentions=mentions, guild_id=guild_id)
+    data = facts.make_message_dict(channel, author, id_num, content=content, mentions=mentions,
+                                   mention_roles=role_mentions, mention_channels=channel_mentions, guild_id=guild_id)
 
     state = get_state()
     state.parse_message_create(data)
@@ -510,9 +513,31 @@ def make_message(content, author, channel, id_num=-1):
     return state._get_message(data["id"])
 
 
-def find_mentions(content, guild):
-    matches = re.findall(r"<@[0-9]{18}>", content, re.MULTILINE)
+MEMBER_MENTION = r"<@!?[0-9]{17,21}>"
+ROLE_MENTION = r"<@&([0-9]{17,21})>"
+CHANNEL_MENTION = r"<#[0-9]{17,21}>"
+
+
+def find_user_mentions(content, guild):
+    if guild is None:
+        return []  # TODO: Check for dm user mentions
+    matches = re.findall(MEMBER_MENTION, content, re.MULTILINE)
     return [discord.utils.get(guild.members, mention=match) for match in matches]  # noqa: E501
+
+
+def find_role_mentions(content, guild):
+    if guild is None:
+        return []
+    matches = re.findall(ROLE_MENTION, content, re.MULTILINE)
+    return [match.group(1) for match in matches]
+
+
+def find_channel_mentions(content, guild):
+    if guild is None:
+        return []
+    matches = re.findall(CHANNEL_MENTION, content, re.MULTILINE)
+    return [discord.utils.get(guild.channels, mention=match) for match in matches]
+
 
 def delete_message(message):
     data = {

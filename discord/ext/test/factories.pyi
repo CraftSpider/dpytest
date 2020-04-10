@@ -50,9 +50,10 @@ def dict_from_channel(channel: AnyChannel) -> JsonDict: ...
 def make_message_dict(channel: AnyChannel, author: Union[discord.User, discord.Member], id_num: int = ..., content: str = ...,
                       timestamp: int = ..., edited_timestamp: Optional[int] = ..., tts: bool = ...,
                       mention_everyone: bool = ..., mentions: List[discord.User] = ..., mention_roles: List[int] = ...,
-                      attachments: List[discord.Attachment] = ..., embeds: List[discord.Embed] = ..., pinned: bool = ...,
-                      type: int = ..., guild_id: int = ..., member: discord.Member = ..., reactions: List[discord.Reaction] = ...,
-                      nonce: Optional[int] = ..., webhook_id: int = ..., activity: discord.Activity = ..., application: JsonDict = ...): ...
+                      mention_channels: List[AnyChannel] = ..., attachments: List[discord.Attachment] = ...,
+                      embeds: List[discord.Embed] = ..., pinned: bool = ..., type: int = ..., guild_id: int = ...,
+                      member: discord.Member = ..., reactions: List[discord.Reaction] = ..., nonce: Optional[int] = ...,
+                      webhook_id: int = ..., activity: discord.Activity = ..., application: JsonDict = ...): ...
 
 # def dict_from_message(message: discord.Message) -> JsonDict: ...
 
