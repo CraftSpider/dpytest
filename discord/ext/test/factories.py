@@ -152,6 +152,10 @@ def make_text_channel_dict(name, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
 
+def make_dm_channel_dict(user, id_num=-1, **kwargs):
+    return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
+
+
 def make_dict_from_overwrite(
     target: typing.Union[discord.Member, discord.Role],
     overwrite: discord.PermissionOverwrite):

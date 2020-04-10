@@ -53,6 +53,14 @@ class FakeHttp(dhttp.HTTPClient):
     async def request(self, *args, **kwargs):
         raise NotImplementedError(f"Operation occured that isn't captured by the tests framework. {args[0].url} {kwargs}")
 
+    async def start_private_message(self, user_id):
+        locs = self._get_higher_locs(1)
+        user = locs.get("self", None)
+
+        await _dispatch_event("start_private_message", user)
+
+        return facts.make_dm_channel_dict(user)
+
     async def send_message(self, channel_id, content, *, tts=False, embed=None, nonce=None):
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
@@ -61,7 +69,10 @@ class FakeHttp(dhttp.HTTPClient):
         if embed:
             embeds = [discord.Embed.from_dict(embed)]
         user = self.state.user
-        perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
+        if hasattr(channel, "guild"):
+            perm = channel.permissions_for(channel.guild.get_member(user.id))
+        else:
+            perm = channel.permissions_for(user)
         if not ((perm.send_messages and perm.read_messages) or perm.administrator):
             raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
         data = facts.make_message_dict(channel, user, content=content, tts=tts, embeds=embeds, nonce=nonce)
