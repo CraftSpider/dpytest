@@ -43,14 +43,17 @@ def make_text_channel_dict(name: str, id_num: int = ..., guild_id: int = ..., po
                            topic: Optional[str] = ..., nsfw: bool = ..., last_message_id: Optional[int] = ...,
                            rate_limit_per_user: int = ..., parent_id: Optional[int]= ..., last_pin_timestamp: int = ...) -> JsonDict: ...
 
+def make_dm_channel_dict(user: discord.User, id_num: int = ..., **kwargs: Any) -> JsonDict: ...
+
 def dict_from_channel(channel: AnyChannel) -> JsonDict: ...
 
 def make_message_dict(channel: AnyChannel, author: Union[discord.User, discord.Member], id_num: int = ..., content: str = ...,
                       timestamp: int = ..., edited_timestamp: Optional[int] = ..., tts: bool = ...,
                       mention_everyone: bool = ..., mentions: List[discord.User] = ..., mention_roles: List[int] = ...,
-                      attachments: List[discord.Attachment] = ..., embeds: List[discord.Embed] = ..., pinned: bool = ...,
-                      type: int = ..., guild_id: int = ..., member: discord.Member = ..., reactions: List[discord.Reaction] = ...,
-                      nonce: Optional[int] = ..., webhook_id: int = ..., activity: discord.Activity = ..., application: JsonDict = ...): ...
+                      mention_channels: List[AnyChannel] = ..., attachments: List[discord.Attachment] = ...,
+                      embeds: List[discord.Embed] = ..., pinned: bool = ..., type: int = ..., guild_id: int = ...,
+                      member: discord.Member = ..., reactions: List[discord.Reaction] = ..., nonce: Optional[int] = ...,
+                      webhook_id: int = ..., activity: discord.Activity = ..., application: JsonDict = ...): ...
 
 # def dict_from_message(message: discord.Message) -> JsonDict: ...
 

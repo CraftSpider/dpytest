@@ -26,9 +26,11 @@ log = logging.getLogger("discord.ext.tests")
 _cur_config = None
 _undefined = object() # default value for when NoneType has special meaning
 
+
 class FakeRequest(typing.NamedTuple):
     status: int
     reason: str
+
 
 class FakeHttp(dhttp.HTTPClient):
 
@@ -51,6 +53,14 @@ class FakeHttp(dhttp.HTTPClient):
     async def request(self, *args, **kwargs):
         raise NotImplementedError(f"Operation occured that isn't captured by the tests framework. {args[0].url} {kwargs}")
 
+    async def start_private_message(self, user_id):
+        locs = self._get_higher_locs(1)
+        user = locs.get("self", None)
+
+        await _dispatch_event("start_private_message", user)
+
+        return facts.make_dm_channel_dict(user)
+
     async def send_message(self, channel_id, content, *, tts=False, embed=None, nonce=None):
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
@@ -59,7 +69,10 @@ class FakeHttp(dhttp.HTTPClient):
         if embed:
             embeds = [discord.Embed.from_dict(embed)]
         user = self.state.user
-        perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
+        if hasattr(channel, "guild"):
+            perm = channel.permissions_for(channel.guild.get_member(user.id))
+        else:
+            perm = channel.permissions_for(user)
         if not ((perm.send_messages and perm.read_messages) or perm.administrator):
             raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
         data = facts.make_message_dict(channel, user, content=content, tts=tts, embeds=embeds, nonce=nonce)
@@ -219,7 +232,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         return data
 
-    async def delete_channel_permissions(self, channel_id, target_id, *, reason):
+    async def delete_channel_permissions(self, channel_id, target_id, *, reason=None):
         locs = self._get_higher_locs(1)
         channel: discord.TextChannel = locs.get("self", None)
         target = locs.get("target", None)
@@ -231,7 +244,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         update_text_channel(channel, target, None)
 
-    async def edit_channel_permissions(self, channel_id, target_id, allow_value, deny_value, perm_type, *, reason):
+    async def edit_channel_permissions(self, channel_id, target_id, allow_value, deny_value, perm_type, *, reason=None):
         locs = self._get_higher_locs(1)
         channel: discord.TextChannel = locs.get("self", None)
         target = locs.get("target", None)
@@ -480,12 +493,15 @@ def delete_member(member):
 
 
 def make_message(content, author, channel, id_num=-1):
-    guild_id = channel.guild.id if channel.guild else None
+    guild = channel.guild if hasattr(channel, "guild") else None
+    guild_id = guild.id if guild else None
 
-    mentions = find_mentions(content, channel.guild)
+    mentions = find_user_mentions(content, guild)
+    role_mentions = find_role_mentions(content, guild)
+    channel_mentions = find_channel_mentions(content, guild)
 
-    data = facts.make_message_dict(channel, author, id_num, content=content,
-                                   mentions=mentions, guild_id=guild_id)
+    data = facts.make_message_dict(channel, author, id_num, content=content, mentions=mentions,
+                                   mention_roles=role_mentions, mention_channels=channel_mentions, guild_id=guild_id)
 
     state = get_state()
     state.parse_message_create(data)
@@ -497,9 +513,31 @@ def make_message(content, author, channel, id_num=-1):
     return state._get_message(data["id"])
 
 
-def find_mentions(content, guild):
-    matches = re.findall(r"<@[0-9]{18}>", content, re.MULTILINE)
+MEMBER_MENTION = re.compile(r"<@!?[0-9]{17,21}>", re.MULTILINE)
+ROLE_MENTION = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
+CHANNEL_MENTION = re.compile(r"<#[0-9]{17,21}>", re.MULTILINE)
+
+
+def find_user_mentions(content, guild):
+    if guild is None:
+        return []  # TODO: Check for dm user mentions
+    matches = re.findall(MEMBER_MENTION, content)
     return [discord.utils.get(guild.members, mention=match) for match in matches]  # noqa: E501
+
+
+def find_role_mentions(content, guild):
+    if guild is None:
+        return []
+    matches = re.findall(ROLE_MENTION, content)
+    return matches
+
+
+def find_channel_mentions(content, guild):
+    if guild is None:
+        return []
+    matches = re.findall(CHANNEL_MENTION, content)
+    return [discord.utils.get(guild.channels, mention=match) for match in matches]
+
 
 def delete_message(message):
     data = {

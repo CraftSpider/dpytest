@@ -1,10 +1,20 @@
 # dpytest
 
+[![Build Status](https://travis-ci.com/CraftSpider/dpytest.svg?branch=master)](https://travis-ci.com/CraftSpider/dpytest)
+[![Documentation Status](https://readthedocs.org/projects/dpytest/badge/?version=latest)](https://dpytest.readthedocs.io/en/latest/?badge=latest)
+
+
 This is a package to allow testing of discord.py.
 It is only compatible with the rewrite version, and is still in early alpha.
 It relies on pytest-asyncio for asynchronous test running, as discord.py is coroutine driven.
 
+# Documentation
+
+Documentation can be found at [dpytest.readthedocs.io](), including examples and tutorials
+
 # Usage
+
+TODO: Move this to RTD
 
 dpytest can be used for projects using the default commands.Bot, or those defining their own subclass of bot.
 For someone using a custom class, code would look something like this:

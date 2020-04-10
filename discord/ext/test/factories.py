@@ -152,6 +152,10 @@ def make_text_channel_dict(name, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
 
+def make_dm_channel_dict(user, id_num=-1, **kwargs):
+    return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
+
+
 def make_dict_from_overwrite(
     target: typing.Union[discord.Member, discord.Role],
     overwrite: discord.PermissionOverwrite):
@@ -182,8 +186,8 @@ def dict_from_channel(channel):
 
 # TODO: Convert attachments, reactions, activity, and application to a dict.
 def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, edited_timestamp=None, tts=False,
-                      mention_everyone=False, mentions=None, mention_roles=None, attachments=None, embeds=None,
-                      pinned=False, type=0, **kwargs):
+                      mention_everyone=False, mentions=None, mention_roles=None, mention_channels=None,
+                      attachments=None, embeds=None, pinned=False, type=0, **kwargs):
     if id_num < 0:
         id_num = make_id()
     if isinstance(channel, discord.abc.GuildChannel):
@@ -198,6 +202,9 @@ def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, 
     mentions = list(map(dict_from_user, mentions))
     if mention_roles is None:
         mention_roles = []
+    if mention_channels is None:
+        mention_channels = []
+    mention_channels = list(map(_mention_from_channel, mention_channels))
     if attachments is None:
         attachments = []
     attachments = list(map(dict_from_attachment, attachments))
@@ -223,6 +230,21 @@ def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, 
     }
     items = ('guild_id', 'member', 'reactions', 'nonce', 'webhook_id', 'activity', 'application')
     _fill_optional(out, kwargs, items)
+    return out
+
+
+def _mention_from_channel(channel):
+    out = {
+        "id": channel.id,
+        "type": str(channel.type),
+        "guild_id": None,
+        "name": None
+    }
+    if hasattr(channel, "guild"):
+        out["guild_id"] = channel.guild.id
+    if hasattr(channel, "name"):
+        out["name"] = channel.name
+
     return out
 
 
