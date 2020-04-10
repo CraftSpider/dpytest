@@ -73,8 +73,8 @@ html_static_path = ['_static']
 
 # Set the autodoc options
 autodoc_default_options = {
-    'members': True,
+    'members': None,
     'special-members': '__init__,__slots__',
-    'undoc-members': True,
+    'undoc-members': None,
     'member-order': 'bysource'
 }
