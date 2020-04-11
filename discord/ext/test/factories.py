@@ -248,16 +248,19 @@ def _mention_from_channel(channel):
     return out
 
 
-# TODO: barely works at all yet
-# def dict_from_message(message):
-#     out = {
-#         'id': message.id,
-#         'author': dict_from_user(message.author),
-#     }
-#   items = ('content', 'pinned', 'application', 'activity', 'mention_everyone', 'tts', 'type', 'attachments', 'embeds',
-#              'nonce')
-#     _fill_optional(out, message, items)
-#     return out
+def dict_from_message(message):
+    out = {
+        'id': message.id,
+        'author': dict_from_user(message.author),
+        'mentions': list(map(dict_from_user, message.mentions)),
+        'role_mentions': list(map(lambda x: x.id, message.role_mentions)),
+        'channel_mentions': list(map(_mention_from_channel, message.channel_mentions))
+    }
+
+    items = ('content', 'pinned', 'application', 'activity', 'mention_everyone', 'tts', 'type', 'attachments', 'embeds',
+             'nonce')
+    _fill_optional(out, message, items)
+    return out
 
 
 def make_attachment_dict(filename, size, url, proxy_url, id_num=-1, height=None, width=None):

@@ -114,6 +114,16 @@ class FakeHttp(dhttp.HTTPClient):
 
         await _dispatch_event("delete_message", message.channel, message, reason=reason)
 
+    async def edit_message(self, channel_id, message_id, **fields):
+        locs = self._get_higher_locs(1)
+        message = locs.get("self", None)
+
+        await _dispatch_event("edit_message", message.channel, message, fields)
+
+        out = facts.dict_from_message(message)
+        out.update(fields)
+        return out
+
     async def logs_from(self, channel_id, limit, before=None, after=None, around=None):
         locs = self._get_higher_locs(1)
         his = locs.get("self", None)
