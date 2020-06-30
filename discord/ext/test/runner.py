@@ -393,7 +393,7 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
             channels.append(channel)
         for num in range(num_members):
             user = back.make_user("TestUser", f"{num+1:04}")
-            member = back.make_member(user, guild)
+            member = back.make_member(user, guild, nick=user.name + "_nick")
             members.append(member)
         back.make_member(back.get_state().user, guild)
 
