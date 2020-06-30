@@ -267,9 +267,6 @@ class FakeHttp(dhttp.HTTPClient):
         ovr = discord.PermissionOverwrite.from_pair(discord.Permissions(allow_value), discord.Permissions(deny_value))
         update_text_channel(channel, target, ovr)
 
-    async def get_from_cdn(self,url):
-        with open(url.split("file:///")[-1],'r') as fd:
-            return fd.read()
 
 class FakeWebSocket(gate.DiscordWebSocket):
 
