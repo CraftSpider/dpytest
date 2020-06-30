@@ -55,7 +55,7 @@ async def run_all_events():
             await task
 
 
-def verify_message(text=None, equals=True, assert_nothing=False):
+def verify_message(text=None, equals=True, contains=False, peek=False, assert_nothing=False):
     """
         Assert that a message was sent with the given text, or that a message was sent that *doesn't* match the
         given text
@@ -71,15 +71,43 @@ def verify_message(text=None, equals=True, assert_nothing=False):
 
     try:
         message = sent_queue.get_nowait()
+        if peek:
+            messages = [message]
+            while not sent_queue.empty():
+                tmp_message = sent_queue.get_nowait()
+                messages.append(tmp_message)
+            for tmp_message in messages:
+                sent_queue.put_nowait(tmp_message)
         if equals:
-            assert message.content == text, f"Didn't find expected text. Expected {text}, found {message.content}"
+            if contains:
+                assert text in message.content,f"Didn't find expected text. Expected {text} to be in {message.content}"
+            else:
+                assert message.content == text, f"Didn't find expected text. Expected {text}, found {message.content}"
         else:
-            assert message.content != text, f"Found unexpected text. Expected something not matching {text}"
+            if contains:
+                assert text not in message.content, f"Found unexpected text. Expected something not containing {text}"
+            else:
+                assert message.content != text, f"Found unexpected text. Expected something not matching {text}"
     except asyncio.QueueEmpty:
         raise AssertionError("No message returned by command")
 
+def get_message(peek=False):
+    """
+        Allow the user to retrieve a message sent by the bot
+    :param peek: do not remove the message from the queue of messages
+    :return:
+    """
+    message = sent_queue.get_nowait()
+    if peek:
+        messages = [message]
+        while not sent_queue.empty():
+            tmp_message = sent_queue.get_nowait()
+            messages.append(tmp_message)
+        for tmp_message in messages:
+            sent_queue.put_nowait(tmp_message)
+    return message
 
-def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False):
+def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_nothing=False):
     """
         Assert that a message was sent containing an embed, or that a message was sent not
         containing an embed
@@ -98,7 +126,13 @@ def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False
         message = sent_queue.get_nowait()
         if not allow_text:
             assert message.content is None
-
+        if peek:
+            messages = [message]
+            while not sent_queue.empty():
+                tmp_message = sent_queue.get_nowait()
+                messages.append(tmp_message)
+            for tmp_message in messages:
+                sent_queue.put_nowait(tmp_message)
         emb = None
         if len(message.embeds) > 0:
             emb = message.embeds[0]
@@ -108,6 +142,22 @@ def verify_embed(embed=None, allow_text=False, equals=True, assert_nothing=False
             assert not embed_eq(emb, embed), "Found unexpected embed"
     except asyncio.QueueEmpty:
         raise AssertionError("No message returned by command")
+
+def get_embed(peek=False):
+    """
+        Allow the user to retrieve an embed in a message sent by the bot
+    :param peek: do not remove the message from the queue of messages
+    :return:
+    """
+    message = sent_queue.get_nowait()
+    if peek:
+        messages = [message]
+        while not sent_queue.empty():
+            tmp_message = sent_queue.get_nowait()
+            messages.insert(0,tmp_message)
+        for tmp_message in messages:
+            sent_queue.put_nowait(tmp_message)
+    return message.embeds[0]
 
 
 def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
