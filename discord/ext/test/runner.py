@@ -27,7 +27,7 @@ class RunnerConfig(typing.NamedTuple):
 
 
 log = logging.getLogger("discord.ext.tests")
-_cur_config = None
+_cur_config: typing.Optional[RunnerConfig] = None
 sent_queue = asyncio.queues.Queue()
 error_queue = asyncio.queues.Queue()
 
