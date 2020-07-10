@@ -12,12 +12,12 @@ import discord
 import discord.http as dhttp
 
 from . import factories as facts
-from . import state, callbacks, websocket
+from . import state as dstate, callbacks, websocket
 
 
 class BackendConfig(typing.NamedTuple):
     messages: typing.Dict[int, typing.List[typing.Dict[str, typing.Any]]]
-    state: state.FakeState
+    state: dstate.FakeState
 
 
 log = logging.getLogger("discord.ext.tests")
@@ -678,7 +678,7 @@ def configure(client, *, use_dummy=False):
     ws = websocket.FakeWebSocket()
     client.ws = ws
 
-    test_state = state.FakeState(client, http=http, loop=loop)
+    test_state = dstate.FakeState(client, http=http, loop=loop)
     http.state = test_state
 
     client._connection = test_state

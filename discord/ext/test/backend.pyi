@@ -1,5 +1,5 @@
 
-from typing import List, Union, Dict, Callable, Coroutine, Any, Optional, NoReturn, BinaryIO, Tuple, overload
+from typing import List, Union, Dict, Any, Optional, NoReturn, Tuple, overload
 import pathlib
 import asyncio
 import discord
