@@ -330,10 +330,6 @@ class FakeHttp(dhttp.HTTPClient):
         update_text_channel(channel, target, ovr)
 
 
-class FakeClient(discord.Client):
-    pass
-
-
 def get_state():
     if _cur_config is None:
         raise ValueError("Discord class factories not configured")
@@ -666,7 +662,7 @@ def configure(client, *, use_dummy=False):
 
     if client is None and use_dummy:
         log.info("None passed to backend configuration, dummy client will be used")
-        client = FakeClient()
+        client = discord.Client()
 
     if not isinstance(client, discord.Client):
         raise TypeError("Runner client must be an instance of discord.Client")
