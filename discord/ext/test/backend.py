@@ -1,5 +1,5 @@
 """
-    Functions and classes for building various discord.py classes
+
 """
 
 import asyncio
@@ -10,14 +10,12 @@ import typing
 import pathlib
 import discord
 import discord.http as dhttp
-import discord.gateway as gate
 
 from . import factories as facts
-from . import state
+from . import state, callbacks, websocket
 
 
 class BackendConfig(typing.NamedTuple):
-    callbacks: typing.Dict[str, typing.Callable[[typing.Any], typing.Coroutine]]
     messages: typing.Dict[int, typing.List[typing.Dict[str, typing.Any]]]
     state: state.FakeState
 
@@ -61,7 +59,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = self._get_higher_locs(1)
         user = locs.get("self", None)
 
-        await _dispatch_event("start_private_message", user)
+        await callbacks.dispatch_event("start_private_message", user)
 
         return facts.make_dm_channel_dict(user)
 
@@ -84,7 +82,7 @@ class FakeHttp(dhttp.HTTPClient):
             channel=channel, author=self.state.user, content=content, tts=tts, embeds=embeds, nonce=nonce
         )
 
-        await _dispatch_event("send_message", message)
+        await callbacks.dispatch_event("send_message", message)
 
         return facts.dict_from_message(message)
 
@@ -92,7 +90,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
 
-        await _dispatch_event("send_typing", channel)
+        await callbacks.dispatch_event("send_typing", channel)
 
     async def send_files(self, channel_id, *, files, content=None, tts=False, embed=None, nonce=None):
         locs = self._get_higher_locs(1)
@@ -118,7 +116,7 @@ class FakeHttp(dhttp.HTTPClient):
             nonce=nonce
         )
 
-        await _dispatch_event("send_message", message)
+        await callbacks.dispatch_event("send_message", message)
 
         return facts.dict_from_message(message)
 
@@ -126,13 +124,15 @@ class FakeHttp(dhttp.HTTPClient):
         locs = self._get_higher_locs(1)
         message = locs.get("self", None)
 
-        await _dispatch_event("delete_message", message.channel, message, reason=reason)
+        await callbacks.dispatch_event("delete_message", message.channel, message, reason=reason)
+
+        delete_message(message)
 
     async def edit_message(self, channel_id, message_id, **fields):
         locs = self._get_higher_locs(1)
         message = locs.get("self", None)
 
-        await _dispatch_event("edit_message", message.channel, message, fields)
+        await callbacks.dispatch_event("edit_message", message.channel, message, fields)
 
         out = facts.dict_from_message(message)
         out.update(fields)
@@ -143,7 +143,7 @@ class FakeHttp(dhttp.HTTPClient):
         message = locs.get("self")
         emoji = emoji  # TODO: Turn this back into class?
 
-        await _dispatch_event("add_reaction", message, emoji)
+        await callbacks.dispatch_event("add_reaction", message, emoji)
 
         add_reaction(message, self.state.user, emoji)
 
@@ -152,7 +152,7 @@ class FakeHttp(dhttp.HTTPClient):
         message = locs.get("self")
         member = locs.get("member")
 
-        await _dispatch_event("remove_reaction", message, emoji, member)
+        await callbacks.dispatch_event("remove_reaction", message, emoji, member)
 
         remove_reaction(message, member, emoji)
 
@@ -161,7 +161,7 @@ class FakeHttp(dhttp.HTTPClient):
         message = locs.get("self")
         member = locs.get("member")
 
-        await _dispatch_event("remove_own_reaction", message, emoji, member)
+        await callbacks.dispatch_event("remove_own_reaction", message, emoji, member)
 
         remove_reaction(message, self.state.user, emoji)
 
@@ -169,7 +169,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = self._get_higher_locs(1)
         channel = locs.get("self")
 
-        await _dispatch_event("get_message", channel, message_id)
+        await callbacks.dispatch_event("get_message", channel, message_id)
 
         messages = _cur_config.messages[channel_id]
         find = next(filter(lambda m: m["id"] == message_id, messages), None)
@@ -182,7 +182,7 @@ class FakeHttp(dhttp.HTTPClient):
         his = locs.get("self", None)
         channel = his.channel
 
-        await _dispatch_event("logs_from", channel, limit, before=None, after=None, around=None)
+        await callbacks.dispatch_event("logs_from", channel, limit, before=None, after=None, around=None)
 
         messages = _cur_config.messages[channel_id]
         if after is not None:
@@ -203,21 +203,26 @@ class FakeHttp(dhttp.HTTPClient):
         guild = locs.get("self", None)
         member = locs.get("user", None)
 
-        await _dispatch_event("kick", guild, member, reason=reason)
+        await callbacks.dispatch_event("kick", guild, member, reason=reason)
+
+        delete_member(member)
 
     async def ban(self, user_id, guild_id, delete_message_days=1, reason=None):
         locs = self._get_higher_locs(1)
         guild = locs.get("self", None)
         member = locs.get("user", None)
 
-        await _dispatch_event("ban", guild, member, delete_message_days, reason=reason)
+        await callbacks.dispatch_event("ban", guild, member, delete_message_days, reason=reason)
+
+        delete_member(member)
 
     async def change_my_nickname(self, guild_id, nickname, *, reason=None):
         locs = self._get_higher_locs(1)
         me = locs.get("self", None)
 
         me.nick = nickname
-        await _dispatch_event("change_nickname", nickname, me, reason=reason)
+
+        await callbacks.dispatch_event("change_nickname", nickname, me, reason=reason)
 
         return {"nick": nickname}
 
@@ -225,14 +230,16 @@ class FakeHttp(dhttp.HTTPClient):
         locs = self._get_higher_locs(1)
         member = locs.get("self", None)
 
-        await _dispatch_event("edit_member", fields, member, reason=reason)
+        await callbacks.dispatch_event("edit_member", fields, member, reason=reason)
 
     async def edit_role(self, guild_id, role_id, *, reason=None, **fields):
         locs = self._get_higher_locs(1)
         role = locs.get("self")
         guild = role.guild
 
-        await _dispatch_event("edit_role", guild, role, fields, reason=reason)
+        await callbacks.dispatch_event("edit_role", guild, role, fields, reason=reason)
+
+        update_role(role, **fields)
 
         return facts.dict_from_role(role)
 
@@ -241,7 +248,9 @@ class FakeHttp(dhttp.HTTPClient):
         role = locs.get("self")
         guild = role.guild
 
-        await _dispatch_event("delete_role", guild, role, reason=reason)
+        await callbacks.dispatch_event("delete_role", guild, role, reason=reason)
+
+        delete_role(role)
 
     async def create_role(self, guild_id, *, reason=None, **fields):
         locs = self._get_higher_locs(1)
@@ -249,7 +258,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         data = facts.make_role_dict(**fields)
         role = discord.Role(state=get_state(), data=data, guild=guild)
-        await _dispatch_event("create_role", guild, role, reason=reason)
+        await callbacks.dispatch_event("create_role", guild, role, reason=reason)
 
         return facts.dict_from_role(role)
 
@@ -258,21 +267,21 @@ class FakeHttp(dhttp.HTTPClient):
         role = locs.get("self", None)
         guild = role.guild
 
-        await _dispatch_event("move_role", guild, role, positions, reason=reason)
+        await callbacks.dispatch_event("move_role", guild, role, positions, reason=reason)
 
     async def add_role(self, guild_id, user_id, role_id, *, reason=None):
         locs = self._get_higher_locs(1)
         member = locs.get("self", None)
         role = locs.get("role", None)
 
-        await _dispatch_event("add_role", member, role, reason=reason)
+        await callbacks.dispatch_event("add_role", member, role, reason=reason)
 
     async def remove_role(self, guild_id, user_id, role_id, *, reason=None):
         locs = self._get_higher_locs(1)
         member = locs.get("self", None)
         role = locs.get("role", None)
 
-        await _dispatch_event("remove_role", member, role, reason=reason)
+        await callbacks.dispatch_event("remove_role", member, role, reason=reason)
 
     async def application_info(self):
         # TODO: make these values configurable
@@ -291,7 +300,7 @@ class FakeHttp(dhttp.HTTPClient):
         }
 
         appinfo = discord.AppInfo(self.state, data)
-        await _dispatch_event("app_info", appinfo)
+        await callbacks.dispatch_event("app_info", appinfo)
 
         return data
 
@@ -321,29 +330,6 @@ class FakeHttp(dhttp.HTTPClient):
         update_text_channel(channel, target, ovr)
 
 
-class FakeWebSocket(gate.DiscordWebSocket):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.cur_event = ""
-        self.event_args = ()
-        self.event_kwargs = {}
-
-    async def send(self, data):
-        self._dispatch('socket_raw_send', data)
-        if self.cur_event is None:
-            raise ValueError("Unhandled Websocket send event")
-        await _dispatch_event(self.cur_event, *self.event_args, **self.event_kwargs)
-        self.cur_event = None
-        self.event_args = ()
-        self.event_kwargs = {}
-
-    async def change_presence(self, *, activity=None, status=None, afk=False, since=0.0):
-        self.cur_event = "presence"
-        self.event_args = (activity, status, afk, since)
-        await super().change_presence(activity=activity, status=status, afk=afk, since=since)
-
-
 class FakeClient(discord.Client):
     pass
 
@@ -352,29 +338,6 @@ def get_state():
     if _cur_config is None:
         raise ValueError("Discord class factories not configured")
     return _cur_config.state
-
-
-def set_callback(cb, event):
-    _cur_config.callbacks[event] = cb
-
-
-def get_callback(event):
-    if _cur_config.callbacks.get(event) is None:
-        raise ValueError(f"Callback for event {event} not set")
-    return _cur_config.callbacks[event]
-
-
-def remove_callback(event):
-    return _cur_config.callbacks.pop(event, None)
-
-
-async def _dispatch_event(event, *args, **kwargs):
-    cb = _cur_config.callbacks.get(event)
-    if cb is not None:
-        try:
-            await cb(*args, **kwargs)
-        except Exception as e:
-            log.error(f"Error in handler for event {event}: {e}")
 
 
 def make_guild(name, members=None, channels=None, roles=None, owner=False, id_num=-1):
@@ -716,7 +679,7 @@ def configure(client, *, use_dummy=False):
     http = FakeHttp(loop=loop)
     client.http = http
 
-    ws = FakeWebSocket()
+    ws = websocket.FakeWebSocket()
     client.ws = ws
 
     test_state = state.FakeState(client, http=http, loop=loop)
@@ -724,7 +687,7 @@ def configure(client, *, use_dummy=False):
 
     client._connection = test_state
 
-    _cur_config = BackendConfig({}, {}, test_state)
+    _cur_config = BackendConfig({}, test_state)
 
 
 def main():

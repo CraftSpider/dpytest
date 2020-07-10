@@ -10,7 +10,7 @@ import logging
 import discord
 import typing
 
-from . import backend as back
+from . import backend as back, callbacks
 from .utils import embed_eq
 
 
@@ -211,28 +211,8 @@ async def message_callback(message):
     await sent_queue.put(message)
 
 
-async def delete_message_callback(channel, message, reason=None):
-    back.delete_message(message)
-
-
 async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
-
-
-async def kick_callback(guild, member, reason=None):
-    back.delete_member(member)
-
-
-async def ban_callback(guild, member, days, reason=None):
-    back.delete_member(member)
-
-
-async def edit_role_callback(guild, role, fields, reason=None):
-    back.update_role(role, **fields)
-
-
-async def delete_role_callback(guild, role, reason=None):
-    back.delete_role(role)
 
 
 async def create_role_callback(guild, role, reason=None):
@@ -366,17 +346,12 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
     on_command_error.__old__ = old_error
     client.on_command_error = on_command_error
 
-    # Configure the backend module
-    back.set_callback(message_callback, "send_message")
-    back.set_callback(delete_message_callback, "delete_message")
-    back.set_callback(kick_callback, "kick")
-    back.set_callback(ban_callback, "ban")
-    back.set_callback(edit_role_callback, "edit_role")
-    back.set_callback(delete_role_callback, "delete_role")
-    back.set_callback(create_role_callback, "create_role")
-    back.set_callback(move_role_callback, "move_role")
-    back.set_callback(add_role_callback, "add_role")
-    back.set_callback(remove_role_callback, "remove_role")
+    # Configure global callbacks
+    callbacks.set_callback(message_callback, "send_message")
+    callbacks.set_callback(create_role_callback, "create_role")
+    callbacks.set_callback(move_role_callback, "move_role")
+    callbacks.set_callback(add_role_callback, "add_role")
+    callbacks.set_callback(remove_role_callback, "remove_role")
 
     back.get_state().stop_dispatch()
 
