@@ -9,17 +9,17 @@ import re
 import typing
 import pathlib
 import discord
-import discord.state as dstate
 import discord.http as dhttp
 import discord.gateway as gate
 
 from . import factories as facts
+from . import state
 
 
 class BackendConfig(typing.NamedTuple):
     callbacks: typing.Dict[str, typing.Callable[[typing.Any], typing.Coroutine]]
     messages: typing.Dict[int, typing.List[typing.Dict[str, typing.Any]]]
-    state: "FakeState"
+    state: state.FakeState
 
 
 log = logging.getLogger("discord.ext.tests")
@@ -342,36 +342,6 @@ class FakeWebSocket(gate.DiscordWebSocket):
         self.cur_event = "presence"
         self.event_args = (activity, status, afk, since)
         await super().change_presence(activity=activity, status=status, afk=afk, since=since)
-
-
-class FakeState(dstate.ConnectionState):
-
-    def __init__(self, client, http, user=None, loop=None):
-        if loop is None:
-            loop = asyncio.get_event_loop()
-        super().__init__(dispatch=client.dispatch, chunker=client._chunker, handlers=None, syncer=None, http=http,
-                         loop=loop)
-        if user is None:
-            user = discord.ClientUser(state=self, data=facts.make_user_dict("FakeApp", "0001", None))
-        self.user = user
-        self.shard_count = client.shard_count
-        self._get_websocket = lambda x: client.ws
-        self._do_dispatch = True
-
-        real_disp = self.dispatch
-
-        def dispatch(*args, **kwargs):
-            if not self._do_dispatch:
-                return
-            return real_disp(*args, **kwargs)
-
-        self.dispatch = dispatch
-
-    def stop_dispatch(self):
-        self._do_dispatch = False
-
-    def start_dispatch(self):
-        self._do_dispatch = True
 
 
 class FakeClient(discord.Client):
@@ -749,7 +719,7 @@ def configure(client, *, use_dummy=False):
     ws = FakeWebSocket()
     client.ws = ws
 
-    test_state = FakeState(client, http=http, loop=loop)
+    test_state = state.FakeState(client, http=http, loop=loop)
     http.state = test_state
 
     client._connection = test_state
