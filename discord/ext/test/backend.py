@@ -24,7 +24,7 @@ class BackendConfig(typing.NamedTuple):
 
 log = logging.getLogger("discord.ext.tests")
 _cur_config = None
-_undefined = object() # default value for when NoneType has special meaning
+_undefined = object()  # default value for when NoneType has special meaning
 
 
 class FakeRequest(typing.NamedTuple):
@@ -81,6 +81,12 @@ class FakeHttp(dhttp.HTTPClient):
         await _dispatch_event("send_message", message)
 
         return data
+
+    async def send_typing(self, channel_id):
+        locs = self._get_higher_locs(1)
+        channel = locs.get("channel", None)
+
+        await _dispatch_event("send_typing", channel)
 
     async def send_files(self, channel_id, *, files, content=None, tts=False, embed=None, nonce=None):
         locs = self._get_higher_locs(1)
