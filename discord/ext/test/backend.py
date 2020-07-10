@@ -9,7 +9,7 @@ import re
 import typing
 import pathlib
 import discord
-import discord.state as state
+import discord.state as dstate
 import discord.http as dhttp
 import discord.gateway as gate
 
@@ -23,8 +23,8 @@ class BackendConfig(typing.NamedTuple):
 
 
 log = logging.getLogger("discord.ext.tests")
-_cur_config = None
-_undefined = object() # default value for when NoneType has special meaning
+_cur_config: typing.Optional[BackendConfig] = None
+_undefined = object()  # default value for when NoneType has special meaning
 
 
 class FakeRequest(typing.NamedTuple):
@@ -51,7 +51,11 @@ class FakeHttp(dhttp.HTTPClient):
         return locs
 
     async def request(self, *args, **kwargs):
-        raise NotImplementedError(f"Operation occured that isn't captured by the tests framework. {args[0].url} {kwargs}")
+        route: discord.http.Route = args[0]
+        raise NotImplementedError(
+            f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
+            f"an issue on github. Debug Info: {route.method} {route.url} with {kwargs}"
+        )
 
     async def start_private_message(self, user_id):
         locs = self._get_higher_locs(1)
@@ -75,12 +79,20 @@ class FakeHttp(dhttp.HTTPClient):
             perm = channel.permissions_for(user)
         if not ((perm.send_messages and perm.read_messages) or perm.administrator):
             raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
-        data = facts.make_message_dict(channel, user, content=content, tts=tts, embeds=embeds, nonce=nonce)
 
-        message = self.state.create_message(channel=channel, data=data)
+        message = make_message(
+            channel=channel, author=self.state.user, content=content, tts=tts, embeds=embeds, nonce=nonce
+        )
+
         await _dispatch_event("send_message", message)
 
-        return data
+        return facts.dict_from_message(message)
+
+    async def send_typing(self, channel_id):
+        locs = self._get_higher_locs(1)
+        channel = locs.get("channel", None)
+
+        await _dispatch_event("send_typing", channel)
 
     async def send_files(self, channel_id, *, files, content=None, tts=False, embed=None, nonce=None):
         locs = self._get_higher_locs(1)
@@ -100,13 +112,15 @@ class FakeHttp(dhttp.HTTPClient):
         embeds = []
         if embed:
             embeds = [discord.Embed.from_dict(embed)]
-        data = facts.make_message_dict(channel, self.state.user, attachments=attachments, content=content, tts=tts,
-                                       embeds=embeds, nonce=nonce)
 
-        message = self.state.create_message(channel=channel, data=data)
+        message = make_message(
+            channel=channel, author=self.state.user, attachments=attachments, content=content, tts=tts, embeds=embeds,
+            nonce=nonce
+        )
+
         await _dispatch_event("send_message", message)
 
-        return data
+        return facts.dict_from_message(message)
 
     async def delete_message(self, channel_id, message_id, *, reason=None):
         locs = self._get_higher_locs(1)
@@ -123,6 +137,45 @@ class FakeHttp(dhttp.HTTPClient):
         out = facts.dict_from_message(message)
         out.update(fields)
         return out
+
+    async def add_reaction(self, channel_id, message_id, emoji):
+        locs = self._get_higher_locs(1)
+        message = locs.get("self")
+        emoji = emoji  # TODO: Turn this back into class?
+
+        await _dispatch_event("add_reaction", message, emoji)
+
+        add_reaction(message, self.state.user, emoji)
+
+    async def remove_reaction(self, channel_id, message_id, emoji, member_id):
+        locs = self._get_higher_locs(1)
+        message = locs.get("self")
+        member = locs.get("member")
+
+        await _dispatch_event("remove_reaction", message, emoji, member)
+
+        remove_reaction(message, member, emoji)
+
+    async def remove_own_reaction(self, channel_id, message_id, emoji):
+        locs = self._get_higher_locs(1)
+        message = locs.get("self")
+        member = locs.get("member")
+
+        await _dispatch_event("remove_own_reaction", message, emoji, member)
+
+        remove_reaction(message, self.state.user, emoji)
+
+    async def get_message(self, channel_id, message_id):
+        locs = self._get_higher_locs(1)
+        channel = locs.get("self")
+
+        await _dispatch_event("get_message", channel, message_id)
+
+        messages = _cur_config.messages[channel_id]
+        find = next(filter(lambda m: m["id"] == message_id, messages), None)
+        if find is None:
+            raise discord.errors.NotFound(FakeRequest(404, "Not Found"), "Unknown Message")
+        return find
 
     async def logs_from(self, channel_id, limit, before=None, after=None, around=None):
         locs = self._get_higher_locs(1)
@@ -291,7 +344,7 @@ class FakeWebSocket(gate.DiscordWebSocket):
         await super().change_presence(activity=activity, status=status, afk=afk, since=since)
 
 
-class FakeState(state.ConnectionState):
+class FakeState(dstate.ConnectionState):
 
     def __init__(self, client, http, user=None, loop=None):
         if loop is None:
@@ -451,7 +504,7 @@ def update_text_channel(channel, target, override=_undefined):
         if existing:
             ovr.remove(existing[0])
         if override:
-            ovr = ovr + [facts.make_dict_from_overwrite(target, override)]
+            ovr = ovr + [facts.dict_from_overwrite(target, override)]
         c_dict["permission_overwrites"] = ovr
 
     state = get_state()
@@ -502,7 +555,7 @@ def delete_member(member):
     state.parse_guild_member_remove(out)
 
 
-def make_message(content, author, channel, id_num=-1):
+def make_message(content, author, channel, tts=False, embeds=None, attachments=None, nonce=None, id_num=-1):
     guild = channel.guild if hasattr(channel, "guild") else None
     guild_id = guild.id if guild else None
 
@@ -510,8 +563,14 @@ def make_message(content, author, channel, id_num=-1):
     role_mentions = find_role_mentions(content, guild)
     channel_mentions = find_channel_mentions(content, guild)
 
-    data = facts.make_message_dict(channel, author, id_num, content=content, mentions=mentions,
-                                   mention_roles=role_mentions, mention_channels=channel_mentions, guild_id=guild_id)
+    kwargs = {}
+    if nonce is not None:
+        kwargs["nonce"] = nonce
+
+    data = facts.make_message_dict(
+        channel, author, id_num, content=content, mentions=mentions, tts=tts, embeds=embeds, attachments=attachments,
+        mention_roles=role_mentions, mention_channels=channel_mentions, guild_id=guild_id, **kwargs
+    )
 
     state = get_state()
     state.parse_message_create(data)
@@ -576,6 +635,97 @@ def make_attachment(filename, name=None, id_num=-1):
         state=get_state(),
         data=facts.make_attachment_dict(name, size, file_uri, file_uri, id_num)
     )
+
+
+def add_reaction(message, user, emoji):
+    if ":" in emoji:
+        temp = emoji.split(":")
+        emoji = {
+            "id": temp[0],
+            "name": temp[1]
+        }
+    else:
+        emoji = {
+            "id": None,
+            "name": emoji
+        }
+
+    data = {
+        "message_id": message.id,
+        "channel_id": message.channel.id,
+        "user_id": user.id,
+        "emoji": emoji
+    }
+    if message.guild:
+        data["guild_id"] = message.guild.id
+
+    state = get_state()
+    state.parse_message_reaction_add(data)
+
+    messages = _cur_config.messages[message.channel.id]
+    message_data = next(filter(lambda x: x["id"] == message.id, messages), None)
+    if message_data is not None:
+        if "reactions" not in message_data:
+            message_data["reactions"] = []
+
+        react = None
+        for react in message_data["reactions"]:
+            if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
+                break
+
+        if react is None:
+            react = {"count": 0, "me": False, "emoji": emoji}
+            message_data["reactions"].append(react)
+
+        react["count"] += 1
+        if user.id == state.user.id:
+            react["me"] = True
+
+
+def remove_reaction(message, user, emoji):
+    if ":" in emoji:
+        temp = emoji.split(":")
+        emoji = {
+            "id": temp[0],
+            "name": temp[1]
+        }
+    else:
+        emoji = {
+            "id": None,
+            "name": emoji
+        }
+
+    data = {
+        "message_id": message.id,
+        "channel_id": message.channel.id,
+        "user_id": user.id,
+        "emoji": emoji
+    }
+    if message.guild:
+        data["guild_id"] = message.guild.id
+
+    state = get_state()
+    state.parse_message_reaction_remove(data)
+
+    messages = _cur_config.messages[message.channel.id]
+    message_data = next(filter(lambda x: x["id"] == message.id, messages), None)
+    if message_data is not None:
+        if "reactions" not in message_data:
+            message_data["reactions"] = []
+
+        react = None
+        for react in message_data["reactions"]:
+            if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
+                break
+        if react is None:
+            return
+
+        react["count"] -= 1
+        if user.id == state.user.id:
+            react["me"] = False
+
+        if react["count"] == 0:
+            message_data["reactions"].remove(react)
 
 
 def configure(client, *, use_dummy=False):

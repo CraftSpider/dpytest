@@ -156,9 +156,7 @@ def make_dm_channel_dict(user, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
 
 
-def make_dict_from_overwrite(
-    target: typing.Union[discord.Member, discord.Role],
-    overwrite: discord.PermissionOverwrite):
+def dict_from_overwrite(target, overwrite):
     allow, deny = overwrite.pair()
     ovr = {
         'id': target.id,
@@ -180,7 +178,7 @@ def dict_from_channel(channel):
             'position': channel.position,
             'id': channel.id,
             'guild_id': channel.guild.id,
-            'permission_overwrites': [make_dict_from_overwrite(k, v) for k, v in channel.overwrites.items()]
+            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()]
         }
 
 
@@ -248,13 +246,14 @@ def _mention_from_channel(channel):
     return out
 
 
-def dict_from_message(message):
+def dict_from_message(message: discord.Message):
     out = {
         'id': message.id,
         'author': dict_from_user(message.author),
         'mentions': list(map(dict_from_user, message.mentions)),
-        'role_mentions': list(map(lambda x: x.id, message.role_mentions)),
-        'channel_mentions': list(map(_mention_from_channel, message.channel_mentions))
+        'mention_roles': list(map(lambda x: x.id, message.role_mentions)),
+        'mention_channels': list(map(_mention_from_channel, message.channel_mentions)),
+        'edited_timestamp': message._edited_timestamp
     }
 
     items = ('content', 'pinned', 'application', 'activity', 'mention_everyone', 'tts', 'type', 'attachments', 'embeds',
