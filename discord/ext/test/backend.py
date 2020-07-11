@@ -15,13 +15,13 @@ from . import factories as facts
 from . import state as dstate, callbacks, websocket
 
 
-class BackendConfig(typing.NamedTuple):
+class BackendState(typing.NamedTuple):
     messages: typing.Dict[int, typing.List[typing.Dict[str, typing.Any]]]
     state: dstate.FakeState
 
 
 log = logging.getLogger("discord.ext.tests")
-_cur_config: typing.Optional[BackendConfig] = None
+_cur_config: typing.Optional[BackendState] = None
 _undefined = object()  # default value for when NoneType has special meaning
 
 
@@ -257,6 +257,7 @@ class FakeHttp(dhttp.HTTPClient):
         guild = locs.get("self", None)
 
         data = facts.make_role_dict(**fields)
+        # TODO: Replace with a backend make_role, to match other things
         role = discord.Role(state=get_state(), data=data, guild=guild)
         await callbacks.dispatch_event("create_role", guild, role, reason=reason)
 
@@ -683,7 +684,7 @@ def configure(client, *, use_dummy=False):
 
     client._connection = test_state
 
-    _cur_config = BackendConfig({}, test_state)
+    _cur_config = BackendState({}, test_state)
 
 
 def main():

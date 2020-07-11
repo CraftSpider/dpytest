@@ -36,7 +36,7 @@ def require_config(func):
     def wrapper(*args, **kwargs):
         if _cur_config is None:
             log.error("Attempted to make call before runner configured")
-            return
+            raise RuntimeError(f"Configure runner before calling {func.__name__}")
         return func(*args, **kwargs)
     wrapper.__wrapped__ = func
     return wrapper
