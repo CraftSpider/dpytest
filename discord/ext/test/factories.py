@@ -184,6 +184,8 @@ def dict_from_channel(channel):
 def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, edited_timestamp=None, tts=False,
                       mention_everyone=False, mentions=None, mention_roles=None, mention_channels=None,
                       attachments=None, embeds=None, pinned=False, type=0, **kwargs):
+    if not content:
+        content = ""
     if id_num < 0:
         id_num = make_id()
     if isinstance(channel, discord.abc.GuildChannel):
@@ -193,20 +195,10 @@ def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, 
         kwargs["member"] = dict_from_user(author)
     if timestamp is None:
         timestamp = discord.utils.snowflake_time(id_num)
-    if mentions is None:
-        mentions = []
-    mentions = list(map(dict_from_user, mentions))
-    if mention_roles is None:
-        mention_roles = []
-    if mention_channels is None:
-        mention_channels = []
-    mention_channels = list(map(_mention_from_channel, mention_channels))
-    if attachments is None:
-        attachments = []
-    attachments = list(map(dict_from_attachment, attachments))
-    if embeds is None:
-        embeds = []
-    embeds = list(map(discord.Embed.to_dict, embeds))
+    mentions = list(map(dict_from_user, mentions)) if mentions else []
+    mention_channels = list(map(_mention_from_channel, mention_channels)) if mention_channels else []
+    attachments = list(map(dict_from_attachment, attachments)) if attachments else []
+    embeds = list(map(discord.Embed.to_dict, embeds)) if embeds else []
 
     out = {
         'id': id_num,
@@ -243,13 +235,18 @@ def _mention_from_channel(channel):
 
     return out
 
+def _mention_from_role(role):
+    out = {
+        "id": role.id,
+    }
+    return out
 
 def dict_from_message(message: discord.Message):
     out = {
         'id': message.id,
         'author': dict_from_user(message.author),
         'mentions': list(map(dict_from_user, message.mentions)),
-        'mention_roles': list(map(lambda x: x.id, message.role_mentions)),
+        'mention_roles': list(map(_mention_from_role, message.role_mentions)),
         'mention_channels': list(map(_mention_from_channel, message.channel_mentions)),
         'edited_timestamp': message._edited_timestamp
     }
