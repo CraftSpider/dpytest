@@ -46,6 +46,23 @@ async def run_all_events():
     """
         Ensure that all dpy related coroutines have completed or been cancelled
     """
+    while True:
+        if sys.version_info[1] >= 7:
+            pending = asyncio.all_tasks()
+        else:
+            pending = asyncio.Task.all_tasks()
+        if not any(map(lambda x: x._coro.__name__ == "_run_event", pending)):
+            break
+        for task in pending:
+            if task._coro.__name__ == "_run_event" and not (task.done() or task.cancelled()):
+                await task
+
+
+
+async def finish_on_command_error():
+    """
+        Ensure that all dpy related coroutines have completed or been cancelled
+    """
     if sys.version_info[1] >= 7:
         pending = filter(lambda x: x._coro.__name__ == "_run_event", asyncio.all_tasks())
     else:
