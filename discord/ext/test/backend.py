@@ -518,21 +518,21 @@ CHANNEL_MENTION = re.compile(r"<#[0-9]{17,21}>", re.MULTILINE)
 
 
 def find_user_mentions(content, guild):
-    if guild is None:
+    if guild is None or content is None:
         return []  # TODO: Check for dm user mentions
     matches = re.findall(MEMBER_MENTION, content)
     return [discord.utils.get(guild.members, mention=match) for match in matches]  # noqa: E501
 
 
 def find_role_mentions(content, guild):
-    if guild is None:
+    if guild is None or content is None:
         return []
     matches = re.findall(ROLE_MENTION, content)
     return matches
 
 
 def find_channel_mentions(content, guild):
-    if guild is None:
+    if guild is None or content is None:
         return []
     matches = re.findall(CHANNEL_MENTION, content)
     return [discord.utils.get(guild.channels, mention=match) for match in matches]
