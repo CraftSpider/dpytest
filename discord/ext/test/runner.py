@@ -59,6 +59,7 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
     """
         Assert that a message was sent with the given text, or that a message was sent that *doesn't* match the
         given text
+
     :param text: Text to match, or None to match anything
     :param equals: Whether to negate the check
     :param assert_nothing: Whether to assert that nothing was sent at all
@@ -94,6 +95,7 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
 def get_message(peek=False):
     """
         Allow the user to retrieve a message sent by the bot
+
     :param peek: do not remove the message from the queue of messages
     :return:
     """
@@ -111,6 +113,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     """
         Assert that a message was sent containing an embed, or that a message was sent not
         containing an embed
+
     :param embed: Embed to compare against
     :param allow_text: Whether non-embed text is allowed
     :param equals: Whether to invert the assertion
@@ -146,6 +149,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
 def get_embed(peek=False):
     """
         Allow the user to retrieve an embed in a message sent by the bot
+
     :param peek: do not remove the message from the queue of messages
     :return:
     """

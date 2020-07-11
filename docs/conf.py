@@ -74,6 +74,8 @@ html_static_path = ['_static']
 
 # -- Setup for autodoc -------------------------------------------------------
 
+add_module_names = False
+
 # Set the autodoc options
 autodoc_default_options = {
     'members': None,
