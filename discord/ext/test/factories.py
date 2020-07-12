@@ -236,10 +236,7 @@ def _mention_from_channel(channel):
     return out
 
 def _mention_from_role(role):
-    out = {
-        "id": role.id,
-    }
-    return out
+    return role.id
 
 def dict_from_message(message: discord.Message):
     out = {
