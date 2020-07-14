@@ -33,7 +33,10 @@ def _fill_optional(data, obj, items):
             print("Warning: Invalid attributes passed")
     else:
         for item in items:
-            if hasattr(obj, item):
+            if item == "embeds":
+                embeds = getattr(obj, item)
+                data[item] = list(map(discord.Embed.to_dict, embeds)) if embeds else []
+            elif hasattr(obj, item):
                 data[item] = getattr(obj, item)
 
 
