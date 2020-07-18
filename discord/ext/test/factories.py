@@ -2,8 +2,6 @@
 import datetime as dt
 import discord
 
-import typing
-
 generated_ids = 0
 
 

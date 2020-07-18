@@ -10,7 +10,7 @@ import logging
 import discord
 import typing
 
-from . import backend as back
+from . import backend as back, callbacks
 from .utils import embed_eq
 
 
@@ -36,7 +36,7 @@ def require_config(func):
     def wrapper(*args, **kwargs):
         if _cur_config is None:
             log.error("Attempted to make call before runner configured")
-            return
+            raise RuntimeError(f"Configure runner before calling {func.__name__}")
         return func(*args, **kwargs)
     wrapper.__wrapped__ = func
     return wrapper
@@ -59,6 +59,7 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
     """
         Assert that a message was sent with the given text, or that a message was sent that *doesn't* match the
         given text
+
     :param text: Text to match, or None to match anything
     :param equals: Whether to negate the check
     :param assert_nothing: Whether to assert that nothing was sent at all
@@ -94,6 +95,7 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
 def get_message(peek=False):
     """
         Allow the user to retrieve a message sent by the bot
+
     :param peek: do not remove the message from the queue of messages
     :return:
     """
@@ -111,6 +113,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     """
         Assert that a message was sent containing an embed, or that a message was sent not
         containing an embed
+
     :param embed: Embed to compare against
     :param allow_text: Whether non-embed text is allowed
     :param equals: Whether to invert the assertion
@@ -146,6 +149,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
 def get_embed(peek=False):
     """
         Allow the user to retrieve an embed in a message sent by the bot
+
     :param peek: do not remove the message from the queue of messages
     :return:
     """
@@ -211,28 +215,8 @@ async def message_callback(message):
     await sent_queue.put(message)
 
 
-async def delete_message_callback(channel, message, reason=None):
-    back.delete_message(message)
-
-
 async def error_callback(ctx, error):
     await error_queue.put((ctx, error))
-
-
-async def kick_callback(guild, member, reason=None):
-    back.delete_member(member)
-
-
-async def ban_callback(guild, member, days, reason=None):
-    back.delete_member(member)
-
-
-async def edit_role_callback(guild, role, fields, reason=None):
-    back.update_role(role, **fields)
-
-
-async def delete_role_callback(guild, role, reason=None):
-    back.delete_role(role)
 
 
 async def create_role_callback(guild, role, reason=None):
@@ -366,17 +350,12 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
     on_command_error.__old__ = old_error
     client.on_command_error = on_command_error
 
-    # Configure the backend module
-    back.set_callback(message_callback, "send_message")
-    back.set_callback(delete_message_callback, "delete_message")
-    back.set_callback(kick_callback, "kick")
-    back.set_callback(ban_callback, "ban")
-    back.set_callback(edit_role_callback, "edit_role")
-    back.set_callback(delete_role_callback, "delete_role")
-    back.set_callback(create_role_callback, "create_role")
-    back.set_callback(move_role_callback, "move_role")
-    back.set_callback(add_role_callback, "add_role")
-    back.set_callback(remove_role_callback, "remove_role")
+    # Configure global callbacks
+    callbacks.set_callback(message_callback, "send_message")
+    callbacks.set_callback(create_role_callback, "create_role")
+    callbacks.set_callback(move_role_callback, "move_role")
+    callbacks.set_callback(add_role_callback, "add_role")
+    callbacks.set_callback(remove_role_callback, "remove_role")
 
     back.get_state().stop_dispatch()
 

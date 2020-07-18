@@ -1,20 +1,21 @@
 
-from typing import List, Union, Dict, Callable, Coroutine, Any, Optional, NoReturn, BinaryIO, Tuple, overload
+from typing import List, Union, Dict, Any, Optional, NoReturn, Tuple, overload
 import pathlib
 import asyncio
 import discord
 import discord.state as state
 import discord.http as dhttp
 
+from .state import FakeState
+
 JsonVals = Union[str, int, bool, Dict[str, 'JsonVals'], List['JsonVals']]
 JsonDict = Dict[str, JsonVals]
-Callback = Callable[[Any, ...], Coroutine]
 AnyChannel = Union[discord.abc.GuildChannel, discord.abc.PrivateChannel]
 
 
 class BackendConfig:
-    callbacks: Dict[str, Callable[[...], Coroutine]]
-    state: "FakeState"
+    messages: Dict[int, List[Dict[str, Any]]]
+    state: FakeState
 
 _cur_config: Optional[BackendConfig]
 
@@ -24,44 +25,17 @@ class FakeHttp(dhttp.HTTPClient):
     state: FakeState
 
     def __init__(self, loop: asyncio.AbstractEventLoop = ...) -> None: ...
-
     def _get_higher_locs(self, num: int) -> Dict[str, Any]: ...
-
     async def request(self, *args, **kwargs) -> NoReturn: ...
-
     async def send_files(self, channel_id: int, *, files: Tuple[discord.File], content: str = ..., tts: bool = ..., embed: JsonDict = ..., nonce: int = ...) -> JsonDict: ...
-
     async def send_message(self, channel_id: int, content: str, *, tts: bool = ..., embed: JsonDict = ..., nonce: int = ...) -> JsonDict: ...
-
     async def application_info(self) -> JsonDict: ...
-
     async def change_my_nickname(self, guild_id: int, nickname: str, *, reason: str = ...) -> JsonDict: ...
-
     async def edit_member(self, guild_id: int, user_id: int, *, reason: str = ..., **fields: Any) -> None: ...
-
     async def create_role(self, guild_id: int, *, reason: str = ..., **fields: Any) -> JsonDict: ...
-
     async def add_role(self, guild_id: int, user_id: int, role_id: int, *, reason: str = ...) -> None: ...
 
-class FakeState(state.ConnectionState):
-
-    http: FakeHttp
-
-    def __init__(self, client: discord.Client, http: dhttp.HTTPClient, user: discord.ClientUser = ..., loop: asyncio.AbstractEventLoop = ...) -> None: ...
-
-    def stop_dispatch(self) -> None: ...
-
-    def start_dispatch(self) -> None: ...
-
 def get_state() -> FakeState: ...
-
-def set_callback(cb: Callback, event: str) -> None: ...
-
-def get_callback(event: str) -> Optional[Callback]: ...
-
-def remove_callback(event: str) -> Optional[Callback]: ...
-
-def _dispatch_event(event: str, *args: Any, **kwargs: Any) -> None: ...
 
 def make_guild(name: str, members: List[discord.Member] = ..., channels: List[AnyChannel] = ..., roles: List[JsonDict] = ...,
                owner: bool = ..., id_num: int = ...) -> discord.Guild: ...
