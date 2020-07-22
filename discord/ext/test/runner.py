@@ -51,7 +51,6 @@ async def run_all_events():
             pending = asyncio.all_tasks()
         else:
             pending = asyncio.Task.all_tasks()
-        log.debug(pending)
         if not any(map(lambda x: x._coro.__name__ == "_run_event" and not (x.done() or x.cancelled()) , pending)):
             break
         for task in pending:
@@ -273,6 +272,7 @@ async def message(content, channel=0, member=0):
 
     await run_all_events()
 
+
     if not error_queue.empty():
         err = await error_queue.get()
         raise err[1]
@@ -389,8 +389,8 @@ def configure(client, num_guilds=1, num_channels=1, num_members=1):
             channel = back.make_text_channel(f"Channel_{num}", guild)
             channels.append(channel)
         for num in range(num_members):
-            user = back.make_user("TestUser", f"{num+1:04}")
-            member = back.make_member(user, guild, nick=user.name + "_nick")
+            user = back.make_user(f"TestUser{str(num)}", f"{num+1:04}")
+            member = back.make_member(user, guild, nick=user.name + f"_{str(num)}_nick")
             members.append(member)
         back.make_member(back.get_state().user, guild)
 
