@@ -51,8 +51,7 @@ async def run_all_events():
             pending = asyncio.all_tasks()
         else:
             pending = asyncio.Task.all_tasks()
-        log.debug(pending)
-        if not any(map(lambda x: x._coro.__name__ == "_run_event" and not (x.done() or x.cancelled()) , pending)):
+        if not any(map(lambda x: x._coro.__name__ == "_run_event", pending)):
             break
         for task in pending:
             if task._coro.__name__ == "_run_event" and not (task.done() or task.cancelled()):
