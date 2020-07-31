@@ -245,10 +245,12 @@ def dict_from_message(message: discord.Message):
         'mentions': list(map(dict_from_user, message.mentions)),
         'mention_roles': list(map(_mention_from_role, message.role_mentions)),
         'mention_channels': list(map(_mention_from_channel, message.channel_mentions)),
-        'edited_timestamp': message._edited_timestamp
+        'edited_timestamp': message._edited_timestamp,
+        'embeds' : list(map(discord.Embed.to_dict,message.embeds))
+
     }
 
-    items = ('content', 'pinned', 'application', 'activity', 'mention_everyone', 'tts', 'type', 'attachments', 'embeds',
+    items = ('content', 'pinned', 'application', 'activity', 'mention_everyone', 'tts', 'type', 'attachments',
              'nonce')
     _fill_optional(out, message, items)
     return out
