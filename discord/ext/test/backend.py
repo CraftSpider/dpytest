@@ -329,6 +329,11 @@ class FakeHttp(dhttp.HTTPClient):
 
         ovr = discord.PermissionOverwrite.from_pair(discord.Permissions(allow_value), discord.Permissions(deny_value))
         update_text_channel(channel, target, ovr)
+        
+    async def get_from_cdn(self, url):
+        path = url.split("file:///")[-1]
+        with open(path,'rb') as fd:
+            return fd.read()
 
 
 def get_state():
