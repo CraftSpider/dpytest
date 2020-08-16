@@ -10,6 +10,8 @@ import typing
 import pathlib
 import discord
 import discord.http as dhttp
+import pathlib
+import urllib.parse, urllib.request
 
 from . import factories as facts
 from . import state as dstate, callbacks, websocket
@@ -331,7 +333,8 @@ class FakeHttp(dhttp.HTTPClient):
         update_text_channel(channel, target, ovr)
         
     async def get_from_cdn(self, url):
-        path = url.split("file:///")[-1]
+        parsed_url = urllib.parse.urlparse(url)
+        path = urllib.request.url2pathname(parsed_url.path)
         with open(path,'rb') as fd:
             return fd.read()
 
