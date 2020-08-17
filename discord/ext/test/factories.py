@@ -149,6 +149,8 @@ def make_channel_dict(ctype, id_num=-1, **kwargs):
 def make_text_channel_dict(name, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
+def make_category_channel_dict(name, id_num=-1, **kwargs):
+    return make_channel_dict(discord.ChannelType.category.value, id_num, name=name, **kwargs )
 
 def make_dm_channel_dict(user, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
@@ -177,7 +179,17 @@ def dict_from_channel(channel):
             'id': channel.id,
             'guild_id': channel.guild.id,
             'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
-            'type':channel.type
+            'type':channel.type,
+            'parent_id':channel.category_id
+        }
+    if isinstance(channel,discord.CategoryChannel):
+        return {
+            'name': channel.name,
+            'position': channel.position,
+            'id': channel.id,
+            'guild_id': channel.guild.id,
+            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+            'type': channel.type
         }
 
 

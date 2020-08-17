@@ -60,17 +60,21 @@ class FakeHttp(dhttp.HTTPClient):
 
     def create_channel(self, guild_id, channel_type, *, reason=None, **options):
         locs = self._get_higher_locs(1)
-        if not channel_type == discord.ChannelType.text.value:
+        if not channel_type == discord.ChannelType.text.value and not channel_type == discord.ChannelType.category.value:
             raise NotImplementedError(
                 f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
-                f"an issue on github. Debug Info: only TextChannels are supported right now"
+                f"an issue on github. Debug Info: only TextChannels and CategoryChannels are supported right now"
             )
         guild = locs.get("self",None)
         name = locs.get("name",None)
         parent_id = locs.get("parent_id")
         perms = options.get("permission_overwrites",None)
+        parent_id = options.get("parent_id",None)
 
-        channel = make_text_channel(name, guild,permission_overwrites=perms)
+        if channel_type == discord.ChannelType.text.value:
+            channel = make_text_channel(name, guild,permission_overwrites=perms, parent_id=parent_id)
+        elif channel_type == discord.ChannelType.category.value:
+            channel = make_category_channel(name, guild, permission_overwrites=perms )
         async def return_channel(channel):
             return facts.dict_from_channel(channel)
         return return_channel(channel)
@@ -441,17 +445,25 @@ def delete_role(role):
     state.parse_guild_role_delete({"guild_id": role.guild.id, "role_id": role.id})
 
 
-def make_text_channel(name, guild, position=-1, id_num=-1, permission_overwrites=None):
+def make_text_channel(name, guild, position=-1, id_num=-1, permission_overwrites=None, parent_id=None):
     if position == -1:
         position = len(guild.channels) + 1
 
-    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id, permission_overwrites=permission_overwrites)
+    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id, permission_overwrites=permission_overwrites, parent_id=parent_id)
 
     state = get_state()
     state.parse_channel_create(c_dict)
 
     return guild.get_channel(c_dict["id"])
 
+def make_category_channel(name, guild, position=-1, id_num=-1, permission_overwrites=None):
+    if position == -1:
+        position = len(guild.categories) + 1
+    c_dict = facts.make_category_channel_dict(name, id_num, position=position, guild_id=guild.id, permission_overwrites=permission_overwrites)
+    state = get_state()
+    state.parse_channel_create(c_dict)
+    
+    return guild.get_channel(c_dict["id"])
 
 def update_text_channel(channel, target, override=_undefined):
     c_dict = facts.dict_from_channel(channel)
