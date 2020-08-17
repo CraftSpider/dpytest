@@ -37,6 +37,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         
 
+
     fileno = 0
 
     def __init__(self, loop=None):
@@ -60,7 +61,7 @@ class FakeHttp(dhttp.HTTPClient):
             f"an issue on github. Debug Info: {route.method} {route.url} with {kwargs}"
         )
 
-    def create_channel(self, guild_id, channel_type, *, reason=None, **options):
+    async def create_channel(self, guild_id, channel_type, *, reason=None, **options):
         locs = self._get_higher_locs(1)
         if not channel_type == discord.ChannelType.text.value and not channel_type == discord.ChannelType.category.value:
             raise NotImplementedError(
@@ -77,11 +78,12 @@ class FakeHttp(dhttp.HTTPClient):
             channel = make_text_channel(name, guild,permission_overwrites=perms, parent_id=parent_id)
         elif channel_type == discord.ChannelType.category.value:
             channel = make_category_channel(name, guild, permission_overwrites=perms )
-        async def return_channel(channel):
-            return facts.dict_from_channel(channel)
-        return return_channel(channel)
+        return facts.dict_from_channel(channel)
+        # async def return_channel(channel):
+        #     return facts.dict_from_channel(channel)
+        # return return_channel(channel)
 
-    def delete_channel(self, channel_id, *, reason=None):
+    async def delete_channel(self, channel_id, *, reason=None):
         locs = self._get_higher_locs(1)
         channel = locs.get("self", None)
         if channel.type.value == discord.ChannelType.text.value:
@@ -90,10 +92,11 @@ class FakeHttp(dhttp.HTTPClient):
             for sub_channel in channel.text_channels:
                 delete_channel(sub_channel)
             delete_channel(channel)
-        async def return_none():
-            return None
-
-        return return_none()
+        return None
+        # async def return_none():
+        #     return None
+        # 
+        # return return_none()
 
     async def start_private_message(self, user_id):
         locs = self._get_higher_locs(1)
@@ -272,6 +275,14 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("edit_member", fields, member, reason=reason)
 
+    async def get_member(self, guild_id, member_id):
+        locs = self._get_higher_locs(1)
+        guild = locs.get("self",None)
+        pass
+        return
+    
+    
+    
     async def edit_role(self, guild_id, role_id, *, reason=None, **fields):
         locs = self._get_higher_locs(1)
         role = locs.get("self")
