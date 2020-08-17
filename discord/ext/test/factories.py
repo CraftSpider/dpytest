@@ -176,7 +176,8 @@ def dict_from_channel(channel):
             'position': channel.position,
             'id': channel.id,
             'guild_id': channel.guild.id,
-            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()]
+            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+            'type':channel.type
         }
 
 

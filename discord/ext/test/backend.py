@@ -34,6 +34,7 @@ class FakeRequest(typing.NamedTuple):
 
 class FakeHttp(dhttp.HTTPClient):
 
+
     fileno = 0
 
     def __init__(self, loop=None):
@@ -56,6 +57,24 @@ class FakeHttp(dhttp.HTTPClient):
             f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
             f"an issue on github. Debug Info: {route.method} {route.url} with {kwargs}"
         )
+
+    def create_channel(self, guild_id, channel_type, *, reason=None, **options):
+        locs = self._get_higher_locs(1)
+        if not channel_type == discord.ChannelType.text.value:
+            raise NotImplementedError(
+                f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
+                f"an issue on github. Debug Info: only TextChannels are supported right now"
+            )
+        guild = locs.get("self",None)
+        name = locs.get("name",None)
+        parent_id = locs.get("parent_id")
+        perms = options.get("permission_overwrites",None)
+
+        channel = make_text_channel(name, guild,permission_overwrites=perms)
+        async def return_channel(channel):
+            return facts.dict_from_channel(channel)
+        return return_channel(channel)
+
 
     async def start_private_message(self, user_id):
         locs = self._get_higher_locs(1)
@@ -422,11 +441,11 @@ def delete_role(role):
     state.parse_guild_role_delete({"guild_id": role.guild.id, "role_id": role.id})
 
 
-def make_text_channel(name, guild, position=-1, id_num=-1):
+def make_text_channel(name, guild, position=-1, id_num=-1, permission_overwrites=None):
     if position == -1:
         position = len(guild.channels) + 1
 
-    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id)
+    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id, permission_overwrites=permission_overwrites)
 
     state = get_state()
     state.parse_channel_create(c_dict)
