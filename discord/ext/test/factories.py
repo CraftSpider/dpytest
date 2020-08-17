@@ -85,10 +85,12 @@ def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, **kwa
 
 def dict_from_member(member):
     voice_state = member.voice
+    #discord code adds default role to every member later on in Member constructor
+    roles_no_default = list(filter(lambda r: not r == member.guild.default_role,member.roles))
     out = {
         'guild_id': member.guild.id,
         'user': dict_from_user(member._user),
-        'roles': member.roles,
+        'roles': list(map(lambda role: int(role.id),roles_no_default)),
         'joined_at': member.joined_at,
     }
     if voice_state is not None:

@@ -278,8 +278,9 @@ class FakeHttp(dhttp.HTTPClient):
     async def get_member(self, guild_id, member_id):
         locs = self._get_higher_locs(1)
         guild = locs.get("self",None)
-        pass
-        return
+        member =  discord.utils.get(guild.members,id=member_id)
+        
+        return facts.dict_from_member(member)
     
     
     
