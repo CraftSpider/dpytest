@@ -35,6 +35,8 @@ class FakeRequest(typing.NamedTuple):
 class FakeHttp(dhttp.HTTPClient):
 
 
+        
+
     fileno = 0
 
     def __init__(self, loop=None):
@@ -79,6 +81,19 @@ class FakeHttp(dhttp.HTTPClient):
             return facts.dict_from_channel(channel)
         return return_channel(channel)
 
+    def delete_channel(self, channel_id, *, reason=None):
+        locs = self._get_higher_locs(1)
+        channel = locs.get("self", None)
+        if channel.type.value == discord.ChannelType.text.value:
+            delete_channel(channel)
+        if channel.type.value == discord.ChannelType.category.value:
+            for sub_channel in channel.text_channels:
+                delete_channel(sub_channel)
+            delete_channel(channel)
+        async def return_none():
+            return None
+
+        return return_none()
 
     async def start_private_message(self, user_id):
         locs = self._get_higher_locs(1)
@@ -464,6 +479,14 @@ def make_category_channel(name, guild, position=-1, id_num=-1, permission_overwr
     state.parse_channel_create(c_dict)
     
     return guild.get_channel(c_dict["id"])
+
+def delete_channel(channel):
+    c_dict = facts.make_text_channel_dict(channel.name,id_num=channel.id,guild_id=channel.guild.id)
+
+    state = get_state()
+    state.parse_channel_delete(c_dict)
+
+    return None
 
 def update_text_channel(channel, target, override=_undefined):
     c_dict = facts.dict_from_channel(channel)
