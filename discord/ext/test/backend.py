@@ -435,7 +435,8 @@ def make_role(name, guild, id_num=-1, colour=0, permissions=104324161, hoist=Fal
     r_dict = facts.make_role_dict(
         name, id_num=id_num, colour=colour, permissions=permissions, hoist=hoist, mentionable=mentionable
     )
-    r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
+    # r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
+    r_dict["position"] = 1
 
     data = {
         "guild_id": guild.id,
