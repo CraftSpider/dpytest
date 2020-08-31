@@ -260,15 +260,20 @@ async def remove_role_callback(member, role, reason=None):
     roles = [x for x in member.roles if x != role and x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
+from itertools import count
+counter = count(0)
 
 @require_config
-async def message(content, channel=0, member=0):
+async def message(content, channel=0, member=0,attachments=[]):
     if isinstance(channel, int):
         channel = _cur_config.channels[channel]
     if isinstance(member, int):
         member = _cur_config.members[member]
+    import os
+    attachments = [discord.Attachment(data={'id':counter.__next__(), 'filename':os.path.basename(attachment),'size':0,'url':attachment,'proxy_url':"",'height':0,'width':0},state=back.get_state()) for attachment in attachments]
 
-    mes = back.make_message(content, member, channel)
+
+    mes = back.make_message(content, member, channel,attachments=attachments)
 
     await run_all_events()
 
