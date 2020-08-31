@@ -106,7 +106,8 @@ class FakeHttp(dhttp.HTTPClient):
 
         return facts.make_dm_channel_dict(user)
 
-    async def send_message(self, channel_id, content, *, tts=False, embed=None, nonce=None):
+    async def send_message(self, channel_id, content, *, tts=False, embed=None,
+                           nonce=None, allowed_mentions=None):
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
 
@@ -751,7 +752,7 @@ def configure(client, *, use_dummy=False):
     http = FakeHttp(loop=loop)
     client.http = http
 
-    ws = websocket.FakeWebSocket()
+    ws = websocket.FakeWebSocket(None, loop=loop)
     client.ws = ws
 
     test_state = dstate.FakeState(client, http=http, loop=loop)
