@@ -297,6 +297,7 @@ def dict_from_attachment(attachment):
     }
 
 
+
 # TODO: dict_from_emoji and make_emoji_dict
 
 def make_emoji_dict():
