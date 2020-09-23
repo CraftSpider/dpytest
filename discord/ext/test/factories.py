@@ -85,10 +85,12 @@ def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, **kwa
 
 def dict_from_member(member):
     voice_state = member.voice
+    #discord code adds default role to every member later on in Member constructor
+    roles_no_default = list(filter(lambda r: not r == member.guild.default_role,member.roles))
     out = {
         'guild_id': member.guild.id,
         'user': dict_from_user(member._user),
-        'roles': member.roles,
+        'roles': list(map(lambda role: int(role.id),roles_no_default)),
         'joined_at': member.joined_at,
     }
     if voice_state is not None:
@@ -149,6 +151,8 @@ def make_channel_dict(ctype, id_num=-1, **kwargs):
 def make_text_channel_dict(name, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
+def make_category_channel_dict(name, id_num=-1, **kwargs):
+    return make_channel_dict(discord.ChannelType.category.value, id_num, name=name, **kwargs )
 
 def make_dm_channel_dict(user, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
@@ -176,7 +180,18 @@ def dict_from_channel(channel):
             'position': channel.position,
             'id': channel.id,
             'guild_id': channel.guild.id,
-            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()]
+            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+            'type':channel.type,
+            'parent_id':channel.category_id
+        }
+    if isinstance(channel,discord.CategoryChannel):
+        return {
+            'name': channel.name,
+            'position': channel.position,
+            'id': channel.id,
+            'guild_id': channel.guild.id,
+            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+            'type': channel.type
         }
 
 
@@ -184,6 +199,8 @@ def dict_from_channel(channel):
 def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, edited_timestamp=None, tts=False,
                       mention_everyone=False, mentions=None, mention_roles=None, mention_channels=None,
                       attachments=None, embeds=None, pinned=False, type=0, **kwargs):
+    if not content:
+        content = ""
     if id_num < 0:
         id_num = make_id()
     if isinstance(channel, discord.abc.GuildChannel):
@@ -193,20 +210,10 @@ def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, 
         kwargs["member"] = dict_from_user(author)
     if timestamp is None:
         timestamp = discord.utils.snowflake_time(id_num)
-    if mentions is None:
-        mentions = []
-    mentions = list(map(dict_from_user, mentions))
-    if mention_roles is None:
-        mention_roles = []
-    if mention_channels is None:
-        mention_channels = []
-    mention_channels = list(map(_mention_from_channel, mention_channels))
-    if attachments is None:
-        attachments = []
-    attachments = list(map(dict_from_attachment, attachments))
-    if embeds is None:
-        embeds = []
-    embeds = list(map(discord.Embed.to_dict, embeds))
+    mentions = list(map(dict_from_user, mentions)) if mentions else []
+    mention_channels = list(map(_mention_from_channel, mention_channels)) if mention_channels else []
+    attachments = list(map(dict_from_attachment, attachments)) if attachments else []
+    embeds = list(map(discord.Embed.to_dict, embeds)) if embeds else []
 
     out = {
         'id': id_num,
@@ -243,18 +250,22 @@ def _mention_from_channel(channel):
 
     return out
 
+def _mention_from_role(role):
+    return role.id
 
 def dict_from_message(message: discord.Message):
     out = {
         'id': message.id,
         'author': dict_from_user(message.author),
         'mentions': list(map(dict_from_user, message.mentions)),
-        'mention_roles': list(map(lambda x: x.id, message.role_mentions)),
+        'mention_roles': list(map(_mention_from_role, message.role_mentions)),
         'mention_channels': list(map(_mention_from_channel, message.channel_mentions)),
-        'edited_timestamp': message._edited_timestamp
+        'edited_timestamp': message._edited_timestamp,
+        'embeds' : list(map(discord.Embed.to_dict,message.embeds)),
+        'attachments' : list(map(dict_from_attachment, message.attachments)),
     }
 
-    items = ('content', 'pinned', 'application', 'activity', 'mention_everyone', 'tts', 'type', 'attachments', 'embeds',
+    items = ('content', 'pinned', 'application', 'activity', 'mention_everyone', 'tts', 'type', 
              'nonce')
     _fill_optional(out, message, items)
     return out

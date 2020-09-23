@@ -10,7 +10,9 @@ class FakeState(dstate.ConnectionState):
     def __init__(self, client, http, user=None, loop=None):
         if loop is None:
             loop = asyncio.get_event_loop()
-        super().__init__(dispatch=client.dispatch, chunker=client._chunker, handlers=None, syncer=None, http=http,
+        super().__init__(dispatch=client.dispatch,
+                         handlers=None, hooks=None,
+                         syncer=None, http=http,
                          loop=loop)
         if user is None:
             user = discord.ClientUser(state=self, data=facts.make_user_dict("FakeApp", "0001", None))

@@ -10,6 +10,8 @@ import typing
 import pathlib
 import discord
 import discord.http as dhttp
+import pathlib
+import urllib.parse, urllib.request
 
 from . import factories as facts
 from . import state as dstate, callbacks, websocket
@@ -31,6 +33,10 @@ class FakeRequest(typing.NamedTuple):
 
 
 class FakeHttp(dhttp.HTTPClient):
+
+
+        
+
 
     fileno = 0
 
@@ -55,6 +61,43 @@ class FakeHttp(dhttp.HTTPClient):
             f"an issue on github. Debug Info: {route.method} {route.url} with {kwargs}"
         )
 
+    async def create_channel(self, guild_id, channel_type, *, reason=None, **options):
+        locs = self._get_higher_locs(1)
+        if not channel_type == discord.ChannelType.text.value and not channel_type == discord.ChannelType.category.value:
+            raise NotImplementedError(
+                f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
+                f"an issue on github. Debug Info: only TextChannels and CategoryChannels are supported right now"
+            )
+        guild = locs.get("self",None)
+        name = locs.get("name",None)
+        parent_id = locs.get("parent_id")
+        perms = options.get("permission_overwrites",None)
+        parent_id = options.get("parent_id",None)
+
+        if channel_type == discord.ChannelType.text.value:
+            channel = make_text_channel(name, guild,permission_overwrites=perms, parent_id=parent_id)
+        elif channel_type == discord.ChannelType.category.value:
+            channel = make_category_channel(name, guild, permission_overwrites=perms )
+        return facts.dict_from_channel(channel)
+        # async def return_channel(channel):
+        #     return facts.dict_from_channel(channel)
+        # return return_channel(channel)
+
+    async def delete_channel(self, channel_id, *, reason=None):
+        locs = self._get_higher_locs(1)
+        channel = locs.get("self", None)
+        if channel.type.value == discord.ChannelType.text.value:
+            delete_channel(channel)
+        if channel.type.value == discord.ChannelType.category.value:
+            for sub_channel in channel.text_channels:
+                delete_channel(sub_channel)
+            delete_channel(channel)
+        return None
+        # async def return_none():
+        #     return None
+        # 
+        # return return_none()
+
     async def start_private_message(self, user_id):
         locs = self._get_higher_locs(1)
         user = locs.get("self", None)
@@ -63,7 +106,8 @@ class FakeHttp(dhttp.HTTPClient):
 
         return facts.make_dm_channel_dict(user)
 
-    async def send_message(self, channel_id, content, *, tts=False, embed=None, nonce=None):
+    async def send_message(self, channel_id, content, *, tts=False, embed=None,
+                           nonce=None, allowed_mentions=None):
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
 
@@ -232,6 +276,15 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("edit_member", fields, member, reason=reason)
 
+    async def get_member(self, guild_id, member_id):
+        locs = self._get_higher_locs(1)
+        guild = locs.get("self",None)
+        member =  discord.utils.get(guild.members,id=member_id)
+        
+        return facts.dict_from_member(member)
+    
+    
+    
     async def edit_role(self, guild_id, role_id, *, reason=None, **fields):
         locs = self._get_higher_locs(1)
         role = locs.get("self")
@@ -329,6 +382,12 @@ class FakeHttp(dhttp.HTTPClient):
 
         ovr = discord.PermissionOverwrite.from_pair(discord.Permissions(allow_value), discord.Permissions(deny_value))
         update_text_channel(channel, target, ovr)
+        
+    async def get_from_cdn(self, url):
+        parsed_url = urllib.parse.urlparse(url)
+        path = urllib.request.url2pathname(parsed_url.path)
+        with open(path,'rb') as fd:
+            return fd.read()
 
 
 def get_state():
@@ -377,7 +436,8 @@ def make_role(name, guild, id_num=-1, colour=0, permissions=104324161, hoist=Fal
     r_dict = facts.make_role_dict(
         name, id_num=id_num, colour=colour, permissions=permissions, hoist=hoist, mentionable=mentionable
     )
-    r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
+    # r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
+    r_dict["position"] = 1
 
     data = {
         "guild_id": guild.id,
@@ -414,17 +474,33 @@ def delete_role(role):
     state.parse_guild_role_delete({"guild_id": role.guild.id, "role_id": role.id})
 
 
-def make_text_channel(name, guild, position=-1, id_num=-1):
+def make_text_channel(name, guild, position=-1, id_num=-1, permission_overwrites=None, parent_id=None):
     if position == -1:
         position = len(guild.channels) + 1
 
-    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id)
+    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id, permission_overwrites=permission_overwrites, parent_id=parent_id)
 
     state = get_state()
     state.parse_channel_create(c_dict)
 
     return guild.get_channel(c_dict["id"])
 
+def make_category_channel(name, guild, position=-1, id_num=-1, permission_overwrites=None):
+    if position == -1:
+        position = len(guild.categories) + 1
+    c_dict = facts.make_category_channel_dict(name, id_num, position=position, guild_id=guild.id, permission_overwrites=permission_overwrites)
+    state = get_state()
+    state.parse_channel_create(c_dict)
+    
+    return guild.get_channel(c_dict["id"])
+
+def delete_channel(channel):
+    c_dict = facts.make_text_channel_dict(channel.name,id_num=channel.id,guild_id=channel.guild.id)
+
+    state = get_state()
+    state.parse_channel_delete(c_dict)
+
+    return None
 
 def update_text_channel(channel, target, override=_undefined):
     c_dict = facts.dict_from_channel(channel)
@@ -518,21 +594,21 @@ CHANNEL_MENTION = re.compile(r"<#[0-9]{17,21}>", re.MULTILINE)
 
 
 def find_user_mentions(content, guild):
-    if guild is None:
+    if guild is None or content is None:
         return []  # TODO: Check for dm user mentions
     matches = re.findall(MEMBER_MENTION, content)
     return [discord.utils.get(guild.members, mention=match) for match in matches]  # noqa: E501
 
 
 def find_role_mentions(content, guild):
-    if guild is None:
+    if guild is None or content is None:
         return []
     matches = re.findall(ROLE_MENTION, content)
     return matches
 
 
 def find_channel_mentions(content, guild):
-    if guild is None:
+    if guild is None or content is None:
         return []
     matches = re.findall(CHANNEL_MENTION, content)
     return [discord.utils.get(guild.channels, mention=match) for match in matches]
@@ -676,7 +752,7 @@ def configure(client, *, use_dummy=False):
     http = FakeHttp(loop=loop)
     client.http = http
 
-    ws = websocket.FakeWebSocket()
+    ws = websocket.FakeWebSocket(None, loop=loop)
     client.ws = ws
 
     test_state = dstate.FakeState(client, http=http, loop=loop)
