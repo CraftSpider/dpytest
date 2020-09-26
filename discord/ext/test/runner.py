@@ -11,7 +11,7 @@ import discord
 import typing
 
 from . import backend as back, callbacks
-from .utils import embed_eq
+from .utils import embed_eq, compare_dicts
 
 
 class RunnerConfig(typing.NamedTuple):
@@ -84,7 +84,8 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
     if text is None:
         equals = not equals
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent " \
+                                        f"{sent_queue.get_nowait().content}"
         return
 
     try:
@@ -126,7 +127,7 @@ def get_message(peek=False):
             sent_queue.put_nowait(tmp_message)
     return message
 
-def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_nothing=False):
+def verify_embed(embed=None, allow_text=False, equals=True, peek=False, assert_nothing=False, full=False, attrs=None):
     """
         Assert that a message was sent containing an embed, or that a message was sent not
         containing an embed
@@ -135,11 +136,17 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     :param allow_text: Whether non-embed text is allowed
     :param equals: Whether to invert the assertion
     :param assert_nothing: Whether to assert that no message was sent
+    :param full: Whether to perform a full comparison on all fields in embeds.
+    :param attrs: List of attribute names to compare between embeds.
+        When comparing individual proxy fields, pass them as a list. I.e. embed.footer.text => ['footer', 'text']
+        Note: Pass an empty list if you want to compare nothing. 'None' default is to compare:
+            ['title', 'description', 'url', ['footer', 'text'], ['image', 'url']]
     """
     if embed is None:
         equals = not equals
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent " \
+                                        f"'{sent_queue.get_nowait().content}'"
         return
 
     try:
@@ -156,10 +163,12 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
         emb = None
         if len(message.embeds) > 0:
             emb = message.embeds[0]
+
         if equals:
-            assert embed_eq(emb, embed), "Didn't find expected embed"
+            assert embed_eq(emb, embed, full=full, attrs=attrs), f"Didn't find expected embed." \
+                                                                 f"{compare_dicts(emb.to_dict(), embed.to_dict())}"
         else:
-            assert not embed_eq(emb, embed), "Found unexpected embed"
+            assert not embed_eq(emb, embed, full=full, attrs=attrs), "Unexpected matching embeds found."
     except asyncio.QueueEmpty:
         raise AssertionError("No message returned by command")
 
@@ -185,7 +194,8 @@ def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
     if file is None:
         equals = not equals
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent " \
+                                        f"{sent_queue.get_nowait().content}"
 
     try:
         message = sent_queue.get_nowait()
