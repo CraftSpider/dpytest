@@ -136,7 +136,8 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("send_typing", channel)
 
-    async def send_files(self, channel_id, *, files, content=None, tts=False, embed=None, nonce=None):
+    async def send_files(self, channel_id, *, files, content=None, tts=False, embed=None, nonce=None, allowed_mentions=None ):
+        #allowed_mentions is being ignored.  It must be a keyword argument but I'm not yet certain what to use it for
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
 
