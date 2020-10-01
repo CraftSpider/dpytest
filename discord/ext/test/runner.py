@@ -145,7 +145,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     try:
         message = sent_queue.get_nowait()
         if not allow_text:
-            assert message.content is None
+            assert not message.content
         if peek:
             messages = [message]
             while not sent_queue.empty():
