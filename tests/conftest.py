@@ -14,7 +14,9 @@ def client(event_loop):
 
 @pytest.fixture
 def bot(request, event_loop):
-    b = commands.Bot("!", loop=event_loop)
+    intents = discord.Intents.default()
+    intents.members = True
+    b = commands.Bot("!", loop=event_loop, intents=intents)
 
     marks = request.function.pytestmark
     mark = None
