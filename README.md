@@ -10,7 +10,7 @@ It relies on pytest-asyncio for asynchronous test running, as discord.py is coro
 
 # Documentation
 
-Documentation can be found at [dpytest.readthedocs.io](), including examples and tutorials
+Documentation can be found at [dpytest.readthedocs.io](https://dpytest.readthedocs.io/en/latest/), including examples and tutorials
 
 # Usage
 
