@@ -69,14 +69,15 @@ def dict_from_user(user):
     return out
 
 
-def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, **kwargs):
+def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, voice=False, **kwargs):
     out = {
         'guild_id': guild.id,
         'user': dict_from_user(user),
         'roles': roles,
         'joined_at': joined,
         'deaf': deaf,
-        'mute': mute
+        'mute': mute,
+        'voice' : voice,
     }
     items = ("nick",)
     _fill_optional(out, kwargs, items)
