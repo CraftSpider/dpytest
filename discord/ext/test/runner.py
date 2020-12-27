@@ -145,7 +145,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     try:
         message = sent_queue.get_nowait()
         if not allow_text:
-            assert not message.content
+            assert message.content is None
         if peek:
             messages = [message]
             while not sent_queue.empty():
@@ -326,6 +326,19 @@ async def remove_role(member, role):
 
     roles = [x for x in member.roles if x.id != role.id and x.id != member.guild.id]
     back.update_member(member, roles=roles)
+
+#self is a discord.Message based on how this framework runs
+async def simulate_reaction(self, emoji, member):
+
+    state = back.get_state()
+    await state.http.add_reaction(self.channel.id, self.id, emoji)
+    await run_all_events()
+
+
+    if not error_queue.empty():
+        err = await error_queue.get()
+        raise err[1]
+
 
 
 @require_config
