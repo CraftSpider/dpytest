@@ -145,7 +145,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     try:
         message = sent_queue.get_nowait()
         if not allow_text:
-            assert message.content is None
+            assert not message.content
         if peek:
             messages = [message]
             while not sent_queue.empty():
@@ -190,7 +190,7 @@ def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
     try:
         message = sent_queue.get_nowait()
         if not allow_text:
-            assert message.content is None
+            assert not message.content
 
         attach = None
         if len(message.attachments) > 0:
