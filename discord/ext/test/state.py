@@ -3,6 +3,7 @@ import discord
 import discord.state as dstate
 
 from . import factories as facts
+from . import backend as back
 
 
 class FakeState(dstate.ConnectionState):
@@ -36,3 +37,9 @@ class FakeState(dstate.ConnectionState):
 
     def start_dispatch(self):
         self._do_dispatch = True
+
+    async def query_members(self, guild, query, limit, user_ids, cache, presences):
+        guild : discord.Guild = discord.utils.get(self.guilds, id=guild.id)
+        return guild.members
+
+
