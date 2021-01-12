@@ -209,9 +209,9 @@ def verify_activity(activity=None, equals=True):
     me = _cur_config.guilds[0].me
 
     me_act = me.activity
-    if isinstance(activity, discord.Activity):
+    if isinstance(activity, discord.BaseActivity):
         activity = (activity.name, activity.url, activity.type)
-    if isinstance(me_act, discord.Activity):
+    if isinstance(me_act, discord.BaseActivity):
         me_act = (me_act.name, me_act.url, me_act.type)
 
     if equals:
@@ -352,7 +352,7 @@ async def member_join(guild=0, user=None, *, name=None, discrim=None):
             name = "TestUser"
         if discrim is None:
             discrim = random.randint(1, 9999)
-        user = back.make_user("TestUser", discrim)
+        user = back.make_user(name, discrim)
     member = back.make_member(user, guild)
     return member
 
