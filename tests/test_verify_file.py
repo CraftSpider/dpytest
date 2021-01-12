@@ -4,14 +4,38 @@ import pytest
 import discord.ext.test as dpytest
 
 
-@pytest.mark.skip(reason="verify_file assert == beween files doesn't work")
 @pytest.mark.asyncio
-async def test_verify_file(bot):
+async def test_verify_file_text(bot):
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
-    path_ = Path(__file__).resolve().parent / 'loremimpsum.txt'
+    path_ = Path(__file__).resolve().parent / 'data/loremimpsum.txt'
     file_ = discord.File(path_)
     await channel.send(file=file_)
-    dpytest.verify_file(file_)
+    await dpytest.verify_file(path_)
+    await dpytest.empty_queue()
+
+
+@pytest.mark.asyncio
+async def test_verify_file_jpg(bot):
+    guild = bot.guilds[0]
+    channel = guild.text_channels[0]
+
+    path_ = Path(__file__).resolve().parent / 'data/unit-tests.jpg'
+    file_ = discord.File(path_)
+    await channel.send(file=file_)
+    await dpytest.verify_file(path_)
+    await dpytest.empty_queue()
+
+
+@pytest.mark.asyncio
+async def test_verify_file_KO(bot):
+    guild = bot.guilds[0]
+    channel = guild.text_channels[0]
+
+    path_ = Path(__file__).resolve().parent / 'data/unit-tests.jpg'
+    file_ = discord.File(path_)
+    await channel.send(file=file_)
+    path2 = Path(__file__).resolve().parent / 'data/loremimpsum.txt'
+    await dpytest.verify_file(path2, equals=False)
     await dpytest.empty_queue()

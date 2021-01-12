@@ -181,9 +181,13 @@ def get_embed(peek=False):
     return message.embeds[0]
 
 
-def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
-    if file is None:
+async def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
+    if file is not None:
+        with file.open('rb') as f:
+            expected = f.read()
+    else:
         equals = not equals
+        expected = None
     if assert_nothing:
         assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
 
@@ -194,11 +198,11 @@ def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
 
         attach = None
         if len(message.attachments) > 0:
-            attach = message.attachments[0]
+            attach = await message.attachments[0].read()
         if equals:
-            assert attach == file, "Didn't find expected file"
+            assert attach == expected, "Didn't find expected file"
         else:
-            assert attach != file, "Found unexpected file"
+            assert attach != expected, "Found unexpected file"
     except asyncio.QueueEmpty:
         raise AssertionError("No message returned by command")
 
