@@ -9,3 +9,13 @@ dist/
 *.pyc
 __pycache__
 .pytest_cache
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+cov.xml

@@ -1,4 +1,5 @@
-
+import glob
+import os
 import pytest
 import discord
 import discord.ext.commands as commands
@@ -30,3 +31,16 @@ def bot(request, event_loop):
 
     test.configure(b)
     return b
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """ Code to execute after all tests. """
+
+    # dat files are created when using attachements
+    print("\n-------------------------\nClean dpytest_*.dat files")
+    fileList = glob.glob('./dpytest_*.dat')
+    for filePath in fileList:
+        try:
+            os.remove(filePath)
+        except Exception:
+            print("Error while deleting file : ", filePath)
