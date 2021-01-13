@@ -42,4 +42,7 @@ class FakeState(dstate.ConnectionState):
         guild : discord.Guild = discord.utils.get(self.guilds, id=guild.id)
         return guild.members
 
+    async def chunk_guild(self, *args, **kwargs):
+        pass
+
 
