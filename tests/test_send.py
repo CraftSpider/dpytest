@@ -1,5 +1,6 @@
 import discord
 import pytest
+import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
@@ -8,7 +9,7 @@ async def test_message(bot):
     channel = guild.text_channels[0]
 
     await channel.send("Test Message")
-
+    await dpytest.empty_queue()
 
 @pytest.mark.asyncio
 async def test_embed(bot):
@@ -19,3 +20,4 @@ async def test_embed(bot):
     embed.add_field(name="Field 1", value="Lorem ipsum")
 
     await channel.send(embed=embed)
+    await dpytest.empty_queue()

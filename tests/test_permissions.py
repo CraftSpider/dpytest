@@ -35,6 +35,7 @@ async def test_permission_setting(bot):
     perm = c.permissions_for(m)
     assert perm.kick_members is True
     assert perm.ban_members is False
+    await runner.empty_queue()
 
 
 @pytest.mark.asyncio
@@ -54,3 +55,4 @@ async def test_bot_send_not_allowed(bot):
     await runner.set_permission_overrides(g.me, c, perm)
     await runner.message("!echo hello", channel=c)
     runner.verify_message("hello")
+    await runner.empty_queue()
