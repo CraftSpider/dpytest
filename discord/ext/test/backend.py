@@ -473,8 +473,8 @@ def make_role(name, guild, id_num=-1, colour=0, permissions=104324161, hoist=Fal
     return guild.get_role(r_dict["id"])
 
 
-def update_role(role, colour=None, color=None, permissions=None, hoist=None, mentionable=None):
-    data = facts.dict_from_role(role)
+def update_role(role, colour=None, color=None, permissions=None, hoist=None, mentionable=None, name=None):
+    data = {"guild_id": role.guild.id, "role": facts.dict_from_role(role)}
     if color is not None:
         colour = color
     if colour is not None:
@@ -485,6 +485,8 @@ def update_role(role, colour=None, color=None, permissions=None, hoist=None, men
         data["hoist"] = hoist
     if mentionable is not None:
         data["mentionable"] = mentionable
+    if name is not None:
+        data["role"]["name"] = name
 
     state = get_state()
     state.parse_guild_role_update(data)
