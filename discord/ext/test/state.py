@@ -18,6 +18,7 @@ class FakeState(dstate.ConnectionState):
                          member_cache_flags=client._connection.member_cache_flags)
         if user is None:
             user = discord.ClientUser(state=self, data=facts.make_user_dict("FakeApp", "0001", None))
+            user.bot=True
         self.user = user
         self.shard_count = client.shard_count
         self._get_websocket = lambda x: client.ws

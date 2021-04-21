@@ -4,9 +4,11 @@ python:
   - 3.6
   - 3.7
   - 3.8
+  - 3.9
 
 install:
-  - python3 -m pip install .
+  - pip3 install -r dev-requirements.txt
+  - pip3 install .
 
 script:
   - pytest
