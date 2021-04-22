@@ -136,7 +136,7 @@ class FakeHttp(dhttp.HTTPClient):
             perm = channel.permissions_for(channel.guild.get_member(user.id))
         else:
             perm = channel.permissions_for(user)
-        if not ((perm.send_messages and perm.read_messages) or perm.administrator):
+        if not (perm.send_messages or perm.administrator):
             raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
 
         message = make_message(

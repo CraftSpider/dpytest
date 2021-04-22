@@ -25,7 +25,7 @@ If applicable, add screenshots to help explain your problem.
 
 ### Contact Information (optional):
  - Server Link: [e.g. discord.gg/abcdefg]
- - Discord Admin: [e.g. JayDwee#4233]
+ - Discord Contact: [e.g. JayDwee#4233]
  - Version [e.g. 0.4.0]
 
 ### Additional context
