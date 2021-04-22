@@ -168,7 +168,9 @@ def dict_from_overwrite(target, overwrite):
     ovr = {
         'id': target.id,
         'allow': allow.value,
-        'deny': deny.value
+        'deny': deny.value,
+        'allow_new': allow.value,
+        'deny_new': deny.value
     }
     if isinstance(target, discord.Role):
         ovr['type'] = 'role'
