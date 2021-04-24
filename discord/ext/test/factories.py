@@ -204,10 +204,19 @@ def dict_from_channel(channel):
 
 # TODO: Convert attachments, reactions, activity, and application to a dict.
 def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, edited_timestamp=None, tts=False,
-                      mention_everyone=False, mentions=[], mention_roles=[], mention_channels=[],
-                      attachments=[], embeds=[], pinned=False, type=0, **kwargs):
+                      mention_everyone=False, mentions=None, mention_roles=None, mention_channels=None,
+                      attachments=None, embeds=None, pinned=False, type=0, **kwargs):
     if mentions is None:
         mentions = []
+    if mention_roles is None:
+        mention_roles = []
+    if mention_channels is None:
+        mention_channels = []
+    if attachments is None:
+        attachments = []
+    if embeds is None:
+        embeds = []
+
     if not content:
         content = ""
     if id_num < 0:
