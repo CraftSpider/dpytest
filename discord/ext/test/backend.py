@@ -98,6 +98,22 @@ class FakeHttp(dhttp.HTTPClient):
         # 
         # return return_none()
 
+    async def get_channel(self, channel_id):
+        locs = self._get_higher_locs(1)
+        bot = locs.get("self")
+
+        await callbacks.dispatch_event("get_channel", channel_id)
+
+
+        find = None
+        for guild in _cur_config.state.guilds:
+            for channel in guild.channels:
+                if channel.id == channel_id:
+                    find = facts.dict_from_channel(channel)
+        if find is None:
+            raise discord.errors.NotFound(FakeRequest(404, "Not Found"), "Unknown Channel")
+        return find
+
     async def start_private_message(self, user_id):
         locs = self._get_higher_locs(1)
         user = locs.get("self", None)
@@ -107,7 +123,8 @@ class FakeHttp(dhttp.HTTPClient):
         return facts.make_dm_channel_dict(user)
 
     async def send_message(self, channel_id, content, *, tts=False, embed=None,
-                           nonce=None, allowed_mentions=None):
+                           nonce=None, allowed_mentions=None,
+                           message_reference=None):
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
 
@@ -119,7 +136,7 @@ class FakeHttp(dhttp.HTTPClient):
             perm = channel.permissions_for(channel.guild.get_member(user.id))
         else:
             perm = channel.permissions_for(user)
-        if not ((perm.send_messages and perm.read_messages) or perm.administrator):
+        if not (perm.send_messages or perm.administrator):
             raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
 
         message = make_message(
@@ -136,7 +153,10 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("send_typing", channel)
 
-    async def send_files(self, channel_id, *, files, content=None, tts=False, embed=None, nonce=None):
+    async def send_files(self, channel_id, *, files, content=None, tts=False,
+                         embed=None, nonce=None, allowed_mentions=None,
+                         message_reference=None):
+        #allowed_mentions is being ignored.  It must be a keyword argument but I'm not yet certain what to use it for
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
 
@@ -185,11 +205,14 @@ class FakeHttp(dhttp.HTTPClient):
     async def add_reaction(self, channel_id, message_id, emoji):
         locs = self._get_higher_locs(1)
         message = locs.get("self")
+        #normally only the connected user can add a reaction, but for testing purposes we want to be able to force the call from a specific user
+        user = locs.get("member",self.state.user)
+
         emoji = emoji  # TODO: Turn this back into class?
 
         await callbacks.dispatch_event("add_reaction", message, emoji)
 
-        add_reaction(message, self.state.user, emoji)
+        add_reaction(message, user, emoji)
 
     async def remove_reaction(self, channel_id, message_id, emoji, member_id):
         locs = self._get_higher_locs(1)
@@ -450,8 +473,8 @@ def make_role(name, guild, id_num=-1, colour=0, permissions=104324161, hoist=Fal
     return guild.get_role(r_dict["id"])
 
 
-def update_role(role, colour=None, color=None, permissions=None, hoist=None, mentionable=None):
-    data = facts.dict_from_role(role)
+def update_role(role, colour=None, color=None, permissions=None, hoist=None, mentionable=None, name=None):
+    data = {"guild_id": role.guild.id, "role": facts.dict_from_role(role)}
     if color is not None:
         colour = color
     if colour is not None:
@@ -462,6 +485,8 @@ def update_role(role, colour=None, color=None, permissions=None, hoist=None, men
         data["hoist"] = hoist
     if mentionable is not None:
         data["mentionable"] = mentionable
+    if name is not None:
+        data["role"]["name"] = name
 
     state = get_state()
     state.parse_guild_role_update(data)
@@ -664,6 +689,9 @@ def add_reaction(message, user, emoji):
     }
     if message.guild:
         data["guild_id"] = message.guild.id
+    #when reactions are added by something other than the bot client, we want the user to end up in the payload.
+    if isinstance(user,discord.Member):
+        data["member"] = facts.dict_from_member(user)
 
     state = get_state()
     state.parse_message_reaction_add(data)

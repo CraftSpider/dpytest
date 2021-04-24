@@ -69,14 +69,15 @@ def dict_from_user(user):
     return out
 
 
-def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, **kwargs):
+def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, voice=False, **kwargs):
     out = {
         'guild_id': guild.id,
         'user': dict_from_user(user),
         'roles': roles,
         'joined_at': joined,
         'deaf': deaf,
-        'mute': mute
+        'mute': mute,
+        'voice' : voice,
     }
     items = ("nick",)
     _fill_optional(out, kwargs, items)
@@ -101,6 +102,7 @@ def dict_from_member(member):
     return out
 
 
+#discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
 def make_role_dict(name, id_num=-1, colour=0, color=None, hoist=False, position=-1, permissions=104324161, managed=False,
                    mentionable=False):
     if id_num < 0:
@@ -115,12 +117,14 @@ def make_role_dict(name, id_num=-1, colour=0, color=None, hoist=False, position=
         'color': colour,
         'hoist': hoist,
         'position': position,
+        'permissions_new': permissions,
         'permissions': permissions,
         'managed': managed,
         'mentionable': mentionable
     }
 
 
+#discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
 def dict_from_role(role):
     return {
         'id': role.id,
@@ -128,6 +132,7 @@ def dict_from_role(role):
         'color': role.colour.value,
         'hoist': role.hoist,
         'position': role.position,
+        'permissions_new': role.permissions.value,
         'permissions': role.permissions.value,
         'managed': role.managed,
         'mentionable': role.mentionable
@@ -163,7 +168,9 @@ def dict_from_overwrite(target, overwrite):
     ovr = {
         'id': target.id,
         'allow': allow.value,
-        'deny': deny.value
+        'deny': deny.value,
+        'allow_new': allow.value,
+        'deny_new': deny.value
     }
     if isinstance(target, discord.Role):
         ovr['type'] = 'role'
@@ -295,6 +302,7 @@ def dict_from_attachment(attachment):
         'height': attachment.height,
         'width': attachment.width
     }
+
 
 
 # TODO: dict_from_emoji and make_emoji_dict

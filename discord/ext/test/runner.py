@@ -145,7 +145,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     try:
         message = sent_queue.get_nowait()
         if not allow_text:
-            assert message.content is None
+            assert not message.content
         if peek:
             messages = [message]
             while not sent_queue.empty():
@@ -181,24 +181,28 @@ def get_embed(peek=False):
     return message.embeds[0]
 
 
-def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
-    if file is None:
+async def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
+    if file is not None:
+        with file.open('rb') as f:
+            expected = f.read()
+    else:
         equals = not equals
+        expected = None
     if assert_nothing:
         assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
 
     try:
         message = sent_queue.get_nowait()
         if not allow_text:
-            assert message.content is None
+            assert not message.content
 
         attach = None
         if len(message.attachments) > 0:
-            attach = message.attachments[0]
+            attach = await message.attachments[0].read()
         if equals:
-            assert attach == file, "Didn't find expected file"
+            assert attach == expected, "Didn't find expected file"
         else:
-            assert attach != file, "Found unexpected file"
+            assert attach != expected, "Found unexpected file"
     except asyncio.QueueEmpty:
         raise AssertionError("No message returned by command")
 
@@ -209,9 +213,9 @@ def verify_activity(activity=None, equals=True):
     me = _cur_config.guilds[0].me
 
     me_act = me.activity
-    if isinstance(activity, discord.Activity):
+    if isinstance(activity, discord.BaseActivity):
         activity = (activity.name, activity.url, activity.type)
-    if isinstance(me_act, discord.Activity):
+    if isinstance(me_act, discord.BaseActivity):
         me_act = (me_act.name, me_act.url, me_act.type)
 
     if equals:
@@ -260,15 +264,20 @@ async def remove_role_callback(member, role, reason=None):
     roles = [x for x in member.roles if x != role and x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
+from itertools import count
+counter = count(0)
 
 @require_config
-async def message(content, channel=0, member=0):
+async def message(content, channel=0, member=0,attachments=[]):
     if isinstance(channel, int):
         channel = _cur_config.channels[channel]
     if isinstance(member, int):
         member = _cur_config.members[member]
+    import os
+    attachments = [discord.Attachment(data={'id':counter.__next__(), 'filename':os.path.basename(attachment),'size':0,'url':attachment,'proxy_url':"",'height':0,'width':0},state=back.get_state()) for attachment in attachments]
 
-    mes = back.make_message(content, member, channel)
+
+    mes = back.make_message(content, member, channel,attachments=attachments)
 
     await run_all_events()
 
@@ -322,6 +331,19 @@ async def remove_role(member, role):
     roles = [x for x in member.roles if x.id != role.id and x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
+#self is a discord.Message based on how this framework runs
+async def simulate_reaction(self, emoji, member):
+
+    state = back.get_state()
+    await state.http.add_reaction(self.channel.id, self.id, emoji)
+    await run_all_events()
+
+
+    if not error_queue.empty():
+        err = await error_queue.get()
+        raise err[1]
+
+
 
 @require_config
 async def member_join(guild=0, user=None, *, name=None, discrim=None):
@@ -334,7 +356,7 @@ async def member_join(guild=0, user=None, *, name=None, discrim=None):
             name = "TestUser"
         if discrim is None:
             discrim = random.randint(1, 9999)
-        user = back.make_user("TestUser", discrim)
+        user = back.make_user(name, discrim)
     member = back.make_member(user, guild)
     return member
 
