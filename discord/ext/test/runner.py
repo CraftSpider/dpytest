@@ -51,12 +51,11 @@ async def run_all_events():
             pending = asyncio.all_tasks()
         else:
             pending = asyncio.Task.all_tasks()
-        if not any(map(lambda x: x._coro.__name__ == "_run_event" and not (x.done() or x.cancelled()) , pending)):
+        if not any(map(lambda x: x._coro.__name__ == "_run_event" and not (x.done() or x.cancelled()), pending)):
             break
         for task in pending:
             if task._coro.__name__ == "_run_event" and not (task.done() or task.cancelled()):
                 await task
-
 
 
 async def finish_on_command_error():
@@ -84,7 +83,7 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
     if text is None:
         equals = not equals
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"  # noqa: E501
         return
 
     try:
@@ -98,7 +97,7 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
                 sent_queue.put_nowait(tmp_message)
         if equals:
             if contains:
-                assert text in message.content,f"Didn't find expected text. Expected {text} to be in {message.content}"
+                assert text in message.content, f"Didn't find expected text. Expected {text} to be in {message.content}"
             else:
                 assert message.content == text, f"Didn't find expected text. Expected {text}, found {message.content}"
         else:
@@ -108,6 +107,7 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
                 assert message.content != text, f"Found unexpected text. Expected something not matching {text}"
     except asyncio.QueueEmpty:
         raise AssertionError("No message returned by command")
+
 
 def get_message(peek=False):
     """
@@ -126,7 +126,8 @@ def get_message(peek=False):
             sent_queue.put_nowait(tmp_message)
     return message
 
-def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_nothing=False):
+
+def verify_embed(embed=None, allow_text=False, equals=True, peek=False, assert_nothing=False):
     """
         Assert that a message was sent containing an embed, or that a message was sent not
         containing an embed
@@ -139,7 +140,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     if embed is None:
         equals = not equals
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"  # noqa: E501
         return
 
     try:
@@ -163,6 +164,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False,assert_no
     except asyncio.QueueEmpty:
         raise AssertionError("No message returned by command")
 
+
 def get_embed(peek=False):
     """
         Allow the user to retrieve an embed in a message sent by the bot
@@ -175,7 +177,7 @@ def get_embed(peek=False):
         messages = [message]
         while not sent_queue.empty():
             tmp_message = sent_queue.get_nowait()
-            messages.insert(0,tmp_message)
+            messages.insert(0, tmp_message)
         for tmp_message in messages:
             sent_queue.put_nowait(tmp_message)
     return message.embeds[0]
@@ -189,7 +191,7 @@ async def verify_file(file=None, allow_text=False, equals=True, assert_nothing=F
         equals = not equals
         expected = None
     if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"
+        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"  # noqa: E501
 
     try:
         message = sent_queue.get_nowait()
@@ -267,20 +269,26 @@ async def remove_role_callback(member, role, reason=None):
 from itertools import count
 counter = count(0)
 
+
 @require_config
-async def message(content, channel=0, member=0,attachments=[]):
+async def message(content, channel=0, member=0, attachments=[]):
     if isinstance(channel, int):
         channel = _cur_config.channels[channel]
     if isinstance(member, int):
         member = _cur_config.members[member]
     import os
-    attachments = [discord.Attachment(data={'id':counter.__next__(), 'filename':os.path.basename(attachment),'size':0,'url':attachment,'proxy_url':"",'height':0,'width':0},state=back.get_state()) for attachment in attachments]
+    attachments = [discord.Attachment(data={'id': counter.__next__(),
+                                            'filename': os.path.basename(attachment),
+                                            'size': 0,
+                                            'url': attachment,
+                                            'proxy_url': "",
+                                            'height': 0,
+                                            'width': 0},
+                                      state=back.get_state()) for attachment in attachments]
 
-
-    mes = back.make_message(content, member, channel,attachments=attachments)
+    mes = back.make_message(content, member, channel, attachments=attachments)
 
     await run_all_events()
-
 
     if not error_queue.empty():
         err = await error_queue.get()
@@ -331,18 +339,17 @@ async def remove_role(member, role):
     roles = [x for x in member.roles if x.id != role.id and x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
-#self is a discord.Message based on how this framework runs
+
+# self is a discord.Message based on how this framework runs
 async def simulate_reaction(self, emoji, member):
 
     state = back.get_state()
     await state.http.add_reaction(self.channel.id, self.id, emoji)
     await run_all_events()
 
-
     if not error_queue.empty():
         err = await error_queue.get()
         raise err[1]
-
 
 
 @require_config

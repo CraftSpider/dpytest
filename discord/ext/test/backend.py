@@ -34,10 +34,6 @@ class FakeRequest(typing.NamedTuple):
 
 class FakeHttp(dhttp.HTTPClient):
 
-
-        
-
-
     fileno = 0
 
     def __init__(self, loop=None):
@@ -68,16 +64,16 @@ class FakeHttp(dhttp.HTTPClient):
                 f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
                 f"an issue on github. Debug Info: only TextChannels and CategoryChannels are supported right now"
             )
-        guild = locs.get("self",None)
-        name = locs.get("name",None)
+        guild = locs.get("self", None)
+        name = locs.get("name", None)
         parent_id = locs.get("parent_id")
-        perms = options.get("permission_overwrites",None)
-        parent_id = options.get("parent_id",None)
+        perms = options.get("permission_overwrites", None)
+        parent_id = options.get("parent_id", None)
 
         if channel_type == discord.ChannelType.text.value:
-            channel = make_text_channel(name, guild,permission_overwrites=perms, parent_id=parent_id)
+            channel = make_text_channel(name, guild, permission_overwrites=perms, parent_id=parent_id)
         elif channel_type == discord.ChannelType.category.value:
-            channel = make_category_channel(name, guild, permission_overwrites=perms )
+            channel = make_category_channel(name, guild, permission_overwrites=perms)
         return facts.dict_from_channel(channel)
         # async def return_channel(channel):
         #     return facts.dict_from_channel(channel)
@@ -95,7 +91,7 @@ class FakeHttp(dhttp.HTTPClient):
         return None
         # async def return_none():
         #     return None
-        # 
+        #
         # return return_none()
 
     async def get_channel(self, channel_id):
@@ -103,7 +99,6 @@ class FakeHttp(dhttp.HTTPClient):
         bot = locs.get("self")
 
         await callbacks.dispatch_event("get_channel", channel_id)
-
 
         find = None
         for guild in _cur_config.state.guilds:
@@ -156,7 +151,7 @@ class FakeHttp(dhttp.HTTPClient):
     async def send_files(self, channel_id, *, files, content=None, tts=False,
                          embed=None, nonce=None, allowed_mentions=None,
                          message_reference=None):
-        #allowed_mentions is being ignored.  It must be a keyword argument but I'm not yet certain what to use it for
+        # allowed_mentions is being ignored.  It must be a keyword argument but I'm not yet certain what to use it for
         locs = self._get_higher_locs(1)
         channel = locs.get("channel", None)
 
@@ -205,8 +200,8 @@ class FakeHttp(dhttp.HTTPClient):
     async def add_reaction(self, channel_id, message_id, emoji):
         locs = self._get_higher_locs(1)
         message = locs.get("self")
-        #normally only the connected user can add a reaction, but for testing purposes we want to be able to force the call from a specific user
-        user = locs.get("member",self.state.user)
+        # normally only the connected user can add a reaction, but for testing purposes we want to be able to force the call from a specific user
+        user = locs.get("member", self.state.user)
 
         emoji = emoji  # TODO: Turn this back into class?
 
@@ -301,13 +296,11 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def get_member(self, guild_id, member_id):
         locs = self._get_higher_locs(1)
-        guild = locs.get("self",None)
-        member =  discord.utils.get(guild.members,id=member_id)
-        
+        guild = locs.get("self", None)
+        member = discord.utils.get(guild.members, id=member_id)
+
         return facts.dict_from_member(member)
-    
-    
-    
+
     async def edit_role(self, guild_id, role_id, *, reason=None, **fields):
         locs = self._get_higher_locs(1)
         role = locs.get("self")
@@ -405,11 +398,11 @@ class FakeHttp(dhttp.HTTPClient):
 
         ovr = discord.PermissionOverwrite.from_pair(discord.Permissions(allow_value), discord.Permissions(deny_value))
         update_text_channel(channel, target, ovr)
-        
+
     async def get_from_cdn(self, url):
         parsed_url = urllib.parse.urlparse(url)
         path = urllib.request.url2pathname(parsed_url.path)
-        with open(path,'rb') as fd:
+        with open(path, 'rb') as fd:
             return fd.read()
 
 
@@ -503,29 +496,34 @@ def make_text_channel(name, guild, position=-1, id_num=-1, permission_overwrites
     if position == -1:
         position = len(guild.channels) + 1
 
-    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id, permission_overwrites=permission_overwrites, parent_id=parent_id)
+    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id,
+                                          permission_overwrites=permission_overwrites, parent_id=parent_id)
 
     state = get_state()
     state.parse_channel_create(c_dict)
 
     return guild.get_channel(c_dict["id"])
+
 
 def make_category_channel(name, guild, position=-1, id_num=-1, permission_overwrites=None):
     if position == -1:
         position = len(guild.categories) + 1
-    c_dict = facts.make_category_channel_dict(name, id_num, position=position, guild_id=guild.id, permission_overwrites=permission_overwrites)
+    c_dict = facts.make_category_channel_dict(name, id_num, position=position, guild_id=guild.id,
+                                              permission_overwrites=permission_overwrites)
     state = get_state()
     state.parse_channel_create(c_dict)
-    
+
     return guild.get_channel(c_dict["id"])
 
+
 def delete_channel(channel):
-    c_dict = facts.make_text_channel_dict(channel.name,id_num=channel.id,guild_id=channel.guild.id)
+    c_dict = facts.make_text_channel_dict(channel.name, id_num=channel.id, guild_id=channel.guild.id)
 
     state = get_state()
     state.parse_channel_delete(c_dict)
 
     return None
+
 
 def update_text_channel(channel, target, override=_undefined):
     c_dict = facts.dict_from_channel(channel)
@@ -689,8 +687,8 @@ def add_reaction(message, user, emoji):
     }
     if message.guild:
         data["guild_id"] = message.guild.id
-    #when reactions are added by something other than the bot client, we want the user to end up in the payload.
-    if isinstance(user,discord.Member):
+    # when reactions are added by something other than the bot client, we want the user to end up in the payload.
+    if isinstance(user, discord.Member):
         data["member"] = facts.dict_from_member(user)
 
     state = get_state()

@@ -18,7 +18,7 @@ class FakeState(dstate.ConnectionState):
                          member_cache_flags=client._connection.member_cache_flags)
         if user is None:
             user = discord.ClientUser(state=self, data=facts.make_user_dict("FakeApp", "0001", None))
-            user.bot=True
+            user.bot = True
         self.user = user
         self.shard_count = client.shard_count
         self._get_websocket = lambda x: client.ws
@@ -40,10 +40,8 @@ class FakeState(dstate.ConnectionState):
         self._do_dispatch = True
 
     async def query_members(self, guild, query, limit, user_ids, cache, presences):
-        guild : discord.Guild = discord.utils.get(self.guilds, id=guild.id)
+        guild: discord.Guild = discord.utils.get(self.guilds, id=guild.id)
         return guild.members
 
     async def chunk_guild(self, *args, **kwargs):
         pass
-
-

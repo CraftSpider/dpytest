@@ -77,7 +77,7 @@ def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, voice
         'joined_at': joined,
         'deaf': deaf,
         'mute': mute,
-        'voice' : voice,
+        'voice': voice,
     }
     items = ("nick",)
     _fill_optional(out, kwargs, items)
@@ -86,12 +86,12 @@ def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, voice
 
 def dict_from_member(member):
     voice_state = member.voice
-    #discord code adds default role to every member later on in Member constructor
-    roles_no_default = list(filter(lambda r: not r == member.guild.default_role,member.roles))
+    # discord code adds default role to every member later on in Member constructor
+    roles_no_default = list(filter(lambda r: not r == member.guild.default_role, member.roles))
     out = {
         'guild_id': member.guild.id,
         'user': dict_from_user(member._user),
-        'roles': list(map(lambda role: int(role.id),roles_no_default)),
+        'roles': list(map(lambda role: int(role.id), roles_no_default)),
         'joined_at': member.joined_at,
     }
     if voice_state is not None:
@@ -102,9 +102,9 @@ def dict_from_member(member):
     return out
 
 
-#discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
-def make_role_dict(name, id_num=-1, colour=0, color=None, hoist=False, position=-1, permissions=104324161, managed=False,
-                   mentionable=False):
+# discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
+def make_role_dict(name, id_num=-1, colour=0, color=None, hoist=False, position=-1,
+                   permissions=104324161, managed=False, mentionable=False):
     if id_num < 0:
         id_num = make_id()
     if color is not None:
@@ -124,7 +124,7 @@ def make_role_dict(name, id_num=-1, colour=0, color=None, hoist=False, position=
     }
 
 
-#discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
+# discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
 def dict_from_role(role):
     return {
         'id': role.id,
@@ -156,8 +156,10 @@ def make_channel_dict(ctype, id_num=-1, **kwargs):
 def make_text_channel_dict(name, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
+
 def make_category_channel_dict(name, id_num=-1, **kwargs):
-    return make_channel_dict(discord.ChannelType.category.value, id_num, name=name, **kwargs )
+    return make_channel_dict(discord.ChannelType.category.value, id_num, name=name, **kwargs)
+
 
 def make_dm_channel_dict(user, id_num=-1, **kwargs):
     return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
@@ -188,10 +190,10 @@ def dict_from_channel(channel):
             'id': channel.id,
             'guild_id': channel.guild.id,
             'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
-            'type':channel.type,
-            'parent_id':channel.category_id
+            'type': channel.type,
+            'parent_id': channel.category_id
         }
-    if isinstance(channel,discord.CategoryChannel):
+    if isinstance(channel, discord.CategoryChannel):
         return {
             'name': channel.name,
             'position': channel.position,
@@ -268,8 +270,10 @@ def _mention_from_channel(channel):
 
     return out
 
+
 def _mention_from_role(role):
     return role.id
+
 
 def dict_from_message(message: discord.Message):
     out = {
@@ -279,12 +283,12 @@ def dict_from_message(message: discord.Message):
         'mention_roles': list(map(_mention_from_role, message.role_mentions)),
         'mention_channels': list(map(_mention_from_channel, message.channel_mentions)),
         'edited_timestamp': message._edited_timestamp,
-        'embeds' : list(map(discord.Embed.to_dict,message.embeds)),
-        'attachments' : list(map(dict_from_attachment, message.attachments)),
+        'embeds': list(map(discord.Embed.to_dict, message.embeds)),
+        'attachments': list(map(dict_from_attachment, message.attachments)),
     }
 
-    items = ('content', 'pinned', 'application', 'activity', 'mention_everyone', 'tts', 'type', 
-             'nonce')
+    items = ('content', 'pinned', 'application', 'activity',
+             'mention_everyone', 'tts', 'type', 'nonce')
     _fill_optional(out, message, items)
     return out
 
@@ -313,7 +317,6 @@ def dict_from_attachment(attachment):
         'height': attachment.height,
         'width': attachment.width
     }
-
 
 
 # TODO: dict_from_emoji and make_emoji_dict
