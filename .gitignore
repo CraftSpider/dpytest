@@ -5,6 +5,7 @@
 .idea/
 build/
 dist/
+/dpytest.egg-info
 
 *.pyc
 __pycache__
