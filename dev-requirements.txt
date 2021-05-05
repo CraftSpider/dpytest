@@ -1,3 +1,6 @@
 sphinx>=3
 pytest
+pytest-asyncio
+coverage
 discord.py==1.7.1
+invoke
