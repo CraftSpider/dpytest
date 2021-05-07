@@ -16,7 +16,7 @@ async def test_member_join(bot):
                                                                                                  "https://media.discordapp.net/attachments/some_number/random_number/test.jpg",
                                                                                                  "https://media.discordapp.net/attachments/some_number/random_number/test.jpg",
                                                                                                  height=1000,
-                                                                                                 width=1000))
+                                                                                                 width=1000, content_type="image/jpeg"))
     message_dict = dpytest.back.facts.make_message_dict(channel, author, attachments=[attach])
     try:
         message: discord.Message = discord.Message(state=dpytest.back.get_state(), channel=channel, data=message_dict)
