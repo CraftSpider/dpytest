@@ -298,12 +298,12 @@ def make_attachment_dict(filename, size, url, proxy_url, id_num=-1, height=None,
         id_num = make_id()
     return {
         'id': id_num,
-        'size': size,
-        'height': height,
-        'width': width,
         'filename': filename,
+        'size': size,
         'url': url,
         'proxy_url': proxy_url,
+        'height': height,
+        'width': width,
         'content_type': content_type
     }
 
