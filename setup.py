@@ -22,8 +22,11 @@ if version.endswith(("a", "b")):
     except Exception as e:
         raise RuntimeError("Failure to get current git commit")
 
-with open("README.md", "r") as file:
-    long_description = file.read()
+with open("README.md", "r") as readme_file:
+    readme = readme_file.read()
+
+with open('HISTORY.md', "r") as history_file:
+    history = history_file.read()
 
 setuptools.setup(
     name="dpytest",
@@ -31,7 +34,7 @@ setuptools.setup(
     author="Rune Tynan",
     author_email="runetynan@gmail.com",
     description="A package that assists in writing tests for discord.py",
-    long_description=long_description,
+    long_description=readme + '\n\n' + history,
     long_description_content_type="text/markdown",
     url="https://github.com/CraftSpider/dpytest",
     packages=["discord.ext.test"],
