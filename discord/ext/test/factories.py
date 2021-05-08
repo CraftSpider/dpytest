@@ -293,7 +293,7 @@ def dict_from_message(message: discord.Message):
     return out
 
 
-def make_attachment_dict(filename, size, url, proxy_url, id_num=-1, height=None, width=None):
+def make_attachment_dict(filename, size, url, proxy_url, id_num=-1, height=None, width=None, content_type=None):
     if id_num < 0:
         id_num = make_id()
     return {
@@ -303,7 +303,8 @@ def make_attachment_dict(filename, size, url, proxy_url, id_num=-1, height=None,
         'url': url,
         'proxy_url': proxy_url,
         'height': height,
-        'width': width
+        'width': width,
+        'content_type': content_type
     }
 
 

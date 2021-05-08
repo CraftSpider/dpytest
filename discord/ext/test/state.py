@@ -45,3 +45,9 @@ class FakeState(dstate.ConnectionState):
 
     async def chunk_guild(self, *args, **kwargs):
         pass
+
+    def _guild_needs_chunking(self, guild):
+        """
+        Prevents chunking which can throw asyncio wait_for errors with tests under 60 seconds
+        """
+        return False
