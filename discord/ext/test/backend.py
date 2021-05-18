@@ -688,9 +688,9 @@ def make_message(
     return state._get_message(data["id"])
 
 
-MEMBER_MENTION: re.Pattern = re.compile(r"<@!?[0-9]{17,21}>", re.MULTILINE)
-ROLE_MENTION: re.Pattern = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
-CHANNEL_MENTION: re.Pattern = re.compile(r"<#[0-9]{17,21}>", re.MULTILINE)
+MEMBER_MENTION: typing.Pattern = re.compile(r"<@!?[0-9]{17,21}>", re.MULTILINE)
+ROLE_MENTION: typing.Pattern = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
+CHANNEL_MENTION: typing.Pattern = re.compile(r"<#[0-9]{17,21}>", re.MULTILINE)
 
 
 def find_user_mentions(content: typing.Optional[str], guild: typing.Optional[discord.Guild]) -> typing.List[discord.Member]:
