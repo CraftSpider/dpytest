@@ -1,5 +1,6 @@
 import asyncio
 import discord
+import discord.http as dhttp
 import discord.state as dstate
 
 from . import factories as facts
@@ -8,7 +9,9 @@ from . import backend as back
 
 class FakeState(dstate.ConnectionState):
 
-    def __init__(self, client, http, user=None, loop=None):
+    http: back.FakeHttp
+
+    def __init__(self, client: discord.Client, http: dhttp.HTTPClient, user: discord.ClientUser = None, loop: asyncio.AbstractEventLoop = None) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()
         super().__init__(dispatch=client.dispatch,
@@ -33,20 +36,21 @@ class FakeState(dstate.ConnectionState):
 
         self.dispatch = dispatch
 
-    def stop_dispatch(self):
+    def stop_dispatch(self) -> None:
         self._do_dispatch = False
 
-    def start_dispatch(self):
+    def start_dispatch(self) -> None:
         self._do_dispatch = True
 
-    async def query_members(self, guild, query, limit, user_ids, cache, presences):
+    # TODO: Respect limit parameters
+    async def query_members(self, guild: discord.Guild, query: str, limit: int, user_ids: int, cache: bool, presences: bool) -> None:
         guild: discord.Guild = discord.utils.get(self.guilds, id=guild.id)
         return guild.members
 
-    async def chunk_guild(self, *args, **kwargs):
+    async def chunk_guild(self, guild: discord.Guild, *, wait: bool = True, cache: typing.Optional[bool] = None):
         pass
 
-    def _guild_needs_chunking(self, guild):
+    def _guild_needs_chunking(self, guild: discord.Guild):
         """
         Prevents chunking which can throw asyncio wait_for errors with tests under 60 seconds
         """
