@@ -26,6 +26,13 @@ _cur_config: typing.Optional[BackendState] = None
 _undefined = object()  # default value for when NoneType has special meaning
 
 
+def _get_higher_locs(num: int) -> typing.Dict[str, typing.Any]:
+    frame = sys._getframe(num + 1)
+    locs = frame.f_locals
+    del frame
+    return locs
+
+
 class FakeRequest(typing.NamedTuple):
     status: int
     reason: str
@@ -44,12 +51,6 @@ class FakeHttp(dhttp.HTTPClient):
 
         super().__init__(connector=None, loop=loop)
 
-    def _get_higher_locs(self, num: int) -> typing.Dict[str, typing.Any]:
-        frame = sys._getframe(num + 1)
-        locs = frame.f_locals
-        del frame
-        return locs
-
     async def request(self, *args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
         route: discord.http.Route = args[0]
         raise NotImplementedError(
@@ -65,15 +66,9 @@ class FakeHttp(dhttp.HTTPClient):
             reason: typing.Optional[str] = None,
             **options: typing.Any
     ) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
-        if not channel_type == discord.ChannelType.text.value and not channel_type == discord.ChannelType.category.value:
-            raise NotImplementedError(
-                f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
-                f"an issue on github. Debug Info: only TextChannels and CategoryChannels are supported right now"
-            )
+        locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         name = locs.get("name", None)
-        parent_id = locs.get("parent_id")
         perms = options.get("permission_overwrites", None)
         parent_id = options.get("parent_id", None)
 
@@ -81,13 +76,15 @@ class FakeHttp(dhttp.HTTPClient):
             channel = make_text_channel(name, guild, permission_overwrites=perms, parent_id=parent_id)
         elif channel_type == discord.ChannelType.category.value:
             channel = make_category_channel(name, guild, permission_overwrites=perms)
+        else:
+            raise NotImplementedError(
+                "Operation occurred that isn't captured by the tests framework. This is dpytest's fault, please report"
+                "an issue on github. Debug Info: only TextChannels and CategoryChannels are currently supported."
+            )
         return facts.dict_from_channel(channel)
-        # async def return_channel(channel):
-        #     return facts.dict_from_channel(channel)
-        # return return_channel(channel)
 
     async def delete_channel(self, channel_id: int, *, reason: str = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         channel = locs.get("self", None)
         if channel.type.value == discord.ChannelType.text.value:
             delete_channel(channel)
@@ -95,15 +92,8 @@ class FakeHttp(dhttp.HTTPClient):
             for sub_channel in channel.text_channels:
                 delete_channel(sub_channel)
             delete_channel(channel)
-        # async def return_none():
-        #     return None
-        #
-        # return return_none()
 
     async def get_channel(self, channel_id: int) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
-        bot = locs.get("self")
-
         await callbacks.dispatch_event("get_channel", channel_id)
 
         find = None
@@ -116,7 +106,7 @@ class FakeHttp(dhttp.HTTPClient):
         return find
 
     async def start_private_message(self, user_id: int) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         user = locs.get("self", None)
 
         await callbacks.dispatch_event("start_private_message", user)
@@ -134,7 +124,7 @@ class FakeHttp(dhttp.HTTPClient):
             allowed_mentions: typing.Optional[_types.JsonDict] = None,
             message_reference: typing.Optional[_types.JsonDict] = None,
     ) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         channel = locs.get("channel", None)
 
         embeds = []
@@ -157,7 +147,7 @@ class FakeHttp(dhttp.HTTPClient):
         return facts.dict_from_message(message)
 
     async def send_typing(self, channel_id: int) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         channel = locs.get("channel", None)
 
         await callbacks.dispatch_event("send_typing", channel)
@@ -175,7 +165,7 @@ class FakeHttp(dhttp.HTTPClient):
             message_reference: typing.Optional[_types.JsonDict] = None,
     ) -> _types.JsonDict:
         # allowed_mentions is being ignored.  It must be a keyword argument but I'm not yet certain what to use it for
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         channel = locs.get("channel", None)
 
         attachments = []
@@ -203,7 +193,7 @@ class FakeHttp(dhttp.HTTPClient):
         return facts.dict_from_message(message)
 
     async def delete_message(self, channel_id: int, message_id: int, *, reason: typing.Optional[str] = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         message = locs.get("self", None)
 
         await callbacks.dispatch_event("delete_message", message.channel, message, reason=reason)
@@ -211,7 +201,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_message(message)
 
     async def edit_message(self, channel_id: int, message_id: int, **fields: typing.Any) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         message = locs.get("self", None)
 
         await callbacks.dispatch_event("edit_message", message.channel, message, fields)
@@ -221,9 +211,10 @@ class FakeHttp(dhttp.HTTPClient):
         return out
 
     async def add_reaction(self, channel_id: int, message_id: int, emoji: str) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         message = locs.get("self")
-        # normally only the connected user can add a reaction, but for testing purposes we want to be able to force the call from a specific user
+        # normally only the connected user can add a reaction, but for testing purposes we want to be able to force
+        # the call from a specific user.
         user = locs.get("member", self.state.user)
 
         emoji = emoji  # TODO: Turn this back into class?
@@ -233,7 +224,7 @@ class FakeHttp(dhttp.HTTPClient):
         add_reaction(message, user, emoji)
 
     async def remove_reaction(self, channel_id: int, message_id: int, emoji: str, member_id: int) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         message = locs.get("self")
         member = locs.get("member")
 
@@ -242,7 +233,7 @@ class FakeHttp(dhttp.HTTPClient):
         remove_reaction(message, member, emoji)
 
     async def remove_own_reaction(self, channel_id: int, message_id: int, emoji: str) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         message = locs.get("self")
         member = locs.get("member")
 
@@ -251,7 +242,7 @@ class FakeHttp(dhttp.HTTPClient):
         remove_reaction(message, self.state.user, emoji)
 
     async def get_message(self, channel_id: int, message_id: int) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         channel = locs.get("self")
 
         await callbacks.dispatch_event("get_message", channel, message_id)
@@ -270,7 +261,7 @@ class FakeHttp(dhttp.HTTPClient):
             after: typing.Optional[int] = None,
             around: typing.Optional[int] = None
     ) -> typing.List[_types.JsonDict]:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         his = locs.get("self", None)
         channel = his.channel
 
@@ -291,7 +282,7 @@ class FakeHttp(dhttp.HTTPClient):
             return messages[start - limit:start]
 
     async def kick(self, user_id: int, guild_id: int, reason: typing.Optional[str] = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         member = locs.get("user", None)
 
@@ -300,7 +291,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_member(member)
 
     async def ban(self, user_id: int, guild_id: int, delete_message_days: int = 1, reason: typing.Optional[str] = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         member = locs.get("user", None)
 
@@ -309,7 +300,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_member(member)
 
     async def change_my_nickname(self, guild_id: int, nickname: str, *, reason: typing.Optional[str] = None) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         me = locs.get("self", None)
 
         me.nick = nickname
@@ -319,20 +310,20 @@ class FakeHttp(dhttp.HTTPClient):
         return {"nick": nickname}
 
     async def edit_member(self, guild_id: int, user_id: int, *, reason: typing.Optional[str] = None, **fields: typing.Any) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         member = locs.get("self", None)
 
         await callbacks.dispatch_event("edit_member", fields, member, reason=reason)
 
     async def get_member(self, guild_id: int, member_id: int) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         member = discord.utils.get(guild.members, id=member_id)
 
         return facts.dict_from_member(member)
 
     async def edit_role(self, guild_id: int, role_id: int, *, reason: typing.Optional[str] = None, **fields: typing.Any) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         role = locs.get("self")
         guild = role.guild
 
@@ -343,7 +334,7 @@ class FakeHttp(dhttp.HTTPClient):
         return facts.dict_from_role(role)
 
     async def delete_role(self, guild_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         role = locs.get("self")
         guild = role.guild
 
@@ -352,7 +343,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_role(role)
 
     async def create_role(self, guild_id: int, *, reason: typing.Optional[str] = None, **fields: typing.Any) -> _types.JsonDict:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         guild = locs.get("self", None)
 
         data = facts.make_role_dict(**fields)
@@ -363,21 +354,21 @@ class FakeHttp(dhttp.HTTPClient):
         return facts.dict_from_role(role)
 
     async def move_role_position(self, guild_id: int, positions: typing.List[_types.JsonDict], *, reason: typing.Optional[str] = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         role = locs.get("self", None)
         guild = role.guild
 
         await callbacks.dispatch_event("move_role", guild, role, positions, reason=reason)
 
     async def add_role(self, guild_id: int, user_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         member = locs.get("self", None)
         role = locs.get("role", None)
 
         await callbacks.dispatch_event("add_role", member, role, reason=reason)
 
     async def remove_role(self, guild_id: int, user_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         member = locs.get("self", None)
         role = locs.get("role", None)
 
@@ -405,7 +396,7 @@ class FakeHttp(dhttp.HTTPClient):
         return data
 
     async def delete_channel_permissions(self, channel_id: int, target_id: int, *, reason: typing.Optional[str] = None) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         channel: discord.TextChannel = locs.get("self", None)
         target = locs.get("target", None)
 
@@ -426,7 +417,7 @@ class FakeHttp(dhttp.HTTPClient):
             *,
             reason: typing.Optional[str] = None
     ) -> None:
-        locs = self._get_higher_locs(1)
+        locs = _get_higher_locs(1)
         channel: discord.TextChannel = locs.get("self", None)
         target = locs.get("target", None)
 
@@ -601,7 +592,7 @@ def delete_channel(channel: _types.AnyChannel) -> None:
 def update_text_channel(
         channel: discord.TextChannel,
         target: typing.Union[discord.User, discord.Role],
-        override: discord.PermissionOverwrite = _undefined
+        override: typing.Optional[discord.PermissionOverwrite] = _undefined
 ) -> None:
     c_dict = facts.dict_from_channel(channel)
     if override is not _undefined:
@@ -629,7 +620,7 @@ def make_user(username: str, discrim: typing.Union[str, int], avatar: typing.Opt
     return user
 
 
-def make_member(user: discord.User, guild: discord.Guild, nick: typing.Optional[str] = None, roles: typing.Optional[typing.List[discord.Role]] = None) -> discord.Member:
+def make_member(user: typing.Union[discord.user.BaseUser, discord.abc.User], guild: discord.Guild, nick: typing.Optional[str] = None, roles: typing.Optional[typing.List[discord.Role]] = None) -> discord.Member:
     if roles is None:
         roles = []
     roles = list(map(lambda x: x.id, roles))
@@ -663,7 +654,7 @@ def delete_member(member: discord.Member) -> None:
 
 def make_message(
         content: str,
-        author: typing.Union[discord.User, discord.Member],
+        author: typing.Union[discord.user.BaseUser, discord.abc.User],
         channel: _types.AnyChannel,
         tts: bool = False,
         embeds: typing.Optional[typing.List[discord.Embed]] = None,
@@ -716,7 +707,7 @@ def find_role_mentions(content: typing.Optional[str], guild: typing.Optional[dis
     return matches
 
 
-def find_channel_mentions(content: typing.Optional[str], guild: typing.Optional[discord.Guild]) -> typing.List[AnyChannel]:
+def find_channel_mentions(content: typing.Optional[str], guild: typing.Optional[discord.Guild]) -> typing.List[_types.AnyChannel]:
     if guild is None or content is None:
         return []
     matches = re.findall(CHANNEL_MENTION, content)
@@ -786,7 +777,7 @@ def add_reaction(message: discord.Message, user: discord.User, emoji: str) -> No
         if "reactions" not in message_data:
             message_data["reactions"] = []
 
-        react = None
+        react: typing.Optional[_types.JsonDict] = None
         for react in message_data["reactions"]:
             if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
                 break
@@ -800,7 +791,7 @@ def add_reaction(message: discord.Message, user: discord.User, emoji: str) -> No
             react["me"] = True
 
 
-def remove_reaction(message: discord.Message, user:discord.User, emoji: str) -> None:
+def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
         emoji = {
@@ -831,7 +822,7 @@ def remove_reaction(message: discord.Message, user:discord.User, emoji: str) -> 
         if "reactions" not in message_data:
             message_data["reactions"] = []
 
-        react = None
+        react: typing.Optional[_types.JsonDict] = None
         for react in message_data["reactions"]:
             if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
                 break

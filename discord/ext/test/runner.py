@@ -34,7 +34,7 @@ sent_queue: asyncio.Queue = asyncio.queues.Queue()
 error_queue: asyncio.Queue = asyncio.queues.Queue()
 
 
-def require_config(func: typing.Callable[[...], ...]) -> typing.Callable[[...], ...]:
+def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[..., _types.T]:
     def wrapper(*args, **kwargs):
         if _cur_config is None:
             log.error("Attempted to make call before runner configured")
@@ -335,6 +335,7 @@ async def set_permission_overrides(
     if not isinstance(target, (discord.abc.User, discord.Role)):
         raise TypeError(f"target '{target}' must be a abc.User or Role, not '{type(target)}''")
 
+    # TODO: This will probably break for video channels/non-standard text channels
     back.update_text_channel(channel, target, overrides)
 
 

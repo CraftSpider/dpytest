@@ -1,4 +1,5 @@
 import asyncio
+import typing
 import discord
 import discord.http as dhttp
 import discord.state as dstate
@@ -9,7 +10,7 @@ from . import backend as back
 
 class FakeState(dstate.ConnectionState):
 
-    http: back.FakeHttp
+    http: 'back.FakeHttp'  # String because of circular import
 
     def __init__(self, client: discord.Client, http: dhttp.HTTPClient, user: discord.ClientUser = None, loop: asyncio.AbstractEventLoop = None) -> None:
         if loop is None:

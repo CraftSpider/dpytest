@@ -205,7 +205,7 @@ def make_channel_dict(
         bitrate: int = ...,
         user_limit: int = ...,
         rate_limit_per_user: int = ...,
-        recipients: _types.JsonDict = ...,
+        recipients: typing.List[_types.JsonDict] = ...,
         icon: typing.Optional[str] = ...,
         owner_id: int = ...,
         application_id: int = ...,
@@ -298,14 +298,14 @@ def dict_from_channel(channel: _types.AnyChannel) -> _types.JsonDict:
 @typing.overload
 def make_message_dict(
         channel: _types.AnyChannel,
-        author: typing.Union[discord.User, discord.Member],
+        author: discord.user.BaseUser,
         id_num: int = ...,
         content: str = ...,
         timestamp: int = ...,
         edited_timestamp: typing.Optional[int] = ...,
         tts: bool = ...,
         mention_everyone: bool = ...,
-        mentions: typing.List[discord.User] = ...,
+        mentions: typing.List[typing.Union[discord.User, discord.Member]] = ...,
         mention_roles: typing.List[int] = ...,
         mention_channels: typing.List[_types.AnyChannel] = ...,
         attachments: typing.List[discord.Attachment] = ...,
@@ -326,7 +326,7 @@ def make_message_dict(
 # TODO: Convert attachments, reactions, activity, and application to a dict.
 def make_message_dict(
         channel: _types.AnyChannel,
-        author: typing.Union[discord.User, discord.Member],
+        author: discord.user.BaseUser,
         id_num: int = -1,
         content: str = None,
         timestamp: int = None,
