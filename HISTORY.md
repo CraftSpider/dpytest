@@ -1,5 +1,10 @@
 # History
 
+## 0.2.0
+
+- Merge hint files into .py files
+- Use typing export of Pattern
+
 ## 0.1.1
 
 - Add content type to attachments

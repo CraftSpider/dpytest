@@ -127,3 +127,13 @@ def coverage(c):
 def build(c):
     """Build package using python -m build."""
     c.run('python -m build')
+
+
+@task(cleanbuild)
+def release(c, version="patch"):
+    """Build and release. Optional parameter is "patch (default) / minor / major"""  # noqa: E501
+    c.run(f"bump2version {version}")
+    c.run('python -m build')
+    c.run("git push")
+    c.run("git push --tags")
+    c.run("twine upload -c .\.pypirc dist/*")

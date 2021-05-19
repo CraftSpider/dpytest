@@ -32,3 +32,6 @@ venv.bak/
 
 # IDE files
 /.vscode
+
+# Secrets files (tokens, etc...)
+/.pypirc
