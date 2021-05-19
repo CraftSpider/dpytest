@@ -1,11 +1,13 @@
 
+import typing
 import datetime as dt
 import discord
+from . import _types
 
-generated_ids = 0
+generated_ids: int = 0
 
 
-def make_id():
+def make_id() -> int:
     global generated_ids
     # timestamp
     discord_epoch = str(bin(int(dt.datetime.now().timestamp() * 1000) - 1420070400000))[2:]
@@ -22,7 +24,7 @@ def make_id():
     return int(discord_epoch + worker + process + generated, 2)
 
 
-def _fill_optional(data, obj, items):
+def _fill_optional(data: _types.JsonDict, obj: typing.Any, items: typing.Iterable[str]) -> None:
     if isinstance(obj, dict):
         for item in items:
             result = obj.pop(item, None)
@@ -37,7 +39,24 @@ def _fill_optional(data, obj, items):
                 data[item] = getattr(obj, item)
 
 
-def make_user_dict(username, discrim, avatar, id_num=-1, flags=0, **kwargs):
+@typing.overload
+def make_user_dict(
+        username: str,
+        discrim: typing.Union[str, int],
+        avatar: typing.Optional[str],
+        id_num: int = ...,
+        flags: int = ...,
+        *,
+        bot: bool = ...,
+        mfa_enabled: bool = ...,
+        locale: str = ...,
+        verified: bool = ...,
+        email: str = ...,
+        premium_type: int = ...,
+) -> _types.JsonDict: ...
+
+
+def make_user_dict(username: str, discrim: typing.Union[str, int], avatar: str, id_num: int = -1, flags: int = 0, **kwargs: typing.Any) -> _types.JsonDict:
     if isinstance(discrim, int):
         assert 0 < discrim < 10000
         discrim = f"{discrim:04}"
@@ -57,7 +76,7 @@ def make_user_dict(username, discrim, avatar, id_num=-1, flags=0, **kwargs):
     return out
 
 
-def dict_from_user(user):
+def dict_from_user(user: discord.User) -> _types.JsonDict:
     out = {
         'id': user.id,
         'username': user.name,
@@ -69,7 +88,30 @@ def dict_from_user(user):
     return out
 
 
-def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, voice=False, **kwargs):
+@typing.overload
+def make_member_dict(
+        guild: discord.Guild,
+        user: discord.User,
+        roles: typing.List[int],
+        joined: int = ...,
+        deaf: bool = ...,
+        mute: bool = ...,
+        voice: bool = ...,
+        *,
+        nick: str = ...,
+) -> _types.JsonDict: ...
+
+
+def make_member_dict(
+        guild: discord.Guild,
+        user: discord.User,
+        roles: typing.List[int],
+        joined: int = 0,
+        deaf: bool = False,
+        mute: bool = False,
+        voice: bool = False,
+        **kwargs: typing.Any,
+) -> _types.JsonDict:
     out = {
         'guild_id': guild.id,
         'user': dict_from_user(user),
@@ -84,7 +126,7 @@ def make_member_dict(guild, user, roles, joined=0, deaf=False, mute=False, voice
     return out
 
 
-def dict_from_member(member):
+def dict_from_member(member: discord.Member) -> _types.JsonDict:
     voice_state = member.voice
     # discord code adds default role to every member later on in Member constructor
     roles_no_default = list(filter(lambda r: not r == member.guild.default_role, member.roles))
@@ -103,8 +145,17 @@ def dict_from_member(member):
 
 
 # discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
-def make_role_dict(name, id_num=-1, colour=0, color=None, hoist=False, position=-1,
-                   permissions=104324161, managed=False, mentionable=False):
+def make_role_dict(
+        name: str,
+        id_num: int = -1,
+        colour: int = 0,
+        color: typing.Optional[int] = None,
+        hoist: bool = False,
+        position: int = -1,
+        permissions: int = 104324161,
+        managed: bool = False,
+        mentionable: bool = False,
+) -> _types.JsonDict:
     if id_num < 0:
         id_num = make_id()
     if color is not None:
@@ -125,7 +176,7 @@ def make_role_dict(name, id_num=-1, colour=0, color=None, hoist=False, position=
 
 
 # discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
-def dict_from_role(role):
+def dict_from_role(role: discord.Role) -> _types.JsonDict:
     return {
         'id': role.id,
         'name': role.name,
@@ -139,7 +190,31 @@ def dict_from_role(role):
     }
 
 
-def make_channel_dict(ctype, id_num=-1, **kwargs):
+@typing.overload
+def make_channel_dict(
+        ctype: int,
+        id_num: int = ...,
+        *,
+        guild_id: int = ...,
+        position: int = ...,
+        permission_overwrites: _types.JsonDict = ...,
+        name: str = ...,
+        topic: typing.Optional[str] = ...,
+        nsfw: bool = ...,
+        last_message_id: typing.Optional[str] = ...,
+        bitrate: int = ...,
+        user_limit: int = ...,
+        rate_limit_per_user: int = ...,
+        recipients: typing.List[_types.JsonDict] = ...,
+        icon: typing.Optional[str] = ...,
+        owner_id: int = ...,
+        application_id: int = ...,
+        parent_id: typing.Optional[int] = ...,
+        last_pin_timestamp: int = ...,
+) -> _types.JsonDict: ...
+
+
+def make_channel_dict(ctype: int, id_num: int = -1, **kwargs: typing.Any) -> _types.JsonDict:
     if id_num < 0:
         id_num = make_id()
     out = {
@@ -153,19 +228,35 @@ def make_channel_dict(ctype, id_num=-1, **kwargs):
     return out
 
 
-def make_text_channel_dict(name, id_num=-1, **kwargs):
+@typing.overload
+def make_text_channel_dict(
+        name: str,
+        id_num: int = ...,
+        guild_id: int = ...,
+        position: int = ...,
+        permission_overwrites: _types.JsonDict = ...,
+        topic: typing.Optional[str] = ...,
+        nsfw: bool = ...,
+        last_message_id: typing.Optional[int] = ...,
+        rate_limit_per_user: int = ...,
+        parent_id: typing.Optional[int] = ...,
+        last_pin_timestamp: int = ...,
+) -> _types.JsonDict: ...
+
+
+def make_text_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -> _types.JsonDict:
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
 
-def make_category_channel_dict(name, id_num=-1, **kwargs):
+def make_category_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -> _types.JsonDict:
     return make_channel_dict(discord.ChannelType.category.value, id_num, name=name, **kwargs)
 
 
-def make_dm_channel_dict(user, id_num=-1, **kwargs):
+def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: typing.Any) -> _types.JsonDict:
     return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
 
 
-def dict_from_overwrite(target, overwrite):
+def dict_from_overwrite(target: typing.Union[discord.Member, discord.Role], overwrite: discord.PermissionOverwrite) -> _types.JsonDict:
     allow, deny = overwrite.pair()
     ovr = {
         'id': target.id,
@@ -182,7 +273,7 @@ def dict_from_overwrite(target, overwrite):
 
 
 # TODO: support all channel attributes
-def dict_from_channel(channel):
+def dict_from_channel(channel: _types.AnyChannel) -> _types.JsonDict:
     if isinstance(channel, discord.TextChannel):
         return {
             'name': channel.name,
@@ -204,10 +295,53 @@ def dict_from_channel(channel):
         }
 
 
+@typing.overload
+def make_message_dict(
+        channel: _types.AnyChannel,
+        author: discord.user.BaseUser,
+        id_num: int = ...,
+        content: str = ...,
+        timestamp: int = ...,
+        edited_timestamp: typing.Optional[int] = ...,
+        tts: bool = ...,
+        mention_everyone: bool = ...,
+        mentions: typing.List[typing.Union[discord.User, discord.Member]] = ...,
+        mention_roles: typing.List[int] = ...,
+        mention_channels: typing.List[_types.AnyChannel] = ...,
+        attachments: typing.List[discord.Attachment] = ...,
+        embeds: typing.List[discord.Embed] = ...,
+        pinned: bool = ...,
+        type: int = ...,
+        *,
+        guild_id: int = ...,
+        member: discord.Member = ...,
+        reactions: typing.List[discord.Reaction] = ...,
+        nonce: typing.Optional[int] = ...,
+        webhook_id: int = ...,
+        activity: discord.Activity = ...,
+        application: _types.JsonDict = ...
+) -> _types.JsonDict: ...
+
+
 # TODO: Convert attachments, reactions, activity, and application to a dict.
-def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, edited_timestamp=None, tts=False,
-                      mention_everyone=False, mentions=None, mention_roles=None, mention_channels=None,
-                      attachments=None, embeds=None, pinned=False, type=0, **kwargs):
+def make_message_dict(
+        channel: _types.AnyChannel,
+        author: discord.user.BaseUser,
+        id_num: int = -1,
+        content: str = None,
+        timestamp: int = None,
+        edited_timestamp: typing.Optional[int] = None,
+        tts: bool = False,
+        mention_everyone: bool = False,
+        mentions: typing.List[discord.User] = None,
+        mention_roles: typing.List[int] = None,
+        mention_channels: typing.List[_types.AnyChannel] = None,
+        attachments: typing.List[discord.Attachment] = None,
+        embeds: typing.List[discord.Embed] = None,
+        pinned: bool = False,
+        type: int = 0,
+        **kwargs,
+) -> _types.JsonDict:
     if mentions is None:
         mentions = []
     if mention_roles is None:
@@ -256,7 +390,7 @@ def make_message_dict(channel, author, id_num=-1, content=None, timestamp=None, 
     return out
 
 
-def _mention_from_channel(channel):
+def _mention_from_channel(channel: _types.AnyChannel) -> _types.JsonDict:
     out = {
         "id": channel.id,
         "type": str(channel.type),
@@ -271,11 +405,11 @@ def _mention_from_channel(channel):
     return out
 
 
-def _mention_from_role(role):
+def _mention_from_role(role: discord.Role) -> int:
     return role.id
 
 
-def dict_from_message(message: discord.Message):
+def dict_from_message(message: discord.Message) -> _types.JsonDict:
     out = {
         'id': message.id,
         'author': dict_from_user(message.author),
@@ -293,7 +427,16 @@ def dict_from_message(message: discord.Message):
     return out
 
 
-def make_attachment_dict(filename, size, url, proxy_url, id_num=-1, height=None, width=None, content_type=None):
+def make_attachment_dict(
+        filename: str,
+        size: int,
+        url: str,
+        proxy_url: str,
+        id_num: int = -1,
+        height: typing.Optional[int] = None,
+        width: typing.Optional[int] = None,
+        content_type: typing.Optional[int] = None
+) -> _types.JsonDict:
     if id_num < 0:
         id_num = make_id()
     return {
@@ -308,7 +451,7 @@ def make_attachment_dict(filename, size, url, proxy_url, id_num=-1, height=None,
     }
 
 
-def dict_from_attachment(attachment):
+def dict_from_attachment(attachment: discord.Attachment) -> _types.JsonDict:
     return {
         'id': attachment.id,
         'filename': attachment.filename,
@@ -316,7 +459,7 @@ def dict_from_attachment(attachment):
         'url': attachment.url,
         'proxy_url': attachment.proxy_url,
         'height': attachment.height,
-        'width': attachment.width
+        'width': attachment.width,
     }
 
 
@@ -332,10 +475,63 @@ def dict_from_emoji(emoji):
     }
 
 
-def make_guild_dict(name, owner_id, roles, id_num=-1, emojis=None, icon=None, splash=None, region="en_north",
-                    afk_channel_id=None, afk_timeout=600, verification_level=0, default_message_notifications=0,
-                    explicit_content_filter=0, features=None, mfa_level=0, application_id=None, system_channel_id=None,
-                    **kwargs):
+@typing.overload
+def make_guild_dict(
+        name: str,
+        owner_id: int,
+        roles: typing.List[_types.JsonDict],
+        id_num: int = ...,
+        emojis: typing.List[_types.JsonDict] = ...,
+        icon: typing.Optional[str] = ...,
+        splash: typing.Optional[str] = ...,
+        region: str = ...,
+        afk_channel_id: int = ...,
+        afk_timeout: int = ...,
+        verification_level: int = ...,
+        default_message_notifications: int = ...,
+        explicit_content_filter: int = ...,
+        features: typing.List[str] = ...,
+        mfa_level: int = ...,
+        application_id: int = ...,
+        system_channel_id: int = ...,
+        *,
+        owner: bool = ...,
+        permissions: int = ...,
+        embed_enabled: bool = ...,
+        embed_channel_id: int = ...,
+        widget_enabled: bool = ...,
+        widget_channel_id: int = ...,
+        joined_at: int = ...,
+        large: bool = ...,
+        unavailable: bool = ...,
+        member_count: int = ...,
+        voice_states: typing.List[discord.VoiceState] = ...,
+        members: typing.List[discord.Member] = ...,
+        channels: typing.List[discord.abc.GuildChannel] = ...,
+        presences: typing.List[discord.Activity] = ...,
+) -> _types.JsonDict: ...
+
+
+def make_guild_dict(
+        name: str,
+        owner_id: int,
+        roles: typing.List[_types.JsonDict],
+        id_num: int = -1,
+        emojis: typing.Optional[typing.List[_types.JsonDict]] = None,
+        icon: typing.Optional[str] = None,
+        splash: typing.Optional[str] = None,
+        region: str = "en_north",
+        afk_channel_id: typing.Optional[int] = None,
+        afk_timeout: int = 600,
+        verification_level: int = 0,
+        default_message_notifications: int = 0,
+        explicit_content_filter: int = 0,
+        features: typing.Optional[typing.List[str]] = None,
+        mfa_level: int = 0,
+        application_id: typing.Optional[int] = None,
+        system_channel_id: typing.Optional[int] = None,
+        **kwargs: typing.Any,
+) -> _types.JsonDict:
     if id_num < 0:
         id_num = make_id()
     if emojis is None:
@@ -368,7 +564,7 @@ def make_guild_dict(name, owner_id, roles, id_num=-1, emojis=None, icon=None, sp
     return out
 
 
-def dict_from_guild(guild):
+def dict_from_guild(guild: discord.Guild) -> _types.JsonDict:
     return {
         'id': guild.id,
         'name': guild.name,

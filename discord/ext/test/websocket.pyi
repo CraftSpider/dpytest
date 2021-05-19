@@ -1,9 +1,0 @@
-
-from typing import Any, Dict, Optional
-from discord import BaseActivity
-
-class FakeWebSocket:
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
-    async def send(self, data: Dict[str, Any]): ...
-    async def change_presence(self, *, activity: Optional[BaseActivity] = ..., status: Optional[str] = ..., afk: bool = ..., since: float = ...) -> None: ...
