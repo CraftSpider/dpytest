@@ -1,10 +1,14 @@
 
-def embed_eq(embed1, embed2):
+import discord
+import typing
+
+
+def embed_eq(embed1: typing.Optional[discord.Embed], embed2: typing.Optional[discord.Embed]) -> bool:
     if embed1 == embed2:
         return True
-    if embed1 is None and embed2 is not None:
+    elif embed1 is None and embed2 is not None:
         return False
-    if embed2 is None and embed1 is not None:
+    elif embed2 is None and embed1 is not None:
         return False
 
     return all([embed1.title == embed2.title,

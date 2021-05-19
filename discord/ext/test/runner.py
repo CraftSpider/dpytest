@@ -8,9 +8,11 @@ import sys
 import asyncio
 import logging
 import discord
+import discord.ext.commands as commands
 import typing
+import pathlib
 
-from . import backend as back, callbacks
+from . import backend as back, callbacks, _types
 from .utils import embed_eq
 
 
@@ -28,11 +30,11 @@ class RunnerConfig(typing.NamedTuple):
 
 log = logging.getLogger("discord.ext.tests")
 _cur_config: typing.Optional[RunnerConfig] = None
-sent_queue = asyncio.queues.Queue()
-error_queue = asyncio.queues.Queue()
+sent_queue: asyncio.Queue = asyncio.queues.Queue()
+error_queue: asyncio.Queue = asyncio.queues.Queue()
 
 
-def require_config(func):
+def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[..., _types.T]:
     def wrapper(*args, **kwargs):
         if _cur_config is None:
             log.error("Attempted to make call before runner configured")
@@ -42,7 +44,7 @@ def require_config(func):
     return wrapper
 
 
-async def run_all_events():
+async def run_all_events() -> None:
     """
         Ensure that all dpy related coroutines have completed or been cancelled
     """
@@ -58,7 +60,7 @@ async def run_all_events():
                 await task
 
 
-async def finish_on_command_error():
+async def finish_on_command_error() -> None:
     """
         Ensure that all dpy related coroutines have completed or been cancelled
     """
@@ -71,7 +73,7 @@ async def finish_on_command_error():
             await task
 
 
-def verify_message(text=None, equals=True, contains=False, peek=False, assert_nothing=False):
+def verify_message(text: str = None, equals: bool = True, contains: bool = False, peek: bool = False, assert_nothing: bool = False) -> None:
     """
         Assert that a message was sent with the given text, or that a message was sent that *doesn't* match the
         given text
@@ -109,7 +111,7 @@ def verify_message(text=None, equals=True, contains=False, peek=False, assert_no
         raise AssertionError("No message returned by command")
 
 
-def get_message(peek=False):
+def get_message(peek: bool = False) -> discord.Message:
     """
         Allow the user to retrieve a message sent by the bot
 
@@ -127,7 +129,7 @@ def get_message(peek=False):
     return message
 
 
-def verify_embed(embed=None, allow_text=False, equals=True, peek=False, assert_nothing=False):
+def verify_embed(embed: discord.Embed = None, allow_text: bool = False, equals: bool = True, peek: bool = False, assert_nothing: bool = False) -> None:
     """
         Assert that a message was sent containing an embed, or that a message was sent not
         containing an embed
@@ -165,7 +167,7 @@ def verify_embed(embed=None, allow_text=False, equals=True, peek=False, assert_n
         raise AssertionError("No message returned by command")
 
 
-def get_embed(peek=False):
+def get_embed(peek: bool = False) -> discord.Embed:
     """
         Allow the user to retrieve an embed in a message sent by the bot
 
@@ -183,7 +185,7 @@ def get_embed(peek=False):
     return message.embeds[0]
 
 
-async def verify_file(file=None, allow_text=False, equals=True, assert_nothing=False):
+async def verify_file(file: typing.Union[str, pathlib.Path] = None, allow_text: bool = False, equals: bool = True, assert_nothing: bool = False) -> None:
     if file is not None:
         with file.open('rb') as f:
             expected = f.read()
@@ -209,7 +211,7 @@ async def verify_file(file=None, allow_text=False, equals=True, assert_nothing=F
         raise AssertionError("No message returned by command")
 
 
-def verify_activity(activity=None, equals=True):
+def verify_activity(activity: discord.Activity = None, equals: bool = True) -> None:
     if activity is None:
         equals = not equals
     me = _cur_config.guilds[0].me
@@ -226,7 +228,7 @@ def verify_activity(activity=None, equals=True):
         assert me_act != activity, "Found unexpected activity"
 
 
-async def empty_queue():
+async def empty_queue() -> None:
     await run_all_events()
     while not sent_queue.empty():
         await sent_queue.get()
@@ -234,15 +236,15 @@ async def empty_queue():
         await error_queue.get()
 
 
-async def message_callback(message):
+async def message_callback(message: discord.Message) -> None:
     await sent_queue.put(message)
 
 
-async def error_callback(ctx, error):
+async def error_callback(ctx: commands.Context, error: commands.CommandError) -> None:
     await error_queue.put((ctx, error))
 
 
-async def create_role_callback(guild, role, reason=None):
+async def create_role_callback(guild: discord.Guild, role: discord.Role, reason: str = None) -> None:
     roles = [role] + guild.roles
     if role.position == -1:
         for r in roles:
@@ -252,17 +254,17 @@ async def create_role_callback(guild, role, reason=None):
     back.update_guild(guild, roles=roles)
 
 
-async def move_role_callback(guild, role, positions, reason=None):
+async def move_role_callback(guild: discord.Guild, role: discord.Role, positions: typing.List[_types.JsonDict], reason: str = None) -> None:
     for pair in positions:
         guild._roles[pair["id"]].position = pair["position"]
 
 
-async def add_role_callback(member, role, reason=None):
+async def add_role_callback(member: discord.Member, role: discord.Role, reason: str = None) -> None:
     roles = [role] + [x for x in member.roles if x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
 
-async def remove_role_callback(member, role, reason=None):
+async def remove_role_callback(member: discord.Member, role: discord.Role, reason: str = None) -> None:
     roles = [x for x in member.roles if x != role and x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
@@ -271,20 +273,33 @@ counter = count(0)
 
 
 @require_config
-async def message(content, channel=0, member=0, attachments=[]):
+async def message(
+        content: str,
+        channel: typing.Union[_types.AnyChannel, int] = 0,
+        member: typing.Union[discord.Member, int] = 0,
+        attachments: typing.List[typing.Union[pathlib.Path, str]] = None
+) -> discord.Message:
     if isinstance(channel, int):
         channel = _cur_config.channels[channel]
     if isinstance(member, int):
         member = _cur_config.members[member]
     import os
-    attachments = [discord.Attachment(data={'id': counter.__next__(),
-                                            'filename': os.path.basename(attachment),
-                                            'size': 0,
-                                            'url': attachment,
-                                            'proxy_url': "",
-                                            'height': 0,
-                                            'width': 0},
-                                      state=back.get_state()) for attachment in attachments]
+    if attachments is None:
+        attachments = []
+    attachments = [
+        discord.Attachment(
+            data={
+                'id': counter.__next__(),
+                'filename': os.path.basename(attachment),
+                'size': 0,
+                'url': attachment,
+                'proxy_url': "",
+                'height': 0,
+                'width': 0
+            },
+            state=back.get_state()
+        ) for attachment in attachments
+    ]
 
     mes = back.make_message(content, member, channel, attachments=attachments)
 
@@ -298,12 +313,17 @@ async def message(content, channel=0, member=0, attachments=[]):
 
 
 @require_config
-async def set_permission_overrides(target, channel, overrides=None, **kwars):
-    if kwars:
+async def set_permission_overrides(
+        target: typing.Union[discord.User, discord.Role],
+        channel: discord.abc.GuildChannel,
+        overrides: typing.Optional[discord.PermissionOverwrite] = None,
+        **kwargs: typing.Any,
+) -> None:
+    if kwargs:
         if overrides:
             raise ValueError("either overrides parameter or kwargs")
         else:
-            overrides = discord.PermissionOverwrite(**kwars)
+            overrides = discord.PermissionOverwrite(**kwargs)
 
     if isinstance(target, int):
         target = _cur_config.members[target]
@@ -315,11 +335,12 @@ async def set_permission_overrides(target, channel, overrides=None, **kwars):
     if not isinstance(target, (discord.abc.User, discord.Role)):
         raise TypeError(f"target '{target}' must be a abc.User or Role, not '{type(target)}''")
 
+    # TODO: This will probably break for video channels/non-standard text channels
     back.update_text_channel(channel, target, overrides)
 
 
 @require_config
-async def add_role(member, role):
+async def add_role(member: discord.Member, role: discord.Role) -> None:
     if isinstance(member, int):
         member = _cur_config.members[member]
     if not isinstance(role, discord.Role):
@@ -330,7 +351,7 @@ async def add_role(member, role):
 
 
 @require_config
-async def remove_role(member, role):
+async def remove_role(member: discord.Member, role: discord.Role) -> None:
     if isinstance(member, int):
         member = _cur_config.members[member]
     if not isinstance(role, discord.Role):
@@ -341,7 +362,7 @@ async def remove_role(member, role):
 
 
 # self is a discord.Message based on how this framework runs
-async def simulate_reaction(self, emoji, member):
+async def simulate_reaction(self: discord.Message, emoji: str, member: discord.Member):
 
     state = back.get_state()
     await state.http.add_reaction(self.channel.id, self.id, emoji)
@@ -353,7 +374,7 @@ async def simulate_reaction(self, emoji, member):
 
 
 @require_config
-async def member_join(guild=0, user=None, *, name=None, discrim=None):
+async def member_join(guild: int = 0, user: discord.User = None, *, name: str = None, discrim: typing.Union[str, int] = None) -> discord.Member:
     import random
     if isinstance(guild, int):
         guild = _cur_config.guilds[guild]
@@ -368,11 +389,11 @@ async def member_join(guild=0, user=None, *, name=None, discrim=None):
     return member
 
 
-def get_config():
+def get_config() -> RunnerConfig:
     return _cur_config
 
 
-def configure(client, num_guilds=1, num_channels=1, num_members=1):
+def configure(client: discord.Client, num_guilds: int = 1, num_channels: int = 1, num_members: int = 1) -> None:
     global _cur_config
 
     if not isinstance(client, discord.Client):
