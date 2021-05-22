@@ -11,6 +11,10 @@ from . import callbacks, _types
 
 
 class FakeWebSocket(gateway.DiscordWebSocket):
+    """
+        A mock implementation of a ``DiscordWebSocket``. Instead of actually sending information to discord,
+        it simply triggers calls to the ``dpytest`` backend, as well as triggering runner callbacks.
+    """
 
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         super().__init__(*args, **kwargs)
