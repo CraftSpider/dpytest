@@ -35,6 +35,12 @@ error_queue: asyncio.Queue = asyncio.queues.Queue()
 
 
 def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[..., _types.T]:
+    """
+        Decorator to enforce that configuration is completed before the decorated function is
+        called.
+    :param func: Function to decorate
+    :return: Function with added check for configuration being setup
+    """
     def wrapper(*args, **kwargs):
         if _cur_config is None:
             log.error("Attempted to make call before runner configured")
@@ -46,7 +52,8 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
 
 async def run_all_events() -> None:
     """
-        Ensure that all dpy related coroutines have completed or been cancelled
+        Ensure that all dpy related coroutines have completed or been cancelled. If any dpy coroutines
+        are currently running, this will also wait for those.
     """
     while True:
         if sys.version_info[1] >= 7:
@@ -62,7 +69,8 @@ async def run_all_events() -> None:
 
 async def finish_on_command_error() -> None:
     """
-        Ensure that all dpy related coroutines have completed or been cancelled
+        Ensure that all dpy related coroutines have completed or been cancelled. This will only
+        wait for dpy related coroutines, not any other coroutines currently running.
     """
     if sys.version_info[1] >= 7:
         pending = filter(lambda x: x._coro.__name__ == "_run_event", asyncio.all_tasks())
@@ -79,7 +87,9 @@ def verify_message(text: str = None, equals: bool = True, contains: bool = False
         given text
 
     :param text: Text to match, or None to match anything
-    :param equals: Whether to negate the check
+    :param equals: False to invert the assertion
+    :param contains: If true, checks whether message contains the text, otherwise checks if it exactly matches
+    :param peek: If true, message will not be removed from the queue
     :param assert_nothing: Whether to assert that nothing was sent at all
     """
     if text is None:
@@ -113,10 +123,10 @@ def verify_message(text: str = None, equals: bool = True, contains: bool = False
 
 def get_message(peek: bool = False) -> discord.Message:
     """
-        Allow the user to retrieve a message sent by the bot
+        Allow the user to retrieve the most recent message sent by the bot
 
-    :param peek: do not remove the message from the queue of messages
-    :return:
+    :param peek: If true, message will not be removed from the queue
+    :return: Most recent message from the queue
     """
     message = sent_queue.get_nowait()
     if peek:
@@ -136,7 +146,8 @@ def verify_embed(embed: discord.Embed = None, allow_text: bool = False, equals: 
 
     :param embed: Embed to compare against
     :param allow_text: Whether non-embed text is allowed
-    :param equals: Whether to invert the assertion
+    :param equals: False to invert the assertion
+    :param peek: If true, message will not be removed from the queue
     :param assert_nothing: Whether to assert that no message was sent
     """
     if embed is None:
@@ -172,7 +183,7 @@ def get_embed(peek: bool = False) -> discord.Embed:
         Allow the user to retrieve an embed in a message sent by the bot
 
     :param peek: do not remove the message from the queue of messages
-    :return:
+    :return: Embed of the most recent message in the queue
     """
     message = sent_queue.get_nowait()
     if peek:
@@ -186,6 +197,16 @@ def get_embed(peek: bool = False) -> discord.Embed:
 
 
 async def verify_file(file: typing.Union[str, pathlib.Path] = None, allow_text: bool = False, equals: bool = True, assert_nothing: bool = False) -> None:
+    """
+        Assert that a message was sent containing and attached file, or that a message was not sent
+        containing an attached file.
+
+    :param file: Path to a file to check against. This file will be read and compared bytewise against
+                 the sent message's attachment.
+    :param allow_text: Whether the message may contain content
+    :param equals: False to invert the assertion
+    :param assert_nothing: Whether to assert that no file was attached
+    """
     if file is not None:
         with file.open('rb') as f:
             expected = f.read()
@@ -212,6 +233,12 @@ async def verify_file(file: typing.Union[str, pathlib.Path] = None, allow_text: 
 
 
 def verify_activity(activity: discord.Activity = None, equals: bool = True) -> None:
+    """
+        Assert that the tested client's activity was set to match the desired information.
+
+    :param activity: Activity to compare against
+    :param equals: False to invert the assertion
+    """
     if activity is None:
         equals = not equals
     me = _cur_config.guilds[0].me
@@ -229,6 +256,10 @@ def verify_activity(activity: discord.Activity = None, equals: bool = True) -> N
 
 
 async def empty_queue() -> None:
+    """
+        Empty the current message queue. Waits for all events to complete to ensure queue
+        is not immediately added to after running.
+    """
     await run_all_events()
     while not sent_queue.empty():
         await sent_queue.get()
@@ -236,15 +267,24 @@ async def empty_queue() -> None:
         await error_queue.get()
 
 
-async def message_callback(message: discord.Message) -> None:
+async def _message_callback(message: discord.Message) -> None:
+    """
+        Internal callback, on a message being sent (in any channel) adds it to the queue
+
+    :param message: Message sent on discord
+    """
     await sent_queue.put(message)
 
 
-async def error_callback(ctx: commands.Context, error: commands.CommandError) -> None:
-    await error_queue.put((ctx, error))
+async def _create_role_callback(guild: discord.Guild, role: discord.Role, reason: str = None) -> None:
+    """
+        Internal callback, on a role being created, adds it to the role list for that guild.
+        TODO: This should probably be handled by the backend, not a callback
 
-
-async def create_role_callback(guild: discord.Guild, role: discord.Role, reason: str = None) -> None:
+    :param guild: Guild the role was added to
+    :param role: Role that was created
+    :param reason: Reason for the admin log
+    """
     roles = [role] + guild.roles
     if role.position == -1:
         for r in roles:
@@ -254,17 +294,42 @@ async def create_role_callback(guild: discord.Guild, role: discord.Role, reason:
     back.update_guild(guild, roles=roles)
 
 
-async def move_role_callback(guild: discord.Guild, role: discord.Role, positions: typing.List[_types.JsonDict], reason: str = None) -> None:
+async def _move_role_callback(guild: discord.Guild, role: discord.Role, positions: typing.List[_types.JsonDict], reason: str = None) -> None:
+    """
+        Internal callback, on a role being moved, update its position in the role list for that guild.
+        TODO: This should probably be handled by the backend, not a callback
+
+    :param guild: Guild of role that was moved
+    :param role: Role that was moved
+    :param positions: New role positions
+    :param reason: Reason for the admin log
+    """
     for pair in positions:
         guild._roles[pair["id"]].position = pair["position"]
 
 
-async def add_role_callback(member: discord.Member, role: discord.Role, reason: str = None) -> None:
+async def _add_role_callback(member: discord.Member, role: discord.Role, reason: str = None) -> None:
+    """
+        Internal callback, on a role being added to a member, update the member with their new role.
+        TODO: This should probably be handled by the backend, not a callback
+
+    :param member: Member to add role to
+    :param role: Role that was added
+    :param reason: Reason for the admin log
+    """
     roles = [role] + [x for x in member.roles if x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
 
-async def remove_role_callback(member: discord.Member, role: discord.Role, reason: str = None) -> None:
+async def _remove_role_callback(member: discord.Member, role: discord.Role, reason: str = None) -> None:
+    """
+        Internal callback, on a role being removed from a member, update the member to remove the role
+        TODO: This should probably be handled by the backend, not a callback
+
+    :param member: Member to remove role from
+    :param role: Role that was removed
+    :param reason: Reason for the admin log
+    """
     roles = [x for x in member.roles if x != role and x.id != member.guild.id]
     back.update_member(member, roles=roles)
 
@@ -279,6 +344,15 @@ async def message(
         member: typing.Union[discord.Member, int] = 0,
         attachments: typing.List[typing.Union[pathlib.Path, str]] = None
 ) -> discord.Message:
+    """
+        Fake a message being sent by some user to a channel.
+
+    :param content: Content of the message
+    :param channel: Channel to send to, or index into the config list
+    :param member: Member sending the message, or index into the config list
+    :param attachments: Message attachments to include, as file paths.
+    :return: New message that was sent
+    """
     if isinstance(channel, int):
         channel = _cur_config.channels[channel]
     if isinstance(member, int):
@@ -319,6 +393,14 @@ async def set_permission_overrides(
         overrides: typing.Optional[discord.PermissionOverwrite] = None,
         **kwargs: typing.Any,
 ) -> None:
+    """
+        Set the permission override for a channel, as if set by another user.
+
+    :param target: User or Role the permissions override is being set for
+    :param channel: Channel the permissions are being set on
+    :param overrides: The permissions to use, as an object. Conflicts with using `kwargs`
+    :param kwargs: The permissions to use, as a set of keys and values. Conflicts with using `overrides`
+    """
     if kwargs:
         if overrides:
             raise ValueError("either overrides parameter or kwargs")
@@ -341,6 +423,12 @@ async def set_permission_overrides(
 
 @require_config
 async def add_role(member: discord.Member, role: discord.Role) -> None:
+    """
+        Add a role to a member, as if added by another user.
+
+    :param member: Member to add the role to
+    :param role: Role to be added
+    """
     if isinstance(member, int):
         member = _cur_config.members[member]
     if not isinstance(role, discord.Role):
@@ -352,6 +440,12 @@ async def add_role(member: discord.Member, role: discord.Role) -> None:
 
 @require_config
 async def remove_role(member: discord.Member, role: discord.Role) -> None:
+    """
+        Remove a role from a member, as if removed by another user.
+
+    :param member: Member to remove the role from
+    :param role: Role to remove
+    """
     if isinstance(member, int):
         member = _cur_config.members[member]
     if not isinstance(role, discord.Role):
@@ -419,11 +513,11 @@ def configure(client: discord.Client, num_guilds: int = 1, num_channels: int = 1
     client.on_command_error = on_command_error
 
     # Configure global callbacks
-    callbacks.set_callback(message_callback, "send_message")
-    callbacks.set_callback(create_role_callback, "create_role")
-    callbacks.set_callback(move_role_callback, "move_role")
-    callbacks.set_callback(add_role_callback, "add_role")
-    callbacks.set_callback(remove_role_callback, "remove_role")
+    callbacks.set_callback(_message_callback, "send_message")
+    callbacks.set_callback(_create_role_callback, "create_role")
+    callbacks.set_callback(_move_role_callback, "move_role")
+    callbacks.set_callback(_add_role_callback, "add_role")
+    callbacks.set_callback(_remove_role_callback, "remove_role")
 
     back.get_state().stop_dispatch()
 
