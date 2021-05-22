@@ -403,7 +403,7 @@ async def set_permission_overrides(
     """
     if kwargs:
         if overrides:
-            raise ValueError("either overrides parameter or kwargs")
+            raise ValueError("Must supply either overrides parameter or kwargs, not both")
         else:
             overrides = discord.PermissionOverwrite(**kwargs)
 
@@ -468,7 +468,21 @@ async def simulate_reaction(self: discord.Message, emoji: str, member: discord.M
 
 
 @require_config
-async def member_join(guild: int = 0, user: discord.User = None, *, name: str = None, discrim: typing.Union[str, int] = None) -> discord.Member:
+async def member_join(
+        guild: typing.Union[discord.Guild, int] = 0,
+        user: typing.Optional[discord.User] = None,
+        *,
+        name: str = None,
+        discrim: typing.Union[str, int] = None
+) -> discord.Member:
+    """
+        Have a new member join a guild, either an existing or new user for the framework
+
+    :param guild: Guild member is joining
+    :param user: User to join, or None to create a new user
+    :param name: If creating a new user, the name of the user. None to auto-generate
+    :param discrim: If creating a new user, the discrim of the user. None to auto-generate
+    """
     import random
     if isinstance(guild, int):
         guild = _cur_config.guilds[guild]
@@ -479,15 +493,31 @@ async def member_join(guild: int = 0, user: discord.User = None, *, name: str = 
         if discrim is None:
             discrim = random.randint(1, 9999)
         user = back.make_user(name, discrim)
+    elif name is not None or discrim is not None:
+        raise ValueError("Cannot supply user at the same time as name/discrim")
     member = back.make_member(user, guild)
     return member
 
 
 def get_config() -> RunnerConfig:
+    """
+        Get the current runner configuration
+
+    :return: Current runner config
+    """
     return _cur_config
 
 
 def configure(client: discord.Client, num_guilds: int = 1, num_channels: int = 1, num_members: int = 1) -> None:
+    """
+        Set up the runner configuration. This should be done before any tests are run.
+
+    :param client: Client to configure with. Should be the bot/client that is going to be tested.
+    :param num_guilds: Number of guilds to start the configuration with. Default is 1
+    :param num_channels: Number of text channels in each guild to start with. Default is 1
+    :param num_members: Number of members in each guild (other than the client) to start with. Default is 1.
+    """
+
     global _cur_config
 
     if not isinstance(client, discord.Client):
