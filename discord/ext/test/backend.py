@@ -743,7 +743,7 @@ def make_attachment(filename: pathlib.Path, name: typing.Optional[str] = None, i
     )
 
 
-def add_reaction(message: discord.Message, user: discord.User, emoji: str) -> None:
+def add_reaction(message: discord.Message, user: typing.Union[discord.user.BaseUser, discord.abc.User], emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
         emoji = {
