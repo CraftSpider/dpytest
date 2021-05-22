@@ -363,12 +363,26 @@ async def remove_role(member: discord.Member, role: discord.Role) -> None:
 
 @require_config
 async def add_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.User], message: discord.Message, emoji: str) -> None:
+    """
+        Add a reaction to a message, as if added by another user
+
+    :param user: User who reacted
+    :param message: Message they reacted to
+    :param emoji: Emoji that was used
+    """
     back.add_reaction(message, user, emoji)
     await run_all_events()
 
 
 @require_config
 async def remove_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.User], message: discord.Message, emoji: str) -> None:
+    """
+        Remove a reaction from a message, as if done by another user
+
+    :param user: User who removed their react
+    :param message: Message they removed react from
+    :param emoji: Emoji that was removed
+    """
     back.remove_reaction(message, user, emoji)
     await run_all_events()
 
