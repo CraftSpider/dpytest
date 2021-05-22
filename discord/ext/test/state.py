@@ -1,5 +1,5 @@
 """
-    Mock implementation of a `discord.state.ConnectionState`. Overwrites a Client's default state, allowing hooking of
+    Mock implementation of a ``discord.state.ConnectionState``. Overwrites a Client's default state, allowing hooking of
     its methods and support for test-related features.
 """
 

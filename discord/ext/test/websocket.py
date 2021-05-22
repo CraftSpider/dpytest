@@ -1,5 +1,5 @@
 """
-    Mock implementation of a `discord.gateway.DiscordWebSocket`. Overwrites a Client's default websocket, allowing
+    Mock implementation of a ``discord.gateway.DiscordWebSocket``. Overwrites a Client's default websocket, allowing
     hooking of its methods to update the backend and provide callbacks.
 """
 

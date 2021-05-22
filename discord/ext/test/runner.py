@@ -2,7 +2,7 @@
     Main module for setting up and running tests using dpytest.
     Handles configuration of a bot, and setup of the discord environment.
 
-    All public functions in this module are re-exported at `discord.ext.test`, this is the primary
+    All public functions in this module are re-exported at ``discord.ext.test``, this is the primary
     entry point for users of the library and most of what they should interact with.
 """
 
@@ -40,6 +40,7 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
     """
         Decorator to enforce that configuration is completed before the decorated function is
         called.
+
     :param func: Function to decorate
     :return: Function with added check for configuration being setup
     """
@@ -49,6 +50,8 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
             raise RuntimeError(f"Configure runner before calling {func.__name__}")
         return func(*args, **kwargs)
     wrapper.__wrapped__ = func
+    wrapper.__annotations__ = func.__annotations__
+    wrapper.__doc__ = func.__doc__
     return wrapper
 
 
@@ -400,8 +403,8 @@ async def set_permission_overrides(
 
     :param target: User or Role the permissions override is being set for
     :param channel: Channel the permissions are being set on
-    :param overrides: The permissions to use, as an object. Conflicts with using `kwargs`
-    :param kwargs: The permissions to use, as a set of keys and values. Conflicts with using `overrides`
+    :param overrides: The permissions to use, as an object. Conflicts with using ``kwargs``
+    :param kwargs: The permissions to use, as a set of keys and values. Conflicts with using ``overrides``
     """
     if kwargs:
         if overrides:
