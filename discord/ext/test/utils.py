@@ -1,3 +1,7 @@
+"""
+    Utility functions that don't have a place anywhere else. If it doesn't sound like it fits anywhere else,
+    and it's small, it probably goes here.
+"""
 
 import discord
 import typing

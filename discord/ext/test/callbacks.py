@@ -1,3 +1,9 @@
+"""
+    Module containing registered callbacks for various events. These events are how various parts of discord.py
+    can communicate with the frontend runner or a user's custom runner setup. These callbacks should not
+    be used to trigger backend changes, that is the responsibility of the library internals.
+"""
+
 import logging
 import typing
 from . import _types

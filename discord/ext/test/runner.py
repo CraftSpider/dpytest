@@ -1,6 +1,9 @@
 """
     Main module for setting up and running tests using dpytest.
-    Handles configuration of a bot, and setup of the discord environment
+    Handles configuration of a bot, and setup of the discord environment.
+
+    All public functions in this module are re-exported at `discord.ext.test`, this is the primary
+    entry point for users of the library and most of what they should interact with.
 """
 
 
@@ -8,7 +11,6 @@ import sys
 import asyncio
 import logging
 import discord
-import discord.ext.commands as commands
 import typing
 import pathlib
 

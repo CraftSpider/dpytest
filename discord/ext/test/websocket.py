@@ -1,3 +1,7 @@
+"""
+    Mock implementation of a `discord.gateway.DiscordWebSocket`. Overwrites a Client's default websocket, allowing
+    hooking of its methods to update the backend and provide callbacks.
+"""
 
 import typing
 import discord

@@ -1,5 +1,10 @@
 """
+    Module for 'server-side' state during testing. This module should contain
+    methods for altering said server-side state, which then are responsible for triggering
+    a `parse_*` call in the configured client state to inform the bot of the change.
 
+    This setup matches discord's actual setup, where an HTTP call triggers a change on the server,
+    which is then sent back to the bot as an event which is parsed and dispatched.
 """
 
 import asyncio
