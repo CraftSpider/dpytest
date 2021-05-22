@@ -1,5 +1,9 @@
 # History
 
+## 0.3.0
+
+- Rename simulate_reaction -> add_reaction and make it take a user to react as
+
 ## 0.2.0
 
 - Merge hint files into .py files
