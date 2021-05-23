@@ -53,7 +53,7 @@ Much less writing the same code over and over again, and tests will be automatic
 output in a nice pretty format once it's done.
 
 What is conftest.py?
-----------------
+--------------------
 
 As you write tests, you may want to split them into multiple files. One file for testing this cog, another for
 ensuring reactions work right. As it stands, you'll still need to copy your bot fixture into every file. To fix this,

@@ -24,7 +24,7 @@ from . import factories as facts, state as dstate, callbacks, websocket, _types
 class BackendState(typing.NamedTuple):
     """
         The dpytest backend, with all the state it needs to hold to be able to pretend to be
-        discord. Generally only used internally, but exposed through ``get_state``
+        discord. Generally only used internally, but exposed through :py:func:`get_state`
     """
     messages: typing.Dict[int, typing.List[_types.JsonDict]]
     state: dstate.FakeState
@@ -51,7 +51,7 @@ def _get_higher_locs(num: int) -> typing.Dict[str, typing.Any]:
 
 class FakeRequest(typing.NamedTuple):
     """
-        A fake web response, for use with discord ``HTTPException``s
+        A fake web response, for use with discord ``HTTPException``\ s
     """
     status: int
     reason: str
@@ -63,7 +63,6 @@ class FakeHttp(dhttp.HTTPClient):
         a runner callback and calls the ``dpytest`` backend to update any necessary state and trigger any necessary
         fake messages to the client.
     """
-
     fileno: typing.ClassVar[int] = 0
     state: dstate.FakeState
 
@@ -80,6 +79,7 @@ class FakeHttp(dhttp.HTTPClient):
             Overloaded to raise a NotImplemented error informing the user that the requested operation
             isn't yet supported by ``dpytest``. To fix this, the method call that triggered this error should be
             overloaded below to instead trigger a callback and call the appropriate backend function.
+
         :param args: Arguments provided to the request
         :param kwargs: Keyword arguments provided to the request
         """
