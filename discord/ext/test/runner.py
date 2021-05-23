@@ -361,16 +361,30 @@ async def remove_role(member: discord.Member, role: discord.Role) -> None:
     back.update_member(member, roles=roles)
 
 
-# self is a discord.Message based on how this framework runs
-async def simulate_reaction(self: discord.Message, emoji: str, member: discord.Member):
+@require_config
+async def add_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.User], message: discord.Message, emoji: str) -> None:
+    """
+        Add a reaction to a message, as if added by another user
 
-    state = back.get_state()
-    await state.http.add_reaction(self.channel.id, self.id, emoji)
+    :param user: User who reacted
+    :param message: Message they reacted to
+    :param emoji: Emoji that was used
+    """
+    back.add_reaction(message, user, emoji)
     await run_all_events()
 
-    if not error_queue.empty():
-        err = await error_queue.get()
-        raise err[1]
+
+@require_config
+async def remove_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.User], message: discord.Message, emoji: str) -> None:
+    """
+        Remove a reaction from a message, as if done by another user
+
+    :param user: User who removed their react
+    :param message: Message they removed react from
+    :param emoji: Emoji that was removed
+    """
+    back.remove_reaction(message, user, emoji)
+    await run_all_events()
 
 
 @require_config
