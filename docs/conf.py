@@ -22,7 +22,7 @@ copyright = '2020, CraftSpider'
 author = 'CraftSpider'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.18'
+release = '0.2.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -33,6 +33,7 @@ release = '0.0.18'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
+    'sphinx_automodapi.smart_resolver',
 ]
 
 # Add any paths that contain templates here, relative to this directory.

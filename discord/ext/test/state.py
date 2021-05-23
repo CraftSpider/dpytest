@@ -14,6 +14,10 @@ from . import backend as back
 
 
 class FakeState(dstate.ConnectionState):
+    """
+        A mock implementation of a ``ConnectionState``. Overrides methods that would otherwise cause issues, and
+        implements functionality such as disabling dispatch temporarily.
+    """
 
     http: 'back.FakeHttp'  # String because of circular import
 
