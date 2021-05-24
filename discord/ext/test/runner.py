@@ -15,7 +15,7 @@ import typing
 import pathlib
 
 from . import backend as back, callbacks, _types
-from .utils import embed_eq
+from .utils import embed_eq, PeekableQueue
 
 
 class RunnerConfig(typing.NamedTuple):
@@ -32,8 +32,8 @@ class RunnerConfig(typing.NamedTuple):
 
 log = logging.getLogger("discord.ext.tests")
 _cur_config: typing.Optional[RunnerConfig] = None
-sent_queue: asyncio.Queue = asyncio.queues.Queue()
-error_queue: asyncio.Queue = asyncio.queues.Queue()
+sent_queue: PeekableQueue = PeekableQueue()
+error_queue: PeekableQueue = PeekableQueue()
 
 
 def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[..., _types.T]:
@@ -104,14 +104,10 @@ def verify_message(text: str = None, equals: bool = True, contains: bool = False
         return
 
     try:
-        message = sent_queue.get_nowait()
         if peek:
-            messages = [message]
-            while not sent_queue.empty():
-                tmp_message = sent_queue.get_nowait()
-                messages.append(tmp_message)
-            for tmp_message in messages:
-                sent_queue.put_nowait(tmp_message)
+            message = sent_queue.peek()
+        else:
+            message = sent_queue.get_nowait()
         if equals:
             if contains:
                 assert text in message.content, f"Didn't find expected text. Expected {text} to be in {message.content}"
@@ -133,14 +129,10 @@ def get_message(peek: bool = False) -> discord.Message:
     :param peek: If true, message will not be removed from the queue
     :return: Most recent message from the queue
     """
-    message = sent_queue.get_nowait()
     if peek:
-        messages = [message]
-        while not sent_queue.empty():
-            tmp_message = sent_queue.get_nowait()
-            messages.append(tmp_message)
-        for tmp_message in messages:
-            sent_queue.put_nowait(tmp_message)
+        message = sent_queue.peek()
+    else:
+        message = sent_queue.get_nowait()
     return message
 
 
@@ -162,16 +154,12 @@ def verify_embed(embed: discord.Embed = None, allow_text: bool = False, equals: 
         return
 
     try:
-        message = sent_queue.get_nowait()
+        if peek:
+            message = sent_queue.peek()
+        else:
+            message = sent_queue.get_nowait()
         if not allow_text:
             assert not message.content
-        if peek:
-            messages = [message]
-            while not sent_queue.empty():
-                tmp_message = sent_queue.get_nowait()
-                messages.append(tmp_message)
-            for tmp_message in messages:
-                sent_queue.put_nowait(tmp_message)
         emb = None
         if len(message.embeds) > 0:
             emb = message.embeds[0]
@@ -190,14 +178,11 @@ def get_embed(peek: bool = False) -> discord.Embed:
     :param peek: do not remove the message from the queue of messages
     :return: Embed of the most recent message in the queue
     """
-    message = sent_queue.get_nowait()
+
     if peek:
-        messages = [message]
-        while not sent_queue.empty():
-            tmp_message = sent_queue.get_nowait()
-            messages.insert(0, tmp_message)
-        for tmp_message in messages:
-            sent_queue.put_nowait(tmp_message)
+        message = sent_queue.peek()
+    else:
+        message = sent_queue.get_nowait()
     return message.embeds[0]
 
 
