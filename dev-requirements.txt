@@ -4,3 +4,4 @@ pytest-asyncio
 coverage
 discord.py==1.7.2
 invoke
+sphinx-automodapi

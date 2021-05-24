@@ -6,7 +6,7 @@
 Welcome to the dpytest documentation!
 =====================================
 
-The dpytest library is designed to make testing of discord bots easy and painless.
+The ``dpytest`` library is designed to make testing of discord bots easy and painless.
 
 The library is currently in its infancy, and only supports a subset of the discord API.
 Also, the API is not yet finalized, and may change somewhat rapidly. Breaking changes can be

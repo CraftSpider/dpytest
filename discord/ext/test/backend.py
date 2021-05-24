@@ -1,5 +1,10 @@
 """
+    Module for 'server-side' state during testing. This module should contain
+    methods for altering said server-side state, which then are responsible for triggering
+    a ``parse_*`` call in the configured client state to inform the bot of the change.
 
+    This setup matches discord's actual setup, where an HTTP call triggers a change on the server,
+    which is then sent back to the bot as an event which is parsed and dispatched.
 """
 
 import asyncio
@@ -17,6 +22,10 @@ from . import factories as facts, state as dstate, callbacks, websocket, _types
 
 
 class BackendState(typing.NamedTuple):
+    """
+        The dpytest backend, with all the state it needs to hold to be able to pretend to be
+        discord. Generally only used internally, but exposed through :py:func:`get_state`
+    """
     messages: typing.Dict[int, typing.List[_types.JsonDict]]
     state: dstate.FakeState
 
@@ -27,6 +36,13 @@ _undefined = object()  # default value for when NoneType has special meaning
 
 
 def _get_higher_locs(num: int) -> typing.Dict[str, typing.Any]:
+    """
+        Get the local variables from higher in the call-stack. Should only be used in FakeHttp for
+        retrieving information not passed to it by its caller.
+
+    :param num: How many calls up to retrieve from
+    :return: The local variables of that call, as a dictionary
+    """
     frame = sys._getframe(num + 1)
     locs = frame.f_locals
     del frame
@@ -34,12 +50,19 @@ def _get_higher_locs(num: int) -> typing.Dict[str, typing.Any]:
 
 
 class FakeRequest(typing.NamedTuple):
+    """
+        A fake web response, for use with discord ``HTTPException``\ s
+    """
     status: int
     reason: str
 
 
 class FakeHttp(dhttp.HTTPClient):
-
+    """
+        A mock implementation of an ``HTTPClient``. Instead of actually sending requests to discord, it triggers
+        a runner callback and calls the ``dpytest`` backend to update any necessary state and trigger any necessary
+        fake messages to the client.
+    """
     fileno: typing.ClassVar[int] = 0
     state: dstate.FakeState
 
@@ -52,6 +75,14 @@ class FakeHttp(dhttp.HTTPClient):
         super().__init__(connector=None, loop=loop)
 
     async def request(self, *args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+        """
+            Overloaded to raise a NotImplemented error informing the user that the requested operation
+            isn't yet supported by ``dpytest``. To fix this, the method call that triggered this error should be
+            overloaded below to instead trigger a callback and call the appropriate backend function.
+
+        :param args: Arguments provided to the request
+        :param kwargs: Keyword arguments provided to the request
+        """
         route: discord.http.Route = args[0]
         raise NotImplementedError(
             f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
@@ -437,6 +468,11 @@ class FakeHttp(dhttp.HTTPClient):
 
 
 def get_state() -> dstate.FakeState:
+    """
+        Get the current backend state, or raise an error if it hasn't been configured
+
+    :return: Current backend state
+    """
     if _cur_config is None:
         raise ValueError("Discord class factories not configured")
     return _cur_config.state

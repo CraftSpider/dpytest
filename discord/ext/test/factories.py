@@ -1,3 +1,7 @@
+"""
+    Module for (mostly) stateless creation/destructuring of discord.py objects. Primarily a utility
+    for the rest of the library, which often needs to convert between objects and JSON at various stages.
+"""
 
 import typing
 import datetime as dt
