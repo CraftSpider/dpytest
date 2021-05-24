@@ -8,7 +8,7 @@ async def test_dm_send(bot):
     guild = bot.guilds[0]
     await guild.members[0].send("hi")
 
-    test.verify_message("hi")
+    assert test.verify().message().content("hi")
 
 
 @pytest.mark.asyncio
@@ -19,4 +19,4 @@ async def test_dm_message(bot):
     dm = await member.create_dm()
     await test.message("!echo Ah-Ha!", dm)
 
-    test.verify_message("Ah-Ha!")
+    assert test.verify().message().content("Ah-Ha!")

@@ -12,5 +12,4 @@ async def test_verify_activity(bot):
     await bot.change_presence(activity=fake_act)
 
     dpytest.verify_activity(fake_act)
-    await dpytest.empty_queue()
 

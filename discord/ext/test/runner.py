@@ -86,42 +86,6 @@ async def finish_on_command_error() -> None:
             await task
 
 
-def verify_message(text: str = None, equals: bool = True, contains: bool = False, peek: bool = False, assert_nothing: bool = False) -> None:
-    """
-        Assert that a message was sent with the given text, or that a message was sent that *doesn't* match the
-        given text
-
-    :param text: Text to match, or None to match anything
-    :param equals: False to invert the assertion
-    :param contains: If true, checks whether message contains the text, otherwise checks if it exactly matches
-    :param peek: If true, message will not be removed from the queue
-    :param assert_nothing: Whether to assert that nothing was sent at all
-    """
-    if text is None:
-        equals = not equals
-    if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"  # noqa: E501
-        return
-
-    try:
-        if peek:
-            message = sent_queue.peek()
-        else:
-            message = sent_queue.get_nowait()
-        if equals:
-            if contains:
-                assert text in message.content, f"Didn't find expected text. Expected {text} to be in {message.content}"
-            else:
-                assert message.content == text, f"Didn't find expected text. Expected {text}, found {message.content}"
-        else:
-            if contains:
-                assert text not in message.content, f"Found unexpected text. Expected something not containing {text}"
-            else:
-                assert message.content != text, f"Found unexpected text. Expected something not matching {text}"
-    except asyncio.QueueEmpty:
-        raise AssertionError("No message returned by command")
-
-
 def get_message(peek: bool = False) -> discord.Message:
     """
         Allow the user to retrieve the most recent message sent by the bot
@@ -134,41 +98,6 @@ def get_message(peek: bool = False) -> discord.Message:
     else:
         message = sent_queue.get_nowait()
     return message
-
-
-def verify_embed(embed: discord.Embed = None, allow_text: bool = False, equals: bool = True, peek: bool = False, assert_nothing: bool = False) -> None:
-    """
-        Assert that a message was sent containing an embed, or that a message was sent not
-        containing an embed
-
-    :param embed: Embed to compare against
-    :param allow_text: Whether non-embed text is allowed
-    :param equals: False to invert the assertion
-    :param peek: If true, message will not be removed from the queue
-    :param assert_nothing: Whether to assert that no message was sent
-    """
-    if embed is None:
-        equals = not equals
-    if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"  # noqa: E501
-        return
-
-    try:
-        if peek:
-            message = sent_queue.peek()
-        else:
-            message = sent_queue.get_nowait()
-        if not allow_text:
-            assert not message.content
-        emb = None
-        if len(message.embeds) > 0:
-            emb = message.embeds[0]
-        if equals:
-            assert embed_eq(emb, embed), "Didn't find expected embed"
-        else:
-            assert not embed_eq(emb, embed), "Found unexpected embed"
-    except asyncio.QueueEmpty:
-        raise AssertionError("No message returned by command")
 
 
 def get_embed(peek: bool = False) -> discord.Embed:
@@ -184,42 +113,6 @@ def get_embed(peek: bool = False) -> discord.Embed:
     else:
         message = sent_queue.get_nowait()
     return message.embeds[0]
-
-
-async def verify_file(file: typing.Union[str, pathlib.Path] = None, allow_text: bool = False, equals: bool = True, assert_nothing: bool = False) -> None:
-    """
-        Assert that a message was sent containing and attached file, or that a message was not sent
-        containing an attached file.
-
-    :param file: Path to a file to check against. This file will be read and compared bytewise against
-                 the sent message's attachment.
-    :param allow_text: Whether the message may contain content
-    :param equals: False to invert the assertion
-    :param assert_nothing: Whether to assert that no file was attached
-    """
-    if file is not None:
-        with file.open('rb') as f:
-            expected = f.read()
-    else:
-        equals = not equals
-        expected = None
-    if assert_nothing:
-        assert sent_queue.qsize() == 0, f"A message was not meant to be sent but this message was sent {sent_queue.get_nowait().content}"  # noqa: E501
-
-    try:
-        message = sent_queue.get_nowait()
-        if not allow_text:
-            assert not message.content
-
-        attach = None
-        if len(message.attachments) > 0:
-            attach = await message.attachments[0].read()
-        if equals:
-            assert attach == expected, "Didn't find expected file"
-        else:
-            assert attach != expected, "Found unexpected file"
-    except asyncio.QueueEmpty:
-        raise AssertionError("No message returned by command")
 
 
 def verify_activity(activity: discord.Activity = None, equals: bool = True) -> None:

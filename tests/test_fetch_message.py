@@ -15,5 +15,3 @@ async def test_get_message(bot):
 
     with pytest.raises(discord.NotFound):
         await channel.fetch_message(0xBADBEEF)
-
-    await dpytest.empty_queue()

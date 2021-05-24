@@ -21,4 +21,4 @@ async def test_member_join(bot):
 
     await dpytest.run_all_events()  # requires for the cov Greeting listner to be executed  # noqa: E501
 
-    dpytest.verify_message('Welcome {0.mention}.'.format(new_member))
+    assert dpytest.verify().message().content('Welcome {0.mention}.'.format(new_member))

@@ -12,8 +12,7 @@ async def test_verify_file_text(bot):
     path_ = Path(__file__).resolve().parent / 'data/loremimpsum.txt'
     file_ = discord.File(path_)
     await channel.send(file=file_)
-    await dpytest.verify_file(path_)
-    await dpytest.empty_queue()
+    assert dpytest.verify().message().attachment(path_)
 
 
 @pytest.mark.asyncio
@@ -24,8 +23,7 @@ async def test_verify_file_jpg(bot):
     path_ = Path(__file__).resolve().parent / 'data/unit-tests.jpg'
     file_ = discord.File(path_)
     await channel.send(file=file_)
-    await dpytest.verify_file(path_)
-    await dpytest.empty_queue()
+    assert dpytest.verify().message().attachment(path_)
 
 
 @pytest.mark.asyncio
@@ -37,5 +35,4 @@ async def test_verify_file_KO(bot):
     file_ = discord.File(path_)
     await channel.send(file=file_)
     path2 = Path(__file__).resolve().parent / 'data/loremimpsum.txt'
-    await dpytest.verify_file(path2, equals=False)
-    await dpytest.empty_queue()
+    assert dpytest.verify().message().not_().attachment(path2)
