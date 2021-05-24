@@ -75,7 +75,7 @@ class VerifyMessage:
         if self._content is not None and self._content is not _undefined:
             if self._contains and self._content not in msg.content:
                 return False
-            elif self._content != msg.content:
+            if not self._contains and self._content != msg.content:
                 return False
         # TODO: Support contains for these two below, 'contains' should mean 'any number of which one matches',
         #       while 'exact' should be 'only one which must match'
@@ -84,7 +84,6 @@ class VerifyMessage:
                 return False
         if self._attachment is not None and self._attachment is not _undefined:
             import urllib.request as request
-            print("Filename: {}".format(msg.attachments[0].filename))
             with open(self._attachment, "rb") as file:
                 expected = file.read()
             # Generally, the URLs should be `file://` URLs, but this will work fine if they actually point elsewhere
