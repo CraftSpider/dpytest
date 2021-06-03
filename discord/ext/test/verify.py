@@ -4,8 +4,8 @@ import asyncio
 import pathlib
 import discord
 
-from .runner import sent_queue
-from .utils import embed_eq
+from .runner import sent_queue, get_config
+from .utils import embed_eq, activity_eq
 
 
 class _Undef:
@@ -34,7 +34,9 @@ class VerifyMessage:
     _embed: typing.Union[None, _Undef, discord.Embed]
     _attachment: typing.Union[None, _Undef, str, pathlib.Path]
 
-    def __init__(self):
+    def __init__(self) -> None:
+        self._used = False
+
         self._invert = False
         self._contains = False
         self._peek = False
@@ -43,7 +45,14 @@ class VerifyMessage:
         self._embed = _undefined
         self._attachment = _undefined
 
-    def __bool__(self):
+    def __del__(self) -> None:
+        if not self._used:
+            import warnings
+            warnings.warn("VerifyMessage dropped without being used, did you forget an `assert`?", RuntimeWarning)
+
+    def __bool__(self) -> bool:
+        self._used = True
+
         if self._nothing:
             return sent_queue.qsize() != 0 if self._invert else sent_queue.qsize() == 0
 
@@ -62,7 +71,7 @@ class VerifyMessage:
 
         return result
 
-    def _check_msg(self, msg: discord.Message):
+    def _check_msg(self, msg: discord.Message) -> bool:
         # If any attributes are 'None', check that they don't exist
         if self._content is None and msg.content != "":
             return False
@@ -77,11 +86,13 @@ class VerifyMessage:
                 return False
             if not self._contains and self._content != msg.content:
                 return False
-        # TODO: Support contains for these two below, 'contains' should mean 'any number of which one matches',
-        #       while 'exact' should be 'only one which must match'
         if self._embed is not None and self._embed is not _undefined:
-            if not embed_eq(self._embed, msg.embeds[0]):
+            if self._contains and not any(map(lambda e: embed_eq(self._embed, e), msg.embeds)):
                 return False
+            if not self._contains and (len(msg.embeds) != 1 or not embed_eq(self._embed, msg.embeds[0])):
+                return False
+        # TODO: Support contains for attachments, 'contains' should mean 'any number of which one matches',
+        #       while 'exact' should be 'only one which must match'
         if self._attachment is not None and self._attachment is not _undefined:
             import urllib.request as request
             with open(self._attachment, "rb") as file:
@@ -131,6 +142,66 @@ class VerifyMessage:
         return self
 
 
+class VerifyActivity:
+
+    def __init__(self) -> None:
+        self._used = False
+
+        self._activity = _undefined
+        self._name = _undefined
+        self._url = _undefined
+        self._type = _undefined
+
+    def __del__(self) -> None:
+        if not self._used:
+            import warnings
+            warnings.warn("VerifyActivity dropped without being used, did you forget an `assert`?", RuntimeWarning)
+
+    def __bool__(self) -> bool:
+        self._used = True
+
+        bot_act = get_config().guilds[0].me.activity
+
+        if self._activity is not _undefined:
+            return activity_eq(self._activity, bot_act)
+
+        if self._name is not _undefined:
+            if self._name != bot_act.name:
+                return False
+        if self._url is not _undefined:
+            if self._url != bot_act.url:
+                return False
+        if self._type is not _undefined:
+            if self._type != bot_act.type:
+                return False
+
+        return True
+
+    def matches(self, activity) -> 'VerifyActivity':
+        if self._name is not _undefined or self._url is not _undefined or self._type is not _undefined:
+            raise ValueError("Verify exact match conflicts with verifying attributes")
+        self._activity = activity
+        return self
+
+    def name(self, name: str) -> 'VerifyActivity':
+        if self._activity is not _undefined:
+            raise ValueError("Verify name conflicts with verifying exact match")
+        self._name = name
+        return self
+
+    def url(self, url: str) -> 'VerifyActivity':
+        if self._activity is not _undefined:
+            raise ValueError("Verify url conflicts with verifying exact match")
+        self._url = url
+        return self
+
+    def type(self, type: discord.ActivityType) -> 'VerifyActivity':
+        if self._activity is not _undefined:
+            raise ValueError("Verify type conflicts with verifying exact match")
+        self._type = type
+        return self
+
+
 class Verify:
 
     def __init__(self):
@@ -138,6 +209,9 @@ class Verify:
 
     def message(self) -> VerifyMessage:
         return VerifyMessage()
+
+    def activity(self) -> VerifyActivity:
+        return VerifyActivity()
 
 
 def verify() -> Verify:

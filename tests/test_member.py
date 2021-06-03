@@ -1,4 +1,3 @@
-import discord
 import pytest
 import discord.ext.test as dpytest
 
@@ -21,4 +20,4 @@ async def test_member_join(bot):
 
     await dpytest.run_all_events()  # requires for the cov Greeting listner to be executed  # noqa: E501
 
-    assert dpytest.verify().message().content('Welcome {0.mention}.'.format(new_member))
+    assert dpytest.verify().message().content(f"Welcome {new_member.mention}.")

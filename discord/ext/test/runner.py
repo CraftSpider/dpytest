@@ -15,7 +15,7 @@ import typing
 import pathlib
 
 from . import backend as back, callbacks, _types
-from .utils import embed_eq, PeekableQueue
+from .utils import PeekableQueue
 
 
 class RunnerConfig(typing.NamedTuple):
@@ -113,29 +113,6 @@ def get_embed(peek: bool = False) -> discord.Embed:
     else:
         message = sent_queue.get_nowait()
     return message.embeds[0]
-
-
-def verify_activity(activity: discord.Activity = None, equals: bool = True) -> None:
-    """
-        Assert that the tested client's activity was set to match the desired information.
-
-    :param activity: Activity to compare against
-    :param equals: False to invert the assertion
-    """
-    if activity is None:
-        equals = not equals
-    me = _cur_config.guilds[0].me
-
-    me_act = me.activity
-    if isinstance(activity, discord.BaseActivity):
-        activity = (activity.name, activity.url, activity.type)
-    if isinstance(me_act, discord.BaseActivity):
-        me_act = (me_act.name, me_act.url, me_act.type)
-
-    if equals:
-        assert me_act == activity, "Didn't find expected activity"
-    else:
-        assert me_act != activity, "Found unexpected activity"
 
 
 async def empty_queue() -> None:
