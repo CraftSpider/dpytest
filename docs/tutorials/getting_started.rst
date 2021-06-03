@@ -31,14 +31,14 @@ it goes into the ``discord.py`` extensions module. So, the most basic usage of d
         bot = ...  # However you create your bot.
         dpytest.configure(bot)
         await dpytest.message("!ping")
-        dpytest.verify_message("Ping:", contains=True)
+        assert dpytest.verify().message().contains().content("Ping:")
 
 
     async def test_foo():
         bot = ... # Same setup as above
         dpytest.configure(bot)
         await dpytest.message("!hello")
-        dpytest.verify_message("Hello World!")
+        assert dpytest.verify().message().content("Hello World!")
 
 
     asyncio.run(test_ping())
@@ -46,6 +46,8 @@ it goes into the ``discord.py`` extensions module. So, the most basic usage of d
 
 If that looks like a lot of code just to run tests, don't worry, there's a better way! We can use pytest,
 a popular Python testing library.
+
+--------------------
 
 **Next Tutorial**: `Using Pytest`_
 

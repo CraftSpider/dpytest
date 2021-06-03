@@ -47,9 +47,15 @@ class FakeState(dstate.ConnectionState):
         self.dispatch = dispatch
 
     def stop_dispatch(self) -> None:
+        """
+            Stop dispatching events to the client, if we are
+        """
         self._do_dispatch = False
 
     def start_dispatch(self) -> None:
+        """
+            Start dispatching events to the client, if we aren't already
+        """
         self._do_dispatch = True
 
     # TODO: Respect limit parameters

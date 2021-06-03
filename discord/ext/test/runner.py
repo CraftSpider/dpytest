@@ -266,63 +266,6 @@ async def _message_callback(message: discord.Message) -> None:
     await sent_queue.put(message)
 
 
-async def _create_role_callback(guild: discord.Guild, role: discord.Role, reason: str = None) -> None:
-    """
-        Internal callback, on a role being created, adds it to the role list for that guild.
-        TODO: This should probably be handled by the backend, not a callback
-
-    :param guild: Guild the role was added to
-    :param role: Role that was created
-    :param reason: Reason for the admin log
-    """
-    roles = [role] + guild.roles
-    if role.position == -1:
-        for r in roles:
-            if r.position != 0:
-                r.position += 1
-        role.position = 1
-    back.update_guild(guild, roles=roles)
-
-
-async def _move_role_callback(guild: discord.Guild, role: discord.Role, positions: typing.List[_types.JsonDict], reason: str = None) -> None:
-    """
-        Internal callback, on a role being moved, update its position in the role list for that guild.
-        TODO: This should probably be handled by the backend, not a callback
-
-    :param guild: Guild of role that was moved
-    :param role: Role that was moved
-    :param positions: New role positions
-    :param reason: Reason for the admin log
-    """
-    for pair in positions:
-        guild._roles[pair["id"]].position = pair["position"]
-
-
-async def _add_role_callback(member: discord.Member, role: discord.Role, reason: str = None) -> None:
-    """
-        Internal callback, on a role being added to a member, update the member with their new role.
-        TODO: This should probably be handled by the backend, not a callback
-
-    :param member: Member to add role to
-    :param role: Role that was added
-    :param reason: Reason for the admin log
-    """
-    roles = [role] + [x for x in member.roles if x.id != member.guild.id]
-    back.update_member(member, roles=roles)
-
-
-async def _remove_role_callback(member: discord.Member, role: discord.Role, reason: str = None) -> None:
-    """
-        Internal callback, on a role being removed from a member, update the member to remove the role
-        TODO: This should probably be handled by the backend, not a callback
-
-    :param member: Member to remove role from
-    :param role: Role that was removed
-    :param reason: Reason for the admin log
-    """
-    roles = [x for x in member.roles if x != role and x.id != member.guild.id]
-    back.update_member(member, roles=roles)
-
 from itertools import count
 counter = count(0)
 
@@ -548,10 +491,6 @@ def configure(client: discord.Client, num_guilds: int = 1, num_channels: int = 1
 
     # Configure global callbacks
     callbacks.set_callback(_message_callback, "send_message")
-    callbacks.set_callback(_create_role_callback, "create_role")
-    callbacks.set_callback(_move_role_callback, "move_role")
-    callbacks.set_callback(_add_role_callback, "add_role")
-    callbacks.set_callback(_remove_role_callback, "remove_role")
 
     back.get_state().stop_dispatch()
 

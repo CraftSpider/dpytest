@@ -32,8 +32,8 @@ Putting all this together, we can rewrite our previous tests to look like this:
 
 
     @pytest.fixture
-    def bot():
-        bot = ... # However you create your bot
+    def bot(event_loop):
+        bot = ... # However you create your bot, make sure to use loop=event_loop
         dpytest.configure(bot)
         return bot
 
@@ -41,13 +41,13 @@ Putting all this together, we can rewrite our previous tests to look like this:
     @pytest.mark.asyncio
     async def test_ping(bot):
         await dpytest.message("!ping")
-        dpytest.verify_message("Ping:", contains=True)
+        assert dpytest.verify().message().contains().content("Ping:")
 
 
     @pytest.mark.asyncio
     async def test_foo(bot):
         await dpytest.message("!hello")
-        dpytest.verify_message("Hello World!")
+        assert dpytest.verify().message().content("Hello World!")
 
 Much less writing the same code over and over again, and tests will be automatically run by pytest, then the results
 output in a nice pretty format once it's done.
@@ -71,23 +71,39 @@ An example ``conftest.py`` might look like this:
 
 
     @pytest.fixture
-    def bot():
-        bot = ... # However you create your bot
+    def bot(event_loop):
+        bot = ... # However you create your bot, make sure to use loop=event_loop
         dpytest.configure(bot)
         return bot
 
 
     def pytest_sessionfinish():
         # Clean up attachment files
-        fileList = glob.glob('./dpytest_*.dat')
-        for filePath in fileList:
+        files = glob.glob('./dpytest_*.dat')
+        for path in files:
             try:
-                os.remove(filePath)
-            except Exception:
-                print("Error while deleting file : ", filePath)
+                os.remove(path)
+            except Exception as e:
+                print(f"Error while deleting file {path}: {e}")
 
 With that, you should be ready to use ``dpytest`` with your bot.
 
+Troubleshooting
+---------------
+
+- I wrote a fixture, but I can't use the bot
+
+Make sure your tests take a parameter with the exact same name as the fixture,
+pytest runs them based on name, including capitalization.
+
+- I get an instance of my bot, but it just gets stuck / doesn't do anything
+  when I ``await``
+
+Make sure you passed ``event_loop`` to your bot when creating it. Pytest-asyncio
+does not necessarily use the default event loop, so your bot may not actually
+be running.
+
+--------------------
 
 This is currently the end of the tutorials. Take a look at the `Runner Documentation`_ to see all the things you can
 do with ``dpytest``.
