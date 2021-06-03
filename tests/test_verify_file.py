@@ -35,4 +35,4 @@ async def test_verify_file_KO(bot):
     file_ = discord.File(path_)
     await channel.send(file=file_)
     path2 = Path(__file__).resolve().parent / 'data/loremimpsum.txt'
-    assert dpytest.verify().message().not_().attachment(path2)
+    assert not dpytest.verify().message().attachment(path2)

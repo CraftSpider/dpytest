@@ -18,7 +18,7 @@ async def test_message_not_equals(bot):
     channel = guild.text_channels[0]
 
     await channel.send("You shall pass !!")
-    assert dpytest.verify().message().not_().content("You shall not pass !!")
+    assert not dpytest.verify().message().content("You shall not pass !!")
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,7 @@ async def test_message_contains_false(bot):
     channel = guild.text_channels[0]
 
     await channel.send("Very long message talking about Foobar")
-    assert dpytest.verify().message().not_().contains().content("Barfoo")
+    assert not dpytest.verify().message().contains().content("Barfoo")
 
 
 @pytest.mark.asyncio

@@ -30,7 +30,7 @@ async def test_embed_KO(bot):
     embed2.add_field(name="Field 35", value="Foo Bar")
 
     await channel.send(embed=embed)
-    assert dpytest.verify().message().not_().embed(embed2)
+    assert not dpytest.verify().message().embed(embed2)
 
 
 @pytest.mark.asyncio

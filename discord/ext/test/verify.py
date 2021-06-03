@@ -1,3 +1,13 @@
+"""
+    Main module for supporting predicate-style assertions.
+    Handles checking various state matches the desired outcome.
+
+    All verify types should be re-exported at ``discord.ext.test``, this is the primary
+    entry point for assertions in the library
+
+    See also:
+        :mod:`discord.ext.test.runner`
+"""
 
 import typing
 import asyncio
@@ -25,6 +35,12 @@ _undefined = _Undef()
 
 
 class VerifyMessage:
+    """
+        Builder for message verifications. When done building, should be asserted.
+
+        **Example**:
+        ``assert dpytest.verify().message().content("Hello World!")``
+    """
 
     _invert: bool
     _contains: bool
@@ -37,7 +53,6 @@ class VerifyMessage:
     def __init__(self) -> None:
         self._used = False
 
-        self._invert = False
         self._contains = False
         self._peek = False
         self._nothing = False
@@ -54,7 +69,7 @@ class VerifyMessage:
         self._used = True
 
         if self._nothing:
-            return sent_queue.qsize() != 0 if self._invert else sent_queue.qsize() == 0
+            return sent_queue.qsize() == 0
 
         if self._peek:
             message: discord.Message = sent_queue.peek()
@@ -65,11 +80,7 @@ class VerifyMessage:
                 # By now we're expecting a message, not getting one is a failure
                 return False
 
-        result = self._check_msg(message)
-        if self._invert:
-            result = not result
-
-        return result
+        return self._check_msg(message)
 
     def _check_msg(self, msg: discord.Message) -> bool:
         # If any attributes are 'None', check that they don't exist
@@ -105,37 +116,67 @@ class VerifyMessage:
         # Nothing failed, so we must match the message
         return True
 
-    def not_(self) -> 'VerifyMessage':
-        self._invert = True
-        return self
-
     def contains(self) -> 'VerifyMessage':
+        """
+            Only check whether content/embed list/etc contain the desired input, not that they necessarily match
+            exactly
+
+        :return: Self for chaining
+        """
         self._contains = True
         return self
 
     def peek(self) -> 'VerifyMessage':
+        """
+            Don't remove the verified message from the queue
+
+        :return: Self for chaining
+        """
         self._peek = True
         return self
 
     def nothing(self) -> 'VerifyMessage':
+        """
+            Check that no message was sent
+
+        :return: Self for chaining
+        """
         if self._content is not _undefined or self._embed is not _undefined or self._attachment is not _undefined:
             raise ValueError("Verify nothing conflicts with verifying some content, embed, or attachment")
         self._nothing = True
         return self
 
     def content(self, content: typing.Optional[str]) -> 'VerifyMessage':
+        """
+            Check that the message content matches the input
+
+        :param content: Content to match against, or None to ensure no content
+        :return: Self for chaining
+        """
         if self._nothing:
             raise ValueError("Verify content conflicts with verifying nothing")
         self._content = content
         return self
 
     def embed(self, embed: typing.Optional[discord.Embed]) -> 'VerifyMessage':
+        """
+            Check that the message embed matches the input
+
+        :param embed: Embed to match against, or None to ensure no embed
+        :return: Self for chaining
+        """
         if self._nothing:
             raise ValueError("Verify embed conflicts with verifying nothing")
         self._embed = embed
         return self
 
     def attachment(self, attach: typing.Optional[typing.Union[str, pathlib.Path]]) -> 'VerifyMessage':
+        """
+            Check that the message attachment matches the input
+
+        :param attach: Attachment path to match against, or None to ensure no attachment
+        :return: Self for chaining
+        """
         if self._nothing:
             raise ValueError("Verify attachment conflicts with verifying nothing")
         self._attachment = attach
@@ -143,6 +184,12 @@ class VerifyMessage:
 
 
 class VerifyActivity:
+    """
+        Builder for activity verifications. When done building, should be asserted
+
+        **Example**:
+        ``assert not dpytest.verify().activity().name("Foobar")``
+    """
 
     def __init__(self) -> None:
         self._used = False
@@ -178,24 +225,48 @@ class VerifyActivity:
         return True
 
     def matches(self, activity) -> 'VerifyActivity':
+        """
+            Ensure that the bot activity exactly matches the passed activity. Most restrictive possible check.
+
+        :param activity: Activity to compare against
+        :return: Self for chaining
+        """
         if self._name is not _undefined or self._url is not _undefined or self._type is not _undefined:
             raise ValueError("Verify exact match conflicts with verifying attributes")
         self._activity = activity
         return self
 
     def name(self, name: str) -> 'VerifyActivity':
+        """
+            Check that the activity name matches the input
+
+        :param name: Name to match against
+        :return: Self for chaining
+        """
         if self._activity is not _undefined:
             raise ValueError("Verify name conflicts with verifying exact match")
         self._name = name
         return self
 
     def url(self, url: str) -> 'VerifyActivity':
+        """
+            Check the the activity url matches the input
+
+        :param url: Url to match against
+        :return: Self for chaining
+        """
         if self._activity is not _undefined:
             raise ValueError("Verify url conflicts with verifying exact match")
         self._url = url
         return self
 
     def type(self, type: discord.ActivityType) -> 'VerifyActivity':
+        """
+            Check the activity type matches the input
+
+        :param type: Type to match against
+        :return: Self for chaining
+        """
         if self._activity is not _undefined:
             raise ValueError("Verify type conflicts with verifying exact match")
         self._type = type
@@ -203,16 +274,39 @@ class VerifyActivity:
 
 
 class Verify:
+    """
+        Base for all kinds of verification builders. Used as an
+        intermediate step for the return of verify().
+    """
 
     def __init__(self):
         pass
 
     def message(self) -> VerifyMessage:
+        """
+            Verify a message
+
+        :return: Message verification builder
+        """
         return VerifyMessage()
 
     def activity(self) -> VerifyActivity:
+        """
+            Verify the bot's activity
+
+        :return: Activity verification builder
+        """
         return VerifyActivity()
 
 
 def verify() -> Verify:
+    """
+        Verification entry point. Call to begin building a verification.
+
+        **Warning**: All verification builders do nothing until asserted, used in an if statement,
+        or otherwise converted into a bool. They will raise RuntimeWarning if this isn't done to help
+        catch possible errors.
+
+    :return: Verification builder
+    """
     return Verify()

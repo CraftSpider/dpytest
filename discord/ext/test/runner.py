@@ -3,7 +3,10 @@
     Handles configuration of a bot, and setup of the discord environment.
 
     All public functions in this module are re-exported at ``discord.ext.test``, this is the primary
-    entry point for users of the library and most of what they should interact with.
+    entry point for users of the library and most of what they should interact with
+
+    See also:
+        :mod:`discord.ext.test.verify`
 """
 
 
