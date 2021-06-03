@@ -1,5 +1,9 @@
 # History
 
+## Unreleased
+
+- Remove the runner verification methods, replace them with verification builders
+
 ## 0.3.0
 
 - Rename simulate_reaction -> add_reaction and make it take a user to react as
