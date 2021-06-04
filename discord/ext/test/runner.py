@@ -570,6 +570,8 @@ def configure(client: discord.Client, num_guilds: int = 1, num_channels: int = 1
             user = back.make_user(f"TestUser{str(num)}", f"{num+1:04}")
             member = back.make_member(user, guild, nick=user.name + f"_{str(num)}_nick")
             members.append(member)
+        client_member = back.make_member(client.user, guild, nick=client.user.name + f"_nick")
+        members.append(client_member)
         back.make_member(back.get_state().user, guild)
 
     back.get_state().start_dispatch()
