@@ -42,3 +42,15 @@ async def test_channel_mention(bot):
     mes = await test.message("Not a mention in sight")
 
     assert len(mes.channel_mentions) == 0
+
+
+@pytest.mark.asyncio
+async def test_bot_mention(bot):
+    mes = await test.message(f"<@{bot.user.id}>")
+
+    assert len(mes.mentions) == 1
+    assert mes.mentions[0] == bot.user
+
+    mes = await test.message("Not a mention in sight")
+
+    assert len(mes.mentions) == 0
