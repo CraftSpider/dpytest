@@ -15,8 +15,7 @@ async def test_embed(bot):
     embed2.add_field(name="Field 1", value="Lorem ipsum")
 
     await channel.send(embed=embed)
-    dpytest.verify_embed(embed2)
-    await dpytest.empty_queue()
+    assert dpytest.verify().message().embed(embed2)
 
 
 @pytest.mark.asyncio
@@ -31,15 +30,12 @@ async def test_embed_KO(bot):
     embed2.add_field(name="Field 35", value="Foo Bar")
 
     await channel.send(embed=embed)
-    dpytest.verify_embed(embed2, equals=False)
-    await dpytest.empty_queue()
+    assert not dpytest.verify().message().embed(embed2)
 
 
 @pytest.mark.asyncio
 async def test_embed_assert_nothing(bot):
-
-    dpytest.verify_embed(assert_nothing=True)
-    await dpytest.empty_queue()
+    assert dpytest.verify().message().nothing()
 
 
 @pytest.mark.asyncio
@@ -56,7 +52,6 @@ async def test_embed_peek(bot):
     await channel.send(embed=embed)
 
     # peek option doesn't remove the message fro the queue
-    dpytest.verify_embed(embed2, peek=True)
+    assert dpytest.verify().message().peek().embed(embed2)
     # verify_embed (without peek) WILL remove emebd from the queue
-    dpytest.verify_embed(embed2)
-    await dpytest.empty_queue()
+    assert dpytest.verify().message().embed(embed2)

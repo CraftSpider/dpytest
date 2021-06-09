@@ -16,7 +16,6 @@ async def test_add_role(bot):
 async def test_edit_role(bot):
     await test_add_role(bot=bot)
     await bot.guilds[0].create_role(name="TestRole")  # Role object
-    print(bot.guilds[0].roles)
     assert len(bot.guilds[0].roles) == 3
     staff_role = bot.guilds[0].roles[1]
     await staff_role.edit(position=2)

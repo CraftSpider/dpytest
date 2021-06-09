@@ -1,8 +1,8 @@
 import pytest
 import discord
+import discord.ext.test as dpytest
 from discord import PermissionOverwrite
 from discord.ext.commands import Bot
-from discord.ext.test import runner
 
 
 @pytest.mark.asyncio
@@ -12,11 +12,11 @@ async def test_permission_setting(bot):
     c = g.text_channels[0]
     m = g.members[0]
 
-    await runner.set_permission_overrides(g.me, c, manage_roles=False)
+    await dpytest.set_permission_overrides(g.me, c, manage_roles=False)
     with pytest.raises(discord.errors.DiscordException):
         await c.set_permissions(m, send_messages=False, read_messages=True)
 
-    await runner.set_permission_overrides(g.me, c, manage_roles=True)
+    await dpytest.set_permission_overrides(g.me, c, manage_roles=True)
     perm = c.permissions_for(g.me)
     assert perm.manage_roles is True
 
@@ -30,12 +30,11 @@ async def test_permission_setting(bot):
     perm = c.permissions_for(m)
     assert perm.ban_members is True
 
-    await runner.set_permission_overrides(g.me, c, manage_roles=False, administrator=True)
+    await dpytest.set_permission_overrides(g.me, c, manage_roles=False, administrator=True)
     await c.set_permissions(m, ban_members=False, kick_members=True)
     perm = c.permissions_for(m)
     assert perm.kick_members is True
     assert perm.ban_members is False
-    await runner.empty_queue()
 
 
 @pytest.mark.asyncio
@@ -45,14 +44,13 @@ async def test_bot_send_not_allowed(bot):
     g = bot.guilds[0]
     c = g.text_channels[0]
 
-    await runner.set_permission_overrides(g.me, c, send_messages=False)
+    await dpytest.set_permission_overrides(g.me, c, send_messages=False)
     with pytest.raises(discord.ext.commands.errors.CommandInvokeError):
-        await runner.message("!echo hello", channel=c)
+        await dpytest.message("!echo hello", channel=c)
 
-    assert runner.sent_queue.empty()
+    assert dpytest.sent_queue.empty()
 
     perm = PermissionOverwrite(send_messages=True, read_messages=True)
-    await runner.set_permission_overrides(g.me, c, perm)
-    await runner.message("!echo hello", channel=c)
-    runner.verify_message("hello")
-    await runner.empty_queue()
+    await dpytest.set_permission_overrides(g.me, c, perm)
+    await dpytest.message("!echo hello", channel=c)
+    assert dpytest.verify().message().content("hello")

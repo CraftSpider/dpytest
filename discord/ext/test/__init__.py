@@ -7,3 +7,4 @@ __version__ = "0.4.0"
 
 from . import backend
 from .runner import *
+from .verify import verify, Verify, VerifyMessage, VerifyActivity

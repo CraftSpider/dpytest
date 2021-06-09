@@ -33,6 +33,12 @@ def bot(request, event_loop):
     return b
 
 
+@pytest.fixture(autouse=True)
+async def cleanup():
+    yield
+    await test.empty_queue()
+
+
 def pytest_sessionfinish(session, exitstatus):
     """ Code to execute after all tests. """
 

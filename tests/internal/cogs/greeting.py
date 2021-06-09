@@ -7,7 +7,7 @@ class Greeting(commands.Cog):
     async def on_member_join(self, member):
         channel = member.guild.text_channels[0]
         if channel is not None:
-            await channel.send('Welcome {0.mention}.'.format(member))
+            await channel.send(f"Welcome {member.mention}.")
 
 
 def setup(bot):

@@ -12,5 +12,3 @@ async def test_edit(bot):
     await mes.edit(content="New Message")
 
     assert mes.content == "New Message"
-
-    await test.empty_queue()
