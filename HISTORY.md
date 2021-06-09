@@ -1,12 +1,16 @@
 # History
 
-## Unreleased
+## 0.5.0
 
 - Remove the runner verification methods, replace them with verification builders
 
-## 0.3.0
+## 0.4.0
 
 - Rename simulate_reaction -> add_reaction and make it take a user to react as
+
+## 0.3.0
+
+- unrealease (error when bumping version)
 
 ## 0.2.0
 
