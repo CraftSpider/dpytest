@@ -1,5 +1,10 @@
 """
+    Module for 'server-side' state during testing. This module should contain
+    methods for altering said server-side state, which then are responsible for triggering
+    a ``parse_*`` call in the configured client state to inform the bot of the change.
 
+    This setup matches discord's actual setup, where an HTTP call triggers a change on the server,
+    which is then sent back to the bot as an event which is parsed and dispatched.
 """
 
 import asyncio
@@ -18,6 +23,10 @@ from . import factories as facts, state as dstate, callbacks, websocket, _types
 
 
 class BackendState(typing.NamedTuple):
+    """
+        The dpytest backend, with all the state it needs to hold to be able to pretend to be
+        discord. Generally only used internally, but exposed through :py:func:`get_state`
+    """
     messages: typing.Dict[int, typing.List[_types.JsonDict]]
     state: dstate.FakeState
 
@@ -28,6 +37,13 @@ _undefined = object()  # default value for when NoneType has special meaning
 
 
 def _get_higher_locs(num: int) -> typing.Dict[str, typing.Any]:
+    """
+        Get the local variables from higher in the call-stack. Should only be used in FakeHttp for
+        retrieving information not passed to it by its caller.
+
+    :param num: How many calls up to retrieve from
+    :return: The local variables of that call, as a dictionary
+    """
     frame = sys._getframe(num + 1)
     locs = frame.f_locals
     del frame
@@ -35,12 +51,19 @@ def _get_higher_locs(num: int) -> typing.Dict[str, typing.Any]:
 
 
 class FakeRequest(typing.NamedTuple):
+    """
+        A fake web response, for use with discord ``HTTPException``\ s
+    """
     status: int
     reason: str
 
 
 class FakeHttp(dhttp.HTTPClient):
-
+    """
+        A mock implementation of an ``HTTPClient``. Instead of actually sending requests to discord, it triggers
+        a runner callback and calls the ``dpytest`` backend to update any necessary state and trigger any necessary
+        fake messages to the client.
+    """
     fileno: typing.ClassVar[int] = 0
     state: dstate.FakeState
 
@@ -53,6 +76,14 @@ class FakeHttp(dhttp.HTTPClient):
         super().__init__(connector=None, loop=loop)
 
     async def request(self, *args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+        """
+            Overloaded to raise a NotImplemented error informing the user that the requested operation
+            isn't yet supported by ``dpytest``. To fix this, the method call that triggered this error should be
+            overloaded below to instead trigger a callback and call the appropriate backend function.
+
+        :param args: Arguments provided to the request
+        :param kwargs: Keyword arguments provided to the request
+        """
         route: discord.http.Route = args[0]
         raise NotImplementedError(
             f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
@@ -336,7 +367,6 @@ class FakeHttp(dhttp.HTTPClient):
         await callbacks.dispatch_event("edit_role", guild, role, fields, reason=reason)
 
         update_role(role, **fields)
-
         return facts.dict_from_role(role)
 
     async def delete_role(self, guild_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
@@ -351,10 +381,8 @@ class FakeHttp(dhttp.HTTPClient):
     async def create_role(self, guild_id: int, *, reason: typing.Optional[str] = None, **fields: typing.Any) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
+        role = make_role(guild=guild, **fields,)
 
-        data = facts.make_role_dict(**fields)
-        # TODO: Replace with a backend make_role, to match other things
-        role = discord.Role(state=get_state(), data=data, guild=guild)
         await callbacks.dispatch_event("create_role", guild, role, reason=reason)
 
         return facts.dict_from_role(role)
@@ -366,6 +394,9 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("move_role", guild, role, positions, reason=reason)
 
+        for pair in positions:
+            guild._roles[pair["id"]].position = pair["position"]
+
     async def add_role(self, guild_id: int, user_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
         locs = _get_higher_locs(1)
         member = locs.get("self", None)
@@ -373,12 +404,18 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("add_role", member, role, reason=reason)
 
+        roles = [role] + [x for x in member.roles if x.id != member.guild.id]
+        update_member(member, roles=roles)
+
     async def remove_role(self, guild_id: int, user_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
         locs = _get_higher_locs(1)
         member = locs.get("self", None)
         role = locs.get("role", None)
 
         await callbacks.dispatch_event("remove_role", member, role, reason=reason)
+
+        roles = [x for x in member.roles if x != role and x.id != member.guild.id]
+        update_member(member, roles=roles)
 
     async def application_info(self) -> _types.JsonDict:
         # TODO: make these values configurable
@@ -461,8 +498,13 @@ class FakeHttp(dhttp.HTTPClient):
 
 
 def get_state() -> dstate.FakeState:
+    """
+        Get the current backend state, or raise an error if it hasn't been configured
+
+    :return: Current backend state
+    """
     if _cur_config is None:
-        raise ValueError("Discord class factories not configured")
+        raise ValueError("Dpytest backend not configured")
     return _cur_config.state
 
 
@@ -474,6 +516,17 @@ def make_guild(
         owner: bool = False,
         id_num: int = -1,
 ) -> discord.Guild:
+    """
+        Add a new guild to the backend, triggering any relevant callbacks on the configured client
+
+    :param name: Name of the guild
+    :param members: Existing members of the guild or None
+    :param channels: Existing channels in the guild or None
+    :param roles: Existing roles in the guild or None
+    :param owner: Whether the configured client owns the guild, default is false
+    :param id_num: ID of the guild, or nothing to auto-generate
+    :return: Newly created guild
+    """
     if id_num == -1:
         id_num = facts.make_id()
     if roles is None:
@@ -498,6 +551,14 @@ def make_guild(
 
 
 def update_guild(guild: discord.Guild, roles: typing.List[discord.Role] = None) -> discord.Guild:
+    """
+        Update an existing guild with new information, triggers a guild update but not any individual item
+        create/edit calls
+
+    :param guild: Guild to be updated
+    :param roles: New role list for the guild
+    :return: Updated guild object
+    """
     data = facts.dict_from_guild(guild)
 
     if roles is not None:
@@ -514,12 +575,26 @@ def make_role(
         guild: discord.Guild,
         id_num: int = -1,
         colour: int = 0,
+        color: typing.Optional[int] = None,
         permissions: int = 104324161,
         hoist: bool = False,
         mentionable: bool = False,
 ) -> discord.Role:
+    """
+        Add a new role to the backend, triggering any relevant callbacks on the configured client
+
+    :param name: Name of the new role
+    :param guild: Guild role is being added to
+    :param id_num: ID of the new role, or nothing to auto-generate
+    :param colour: Color of the new role
+    :param color: Alias for above
+    :param permissions: Permissions for the new role
+    :param hoist: Whether the new role is hoisted
+    :param mentionable: Whether the new role is mentionable
+    :return: Newly created role
+    """
     r_dict = facts.make_role_dict(
-        name, id_num=id_num, colour=colour, permissions=permissions, hoist=hoist, mentionable=mentionable
+        name, id_num=id_num, colour=colour, color=color, permissions=permissions, hoist=hoist, mentionable=mentionable
     )
     # r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
     r_dict["position"] = 1
@@ -544,6 +619,19 @@ def update_role(
         mentionable: typing.Optional[bool] = None,
         name: typing.Optional[str] = None,
 ) -> discord.Role:
+    """
+        Update an existing role with new data, triggering a role update event.
+        Any value not passed/passed None will not update the existing value.
+
+    :param role: Role to update
+    :param colour: New color for the role
+    :param color: Alias for above
+    :param permissions: New permissions
+    :param hoist: New hoist value
+    :param mentionable: New mention value
+    :param name: New name for the role
+    :return: Role that was updated
+    """
     data = {"guild_id": role.guild.id, "role": facts.dict_from_role(role)}
     if color is not None:
         colour = color
@@ -565,6 +653,11 @@ def update_role(
 
 
 def delete_role(role: discord.Role) -> None:
+    """
+        Remove a role from the backend, deleting it from the guild
+
+    :param role: Role to delete
+    """
     state = get_state()
     state.parse_guild_role_delete({"guild_id": role.guild.id, "role_id": role.id})
 
@@ -767,7 +860,7 @@ def make_attachment(filename: pathlib.Path, name: typing.Optional[str] = None, i
     )
 
 
-def add_reaction(message: discord.Message, user: discord.User, emoji: str) -> None:
+def add_reaction(message: discord.Message, user: typing.Union[discord.user.BaseUser, discord.abc.User], emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
         emoji = {
@@ -903,6 +996,12 @@ def configure(client: typing.Optional[discord.Client], *, use_dummy: bool = ...)
 
 
 def configure(client: typing.Optional[discord.Client], *, use_dummy: bool = False) -> None:
+    """
+        Configure the backend, optionally with the provided client
+
+    :param client: Client to use, or None
+    :param use_dummy: Whether to use a dummy if client param is None, or error
+    """
     global _cur_config, _messages
 
     if client is None and use_dummy:
@@ -929,18 +1028,3 @@ def configure(client: typing.Optional[discord.Client], *, use_dummy: bool = Fals
     client._connection = test_state
 
     _cur_config = BackendState({}, test_state)
-
-
-def main() -> None:
-    print(facts.make_id())
-
-    d_user = make_user("Test", "0001")
-    d_guild = make_guild("Test_Guild")
-    d_channel = make_text_channel("Channel 1", d_guild)
-    d_member = make_member(d_user, d_guild)
-
-    print(d_user, d_member, d_channel)
-
-
-if __name__ == "__main__":
-    main()

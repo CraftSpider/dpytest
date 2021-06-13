@@ -1,5 +1,5 @@
 """
-    Aliases purely for type hinting of files
+    Internal module for type-hinting aliases. Ensures single common definitions.
 """
 
 import discord

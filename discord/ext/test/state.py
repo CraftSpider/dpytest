@@ -1,3 +1,8 @@
+"""
+    Mock implementation of a ``discord.state.ConnectionState``. Overwrites a Client's default state, allowing hooking of
+    its methods and support for test-related features.
+"""
+
 import asyncio
 import typing
 import discord
@@ -9,6 +14,10 @@ from . import backend as back
 
 
 class FakeState(dstate.ConnectionState):
+    """
+        A mock implementation of a ``ConnectionState``. Overrides methods that would otherwise cause issues, and
+        implements functionality such as disabling dispatch temporarily.
+    """
 
     http: 'back.FakeHttp'  # String because of circular import
 
@@ -38,9 +47,15 @@ class FakeState(dstate.ConnectionState):
         self.dispatch = dispatch
 
     def stop_dispatch(self) -> None:
+        """
+            Stop dispatching events to the client, if we are
+        """
         self._do_dispatch = False
 
     def start_dispatch(self) -> None:
+        """
+            Start dispatching events to the client, if we aren't already
+        """
         self._do_dispatch = True
 
     # TODO: Respect limit parameters

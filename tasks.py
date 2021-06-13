@@ -131,9 +131,9 @@ def build(c):
 
 @task(cleanbuild)
 def release(c, version="patch"):
-    """Build and release. Optional parameter is "patch (default) / minor / major"""  # noqa: E501
+    """Build and release. Optional parameter is "patch (default) / version=minor / version=major"""  # noqa: E501
     c.run(f"bump2version {version}")
     c.run('python -m build')
     c.run("git push")
     c.run("git push --tags")
-    c.run("twine upload -c .\.pypirc dist/*")
+    c.run("twine upload --config-file .pypirc dist/*")

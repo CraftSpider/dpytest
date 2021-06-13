@@ -14,7 +14,6 @@ async def test_get_message(bot):
     await channel.send("Test Message")
     mess = dpytest.get_message()
     assert mess.content == "Test Message"
-    await dpytest.empty_queue()
 
 
 @pytest.mark.asyncio
@@ -28,7 +27,6 @@ async def test_get_message_peek(bot):
     await channel.send("Test Message Peek")
     mess = dpytest.get_message(peek=True)  # peek doesnt remove the message from the queue
     assert mess.content == "Test Message Peek"
-    await dpytest.empty_queue()
 
 
 @pytest.mark.asyncio
@@ -45,7 +43,6 @@ async def test_get_embed(bot):
     await channel.send(embed=embed)
     emb = dpytest.get_embed()
     assert emb.title == "Test Embed"
-    await dpytest.empty_queue()
 
 
 @pytest.mark.asyncio
@@ -62,4 +59,3 @@ async def test_get_embed_peek(bot):
     await channel.send(embed=embed)
     emb = dpytest.get_embed(peek=True)
     assert emb.title == "Test Embed"
-    await dpytest.empty_queue()

@@ -22,7 +22,7 @@ copyright = '2020, CraftSpider'
 author = 'CraftSpider'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.18'
+release = '0.2.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -31,7 +31,9 @@ release = '0.0.18'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc'
+    'sphinx.ext.autodoc',
+    'sphinx.ext.intersphinx',
+    'sphinx_automodapi.smart_resolver',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -82,4 +84,12 @@ autodoc_default_options = {
     'special-members': '__init__,__slots__',
     'undoc-members': None,
     'member-order': 'bysource'
+}
+
+
+# -- Setup for intersphinx ---------------------------------------------------
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'discord': ('https://discordpy.readthedocs.io/en/stable/', None),
 }
