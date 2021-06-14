@@ -7,4 +7,5 @@ __version__ = "0.5.0"
 
 from . import backend
 from .runner import *
+from .utils import embed_eq, activity_eq, embed_proxy_eq, PeekableQueue
 from .verify import verify, Verify, VerifyMessage, VerifyActivity
