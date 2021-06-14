@@ -12,6 +12,7 @@ import sys
 import logging
 import re
 import typing
+import datetime
 import discord
 import discord.http as dhttp
 import pathlib
@@ -272,6 +273,11 @@ class FakeHttp(dhttp.HTTPClient):
 
         remove_reaction(message, self.state.user, emoji)
 
+    async def clear_reactions(self, channel_id: int, message_id: int) -> None:
+        locs = _get_higher_locs(1)
+        message = locs.get("self")
+        clear_reactions(message)
+
     async def get_message(self, channel_id: int, message_id: int) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         channel = locs.get("self")
@@ -471,6 +477,24 @@ class FakeHttp(dhttp.HTTPClient):
         path = urllib.request.url2pathname(parsed_url.path)
         with open(path, 'rb') as fd:
             return fd.read()
+
+    async def get_user(self, user_id: int) -> _types.JsonDict:
+        # return self.request(Route('GET', '/users/{user_id}', user_id=user_id))
+        locs = _get_higher_locs(1)
+        client = locs.get("self", None)
+        guild = client.guilds[0]
+        member = discord.utils.get(guild.members, id=user_id)
+        return facts.dict_from_user(member._user)
+
+    async def pin_message(self, channel_id: int, message_id: int, reason: typing.Optional[str] = None) -> None:
+        # return self.request(Route('PUT', '/channels/{channel_id}/pins/{message_id}',
+        #                          channel_id=channel_id, message_id=message_id), reason=reason)
+        pin_message(channel_id, message_id)
+
+    async def unpin_message(self, channel_id: int, message_id: int, reason: typing.Optional[str] = None) -> None:
+        # return self.request(Route('DELETE', '/channels/{channel_id}/pins/{message_id}',
+        #                          channel_id=channel_id, message_id=message_id), reason=reason)
+        unpin_message(channel_id, message_id)
 
 
 def get_state() -> dstate.FakeState:
@@ -928,6 +952,41 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
 
         if react["count"] == 0:
             message_data["reactions"].remove(react)
+
+
+def clear_reactions(message: discord.Message):
+    data = {
+        "message_id": message.id,
+        "channel_id": message.channel.id
+    }
+    if message.guild:
+        data["guild_id"] = message.guild.id
+
+    state = get_state()
+    state.parse_message_reaction_remove_all(data)
+
+    messages = _cur_config.messages[message.channel.id]
+    message_data = next(filter(lambda x: x["id"] == message.id, messages), None)
+    if message_data is not None:
+        message_data["reactions"] = []
+
+
+def pin_message(channel_id: int, message_id: int):
+    data = {
+        "channel_id": channel_id,
+        "last_pin_timestamp": datetime.datetime.now().isoformat(),
+    }
+    state = get_state()
+    state.parse_channel_pins_update(data)
+
+
+def unpin_message(channel_id: int, message_id: int):
+    data = {
+        "channel_id": channel_id,
+        "last_pin_timestamp": None,
+    }
+    state = get_state()
+    state.parse_channel_pins_update(data)
 
 
 @typing.overload
