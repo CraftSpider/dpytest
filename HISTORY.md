@@ -1,5 +1,14 @@
 # History
 
+## Next released
+
+-
+
+## 0.5.1
+
+- NEW methods : Pins, get_user, & clear_reactions
+- fix utils functions imports
+
 ## 0.5.0
 
 - Remove the runner verification methods, replace them with verification builders
