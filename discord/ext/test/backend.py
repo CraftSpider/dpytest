@@ -814,7 +814,7 @@ def find_user_mentions(content: typing.Optional[str], guild: typing.Optional[dis
     if guild is None or content is None:
         return []  # TODO: Check for dm user mentions
     matches = re.findall(MEMBER_MENTION, content)
-    return [discord.utils.get(guild.members, mention=match) for match in matches]  # noqa: E501
+    return [discord.utils.get(guild.members, id=int(re.search(r'\d+', match)[0])) for match in matches]  # noqa: E501
 
 
 def find_role_mentions(content: typing.Optional[str], guild: typing.Optional[discord.Guild]) -> typing.List[int]:
