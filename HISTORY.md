@@ -1,8 +1,12 @@
 # History
 
-## Next released
+## Next release
 
 -
+
+## 0.5.2
+
+- Get member mentions by using the user ID in mention
 
 ## 0.5.1
 
