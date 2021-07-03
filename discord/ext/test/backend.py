@@ -366,7 +366,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("edit_role", guild, role, fields, reason=reason)
 
-        update_role(role, **fields)
+        update_role(role, **fields)        
         return facts.dict_from_role(role)
 
     async def delete_role(self, guild_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
@@ -636,16 +636,18 @@ def update_role(
     if color is not None:
         colour = color
     if colour is not None:
-        data["color"] = colour
+        data["role"]["color"] = colour
     if permissions is not None:
-        data["permissions"] = permissions
+        data["role"]["permissions"] = int(permissions)
+        data["role"]["permissions_new"] = int(permissions)
+
     if hoist is not None:
-        data["hoist"] = hoist
+        data["role"]["hoist"] = hoist
     if mentionable is not None:
-        data["mentionable"] = mentionable
+        data["role"]["mentionable"] = mentionable
     if name is not None:
         data["role"]["name"] = name
-
+        
     state = get_state()
     state.parse_guild_role_update(data)
 
