@@ -1,8 +1,9 @@
 # History
 
-## Next release
+## 0.5.3
 
--
+- Docs: Add vertical spacing for functions & methods
+- Fix behaviour 'discord.Role.edit' with hoist, mentionable, etc.
 
 ## 0.5.2
 
