@@ -636,13 +636,15 @@ def update_role(
     if color is not None:
         colour = color
     if colour is not None:
-        data["color"] = colour
+        data["role"]["color"] = colour
     if permissions is not None:
-        data["permissions"] = permissions
+        data["role"]["permissions"] = int(permissions)
+        data["role"]["permissions_new"] = int(permissions)
+
     if hoist is not None:
-        data["hoist"] = hoist
+        data["role"]["hoist"] = hoist
     if mentionable is not None:
-        data["mentionable"] = mentionable
+        data["role"]["mentionable"] = mentionable
     if name is not None:
         data["role"]["name"] = name
 
