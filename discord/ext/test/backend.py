@@ -504,8 +504,7 @@ class FakeHttp(dhttp.HTTPClient):
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         unpin_message(channel_id, message_id)
 
-    async def get_guilds(self, limit: int, before: typing.Optional[int] = None, after: typing.Optional[int] = None) -> \
-            typing.List[_types.JsonDict]:
+    async def get_guilds(self, limit: int, before: typing.Optional[int] = None, after: typing.Optional[int] = None):
         # self.request(Route('GET', '/users/@me/guilds')
         await callbacks.dispatch_event("get_guilds", limit, before=None, after=None)
 
@@ -520,13 +519,13 @@ class FakeHttp(dhttp.HTTPClient):
         guilds = get_state().guilds
         if after is not None:
             start = next(i for i, v in enumerate(guilds) if v.id == after)
-            return guilds[start:start + limit]
+            return map(facts.dict_from_guild,guilds[start:start + limit])
         else:
             if before is None:
                 start = len(guilds)
             else:
                 start = next(i for i, v in enumerate(guilds) if v.id == before)
-            return guilds[start - limit: start]
+            return map(facts.dict_from_guild,guilds[start - limit: start])
 
 
 def get_state() -> dstate.FakeState:
