@@ -517,15 +517,15 @@ class FakeHttp(dhttp.HTTPClient):
         if after is not None:
             params["after"] = after
 
-        guilds = get_state().guilds
+        guilds = _cur_config.state.guilds
         if after is not None:
-            start = next(i for i, v in enumerate(guilds) if v.id == after)
+            start = next(i for i, v in enumerate(guilds) if v["id"] == after)
             return guilds[start:start + limit]
         else:
             if before is None:
                 start = len(guilds)
             else:
-                start = next(i for i, v in enumerate(guilds) if v.id == before)
+                start = next(i for i, v in enumerate(guilds) if v["id"] == before)
             return guilds[start - limit: start]
 
 
