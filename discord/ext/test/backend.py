@@ -519,13 +519,13 @@ class FakeHttp(dhttp.HTTPClient):
         guilds = get_state().guilds
         if after is not None:
             start = next(i for i, v in enumerate(guilds) if v.id == after)
-            return [facts.dict_from_guild(g) for g in guilds[start:start + limit]]
+            return map(facts.dict_from_guild,guilds[start:start + limit])
         else:
             if before is None:
                 start = len(guilds)
             else:
                 start = next(i for i, v in enumerate(guilds) if v.id == before)
-            return [facts.dict_from_guild(g) for g in guilds[start - limit: start]]
+            return map(facts.dict_from_guild,guilds[start - limit: start])
 
 
 def get_state() -> dstate.FakeState:
