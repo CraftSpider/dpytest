@@ -504,29 +504,43 @@ class FakeHttp(dhttp.HTTPClient):
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         unpin_message(channel_id, message_id)
 
-    async def get_guilds(self, limit: int, before: typing.Optional[int] = None, after: typing.Optional[int] = None) -> \
-            typing.List[_types.JsonDict]:
+    async def get_guilds(self, limit: int, before: typing.Optional[int] = None, after: typing.Optional[int] = None):
         # self.request(Route('GET', '/users/@me/guilds')
         await callbacks.dispatch_event("get_guilds", limit, before=None, after=None)
+        guilds = get_state().guilds  # List[]
 
-        params = {
-            'limit': limit
-        }
-        if before is not None:
-            params["before"] = before
-        if after is not None:
-            params["after"] = after
+        guilds_new = [{
+            'id': guild.id,
+            'name': guild.name,
+            'icon': guild.icon,
+            'splash': guild.splash,
+            'owner_id': guild.owner_id,
+            'region': guild.region,
+            'afk_channel_id': guild.afk_channel.id if guild.afk_channel else None,
+            'afk_timeout': guild.afk_timeout,
+            'verification_level': guild.verification_level,
+            'default_message_notifications': guild.default_notifications.value,
+            'explicit_content_filter': guild.explicit_content_filter,
+            'roles': list(map(facts.dict_from_role, guild.roles)),
+            'emojis': list(map(facts.dict_from_emoji, guild.emojis)),
+            'features': guild.features,
+            'mfa_level': guild.mfa_level,
+            'application_id': None,
+            'system_channel_id': guild.system_channel.id if guild.system_channel else None,
+            'owner': guild.owner_id == get_state().user.id
+        } for guild in guilds]
 
-        guilds = _cur_config.state.guilds
+        if not limit:
+            limit = 100
         if after is not None:
-            start = next(i for i, v in enumerate(guilds) if v["id"] == after)
-            return guilds[start:start + limit]
+            start = next(i for i, v in enumerate(guilds) if v.id == after)
+            return guilds_new[start:start + limit]
         else:
             if before is None:
-                start = len(guilds)
+                start = int(len(guilds) / 2)
             else:
-                start = next(i for i, v in enumerate(guilds) if v["id"] == before)
-            return guilds[start - limit: start]
+                start = next(i for i, v in enumerate(guilds) if v.id == before)
+            return guilds_new[start - limit: start]
 
 
 def get_state() -> dstate.FakeState:
