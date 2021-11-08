@@ -542,23 +542,6 @@ class FakeHttp(dhttp.HTTPClient):
                 start = next(i for i, v in enumerate(guilds) if v.id == before)
             return guilds_new[start - limit: start]
 
-    async def get_members(self, guild_id: int, limit: int, after: typing.Optional[int] = None):
-        # return self.request(Route('GET', '/guilds/{guild_id}/members', guild_id=guild_id))
-        await callbacks.dispatch_event("get_members", limit, after=None)
-        locs = _get_higher_locs(1)
-        client = locs.get("self", None)
-        guild: discord.Guild = discord.utils.get(client.guilds, id=guild_id)
-        members = guild.members
-        dict_members = list(map(facts.dict_from_member, members))
-
-        if not limit:
-            limit = 1000
-        if after is not None:
-            start = next(i for i, v in enumerate(members) if v.id == after)
-        else:
-            start = 0
-        return dict_members[start: start + limit]
-
     async def get_guild(self, guild_id: int) -> _types.JsonDict:
         # return self.request(Route('GET', '/guilds/{guild_id}', guild_id=guild_id))
         locs = _get_higher_locs(1)
