@@ -236,7 +236,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         message = locs.get("self", None)
 
-        await callbacks.dispatch_event("edit_message", message.channel, message, fields)
+        await callbacks.dispatch_event("send_message", message.channel, message, fields)
 
         out = facts.dict_from_message(message)
         out.update(fields)
