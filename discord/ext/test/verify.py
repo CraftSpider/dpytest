@@ -42,7 +42,9 @@ class VerifyMessage:
         ``assert dpytest.verify().message().content("Hello World!")``
     """
 
-    _invert: bool
+    _used: bool
+    _message: typing.Optional[discord.Message]
+
     _contains: bool
     _peek: bool
     _nothing: bool
@@ -52,6 +54,7 @@ class VerifyMessage:
 
     def __init__(self) -> None:
         self._used = False
+        self._message = None
 
         self._contains = False
         self._peek = False
@@ -65,6 +68,49 @@ class VerifyMessage:
             import warnings
             warnings.warn("VerifyMessage dropped without being used, did you forget an `assert`?", RuntimeWarning)
 
+    def __repr__(self):
+        msg = "<VerifyMessage"
+        if self._contains:
+            msg += " containing"
+        else:
+            msg += " matching"
+        conditions = []
+        if self._nothing:
+            conditions.append("nothing")
+
+        if self._content is None:
+            conditions.append("no content")
+        elif self._content is not _undefined:
+            conditions.append(f"content \"{self._content}\"")
+
+        if self._embed is None:
+            conditions.append("no embed")
+        elif self._embed is not _undefined:
+            conditions.append(f"embed \"{self._embed}\"")
+
+        if self._attachment is None:
+            conditions.append("no attachment")
+        elif self._attachment is not _undefined:
+            conditions.append(f"attachment \"{self._attachment}\"")
+
+        if conditions:
+            msg += " " + ", ".join(conditions)
+
+        if self._peek:
+            msg += " peeked"
+
+        msg += ">"
+
+        if self._used:
+            if self._nothing:
+                msg += " instead got a message"
+            elif self._message is None:
+                msg += " but no message was sent"
+            else:
+                msg += f" but got message with content \"{self._message.content}\" and embeds \"{self._message.embeds}\""
+
+        return msg
+
     def __bool__(self) -> bool:
         self._used = True
 
@@ -72,15 +118,15 @@ class VerifyMessage:
             return sent_queue.qsize() == 0
 
         if self._peek:
-            message: discord.Message = sent_queue.peek()
+            self._message = sent_queue.peek()
         else:
             try:
-                message = sent_queue.get_nowait()
+                self._message = sent_queue.get_nowait()
             except asyncio.QueueEmpty:
                 # By now we're expecting a message, not getting one is a failure
                 return False
 
-        return self._check_msg(message)
+        return self._check_msg(self._message)
 
     def _check_msg(self, msg: discord.Message) -> bool:
         # If any attributes are 'None', check that they don't exist

@@ -52,6 +52,6 @@ async def test_embed_peek(bot):
     await channel.send(embed=embed)
 
     # peek option doesn't remove the message fro the queue
-    assert dpytest.verify().message().peek().embed(embed2)
-    # verify_embed (without peek) WILL remove emebd from the queue
+    assert not dpytest.verify().message().peek().embed(embed2)
+    # verify_embed (without peek) WILL remove embed from the queue
     assert dpytest.verify().message().embed(embed2)
