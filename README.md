@@ -1,3 +1,9 @@
+# Notice: this package does not currently support discord.py 2.0.0
+
+This project has been on pause since the 2.0.0 rewrites.
+
+---
+
 # dpytest
 
 [![Build Status](https://travis-ci.com/CraftSpider/dpytest.svg?branch=master)](https://travis-ci.com/CraftSpider/dpytest)
