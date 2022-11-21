@@ -12,5 +12,5 @@ class Echo(Cog):
         await ctx.send(text)
 
 
-def setup(bot):
-    bot.add_cog(Echo())
+async def setup(bot):
+    await bot.add_cog(Echo())

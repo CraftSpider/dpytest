@@ -148,32 +148,55 @@ class FakeHttp(dhttp.HTTPClient):
     async def send_message(
             self,
             channel_id: int,
-            content: str,
             *,
-            tts: bool = False,
-            embed: typing.Optional[_types.JsonDict] = None,
-            nonce: typing.Optional[int] = None,
-            allowed_mentions: typing.Optional[_types.JsonDict] = None,
-            message_reference: typing.Optional[_types.JsonDict] = None,
+            params: dhttp.MultipartParameters
     ) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         channel = locs.get("channel", None)
 
+        payload = params.payload
+
         embeds = []
-        if embed:
-            embeds = [discord.Embed.from_dict(embed)]
+        attachments = []
+        content = None
+        tts = False
+        nonce = None
+
+        # EMBEDS
+        if payload:
+            content = params.payload.get("content")
+            tts = params.payload.get("tts")
+            nonce = params.payload.get("nonce")
+            if payload.get("embeds"):
+                embeds = [discord.Embed.from_dict(e) for e in params.payload.get("embeds")]
+
+        # ATTACHMENTS
+        if params.files:
+            for file in params.files:
+                path = pathlib.Path(f"./dpytest_{self.fileno}.dat")
+                self.fileno += 1
+                if file.fp.seekable():
+                    file.fp.seek(0)
+                with open(path, "wb") as nfile:
+                    nfile.write(file.fp.read())
+                attachments.append((path, file.filename))
+            attachments = list(map(lambda x: make_attachment(*x), attachments))
+
         user = self.state.user
-        if hasattr(channel, "guild"):
+        if channel.guild:
             perm = channel.permissions_for(channel.guild.get_member(user.id))
         else:
             perm = channel.permissions_for(user)
         if not (perm.send_messages or perm.administrator):
             raise discord.errors.Forbidden(FakeRequest(403, "missing send_messages"), "send_messages")
 
-        message = make_message(
-            channel=channel, author=self.state.user, content=content, tts=tts, embeds=embeds, nonce=nonce
-        )
-
+        message = make_message(channel=channel, author=self.state.user,
+                               content=content,
+                               tts=tts,
+                               embeds=embeds,
+                               attachments=attachments,
+                               nonce=nonce
+                               )
         await callbacks.dispatch_event("send_message", message)
 
         return facts.dict_from_message(message)
@@ -184,46 +207,6 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("send_typing", channel)
 
-    async def send_files(
-            self,
-            channel_id: int,
-            *,
-            files: typing.Iterable[discord.File],
-            content: typing.Optional[str] = None,
-            tts: bool = False,
-            embed: typing.Optional[_types.JsonDict] = None,
-            nonce: typing.Optional[int] = None,
-            allowed_mentions: typing.Optional[_types.JsonDict] = None,
-            message_reference: typing.Optional[_types.JsonDict] = None,
-    ) -> _types.JsonDict:
-        # allowed_mentions is being ignored.  It must be a keyword argument but I'm not yet certain what to use it for
-        locs = _get_higher_locs(1)
-        channel = locs.get("channel", None)
-
-        attachments = []
-        for file in files:
-            path = pathlib.Path(f"./dpytest_{self.fileno}.dat")
-            self.fileno += 1
-            if file.fp.seekable():
-                file.fp.seek(0)
-            with open(path, "wb") as nfile:
-                nfile.write(file.fp.read())
-            attachments.append((path, file.filename))
-        attachments = list(map(lambda x: make_attachment(*x), attachments))
-
-        embeds = []
-        if embed:
-            embeds = [discord.Embed.from_dict(embed)]
-
-        message = make_message(
-            channel=channel, author=self.state.user, attachments=attachments, content=content, tts=tts, embeds=embeds,
-            nonce=nonce
-        )
-
-        await callbacks.dispatch_event("send_message", message)
-
-        return facts.dict_from_message(message)
-
     async def delete_message(self, channel_id: int, message_id: int, *, reason: typing.Optional[str] = None) -> None:
         locs = _get_higher_locs(1)
         message = locs.get("self", None)
@@ -232,14 +215,20 @@ class FakeHttp(dhttp.HTTPClient):
 
         delete_message(message)
 
-    async def edit_message(self, channel_id: int, message_id: int, **fields: typing.Any) -> _types.JsonDict:
+    async def edit_message(self, channel_id: int, message_id: int, **fields: dhttp.MultipartParameters) -> _types.JsonDict:  # noqa: E501
         locs = _get_higher_locs(1)
         message = locs.get("self", None)
 
         await callbacks.dispatch_event("edit_message", message.channel, message, fields)
 
         out = facts.dict_from_message(message)
-        out.update(fields)
+        payload = fields.get("params").payload
+        # TODO : do something for files and stuff.
+        # if params.files:
+        #     return self.request(r, files=params.files, form=params.multipart)
+        # else:
+        #     return self.request(r, json=params.payload)
+        out.update(payload)
         return out
 
     async def add_reaction(self, channel_id: int, message_id: int, emoji: str) -> None:

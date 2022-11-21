@@ -36,9 +36,8 @@ class FakeWebSocket(gateway.DiscordWebSocket):
             *,
             activity: typing.Optional[discord.BaseActivity] = None,
             status: typing.Optional[str] = None,
-            afk: bool = False,
             since: float = 0.0
     ) -> None:
         self.cur_event = "presence"
-        self.event_args = (activity, status, afk, since)
-        await super().change_presence(activity=activity, status=status, afk=afk, since=since)
+        self.event_args = (activity, status, since)
+        await super().change_presence(activity=activity, status=status, since=since)
