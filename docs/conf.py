@@ -22,7 +22,7 @@ copyright = '2020, CraftSpider'
 author = 'CraftSpider'
 
 # The full version, including alpha/beta/rc tags
-release = '0.7.0'
+release = '0.5.3'
 
 
 # -- General configuration ---------------------------------------------------
