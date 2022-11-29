@@ -10,5 +10,5 @@ class Greeting(commands.Cog):
             await channel.send(f"Welcome {member.mention}.")
 
 
-def setup(bot):
-    bot.add_cog(Greeting())
+async def setup(bot):
+    await bot.add_cog(Greeting())

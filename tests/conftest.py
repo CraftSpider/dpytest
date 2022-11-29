@@ -1,9 +1,11 @@
 import glob
 import os
 import pytest
+import pytest_asyncio
 import discord
 import discord.ext.commands as commands
 import discord.ext.test as test
+from discord.client import _LoopSentinel
 
 
 @pytest.fixture
@@ -13,11 +15,16 @@ def client(event_loop):
     return c
 
 
-@pytest.fixture
-def bot(request, event_loop):
+@pytest_asyncio.fixture
+async def bot(request, event_loop):
     intents = discord.Intents.default()
     intents.members = True
-    b = commands.Bot("!", loop=event_loop, intents=intents)
+    intents.message_content = True
+    b = commands.Bot(command_prefix="!",
+                     intents=intents)
+    # set up the loop
+    if isinstance(b.loop, _LoopSentinel):
+        await b._async_setup_hook()
 
     marks = request.function.pytestmark
     mark = None
@@ -27,13 +34,13 @@ def bot(request, event_loop):
 
     if mark is not None:
         for extension in mark.args:
-            b.load_extension("tests.internal." + extension)
+            await b.load_extension("tests.internal." + extension)
 
     test.configure(b)
     return b
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def cleanup():
     yield
     await test.empty_queue()

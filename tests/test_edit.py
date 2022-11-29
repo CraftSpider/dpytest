@@ -9,6 +9,6 @@ async def test_edit(bot):
     channel = guild.channels[0]
 
     mes = await channel.send("Test Message")
-    await mes.edit(content="New Message")
+    edited_mes = await mes.edit(content="New Message")
 
-    assert mes.content == "New Message"
+    assert edited_mes.content == "New Message"

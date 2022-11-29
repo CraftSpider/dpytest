@@ -42,7 +42,7 @@ async def test_get_embed(bot):
 
     await channel.send(embed=embed)
     emb = dpytest.get_embed()
-    assert emb.title == "Test Embed"
+    assert emb == embed
 
 
 @pytest.mark.asyncio
@@ -58,4 +58,4 @@ async def test_get_embed_peek(bot):
 
     await channel.send(embed=embed)
     emb = dpytest.get_embed(peek=True)
-    assert emb.title == "Test Embed"
+    assert emb == embed

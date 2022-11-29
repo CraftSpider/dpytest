@@ -10,7 +10,7 @@ async def test_embed(bot):
 
     embed = discord.Embed(title="Test Embed")
     embed.add_field(name="Field 1", value="Lorem ipsum")
-    
+
     embed2 = embed = discord.Embed(title="Test Embed")
     embed2.add_field(name="Field 1", value="Lorem ipsum")
 
@@ -25,7 +25,7 @@ async def test_embed_KO(bot):
 
     embed = discord.Embed(title="Test Embed")
     embed.add_field(name="Field 1", value="Lorem ipsum")
-    
+
     embed2 = discord.Embed(title="Test Embed KO")
     embed2.add_field(name="Field 35", value="Foo Bar")
 
@@ -45,7 +45,7 @@ async def test_embed_peek(bot):
 
     embed = discord.Embed(title="Test Embed")
     embed.add_field(name="Field 1", value="Lorem ipsum")
-    
+
     embed2 = embed = discord.Embed(title="Test Embed")
     embed2.add_field(name="Field 1", value="Lorem ipsum")
 
