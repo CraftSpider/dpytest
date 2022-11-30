@@ -27,27 +27,50 @@ Putting all this together, we can rewrite our previous tests to look like this:
 
 .. code:: python
 
+    import discord
+    import discord.ext.commands as commands
+    from discord.ext.commands import Cog, command
     import pytest
+    import pytest_asyncio
     import discord.ext.test as dpytest
 
 
-    @pytest.fixture
-    def bot(event_loop):
-        bot = ... # However you create your bot, make sure to use loop=event_loop
-        dpytest.configure(bot)
-        return bot
+    class Misc(Cog):
+        @command()
+        async def ping(self, ctx):
+            await ctx.send("Pong !")
+
+        @command()
+        async def echo(self, ctx, text: str):
+            await ctx.send(text)
+
+
+    @pytest_asyncio.fixture
+    async def bot():
+        intents = discord.Intents.default()
+        intents.members = True
+        intents.message_content = True
+        b = commands.Bot(command_prefix="!",
+                         intents=intents)
+        await b._async_setup_hook()  # setup the loop
+        await b.add_cog(Misc())
+
+        dpytest.configure(b)
+        return b
 
 
     @pytest.mark.asyncio
     async def test_ping(bot):
         await dpytest.message("!ping")
-        assert dpytest.verify().message().contains().content("Ping:")
+        assert dpytest.verify().message().content("Pong !")
 
 
     @pytest.mark.asyncio
-    async def test_foo(bot):
-        await dpytest.message("!hello")
-        assert dpytest.verify().message().content("Hello World!")
+    async def test_echo(bot):
+        await dpytest.message("!echo Hello world")
+        assert dpytest.verify().message().contains().content("Hello")
+
+
 
 Much less writing the same code over and over again, and tests will be automatically run by pytest, then the results
 output in a nice pretty format once it's done.
@@ -66,25 +89,44 @@ An example ``conftest.py`` might look like this:
 
 .. code:: python
 
-    import pytest
+    import glob
+    import os
+    import pytest_asyncio
+    import discord
+    import discord.ext.commands as commands
     import discord.ext.test as dpytest
 
 
-    @pytest.fixture
-    def bot(event_loop):
-        bot = ... # However you create your bot, make sure to use loop=event_loop
-        dpytest.configure(bot)
-        return bot
+    @pytest_asyncio.fixture
+    async def bot():
+        intents = discord.Intents.default()
+        intents.members = True
+        intents.message_content = True
+        b = commands.Bot(command_prefix="!",
+                        intents=intents)
+        await b._async_setup_hook()
+        dpytest.configure(b)
+        return b
 
 
-    def pytest_sessionfinish():
-        # Clean up attachment files
-        files = glob.glob('./dpytest_*.dat')
-        for path in files:
+    @pytest_asyncio.fixture(autouse=True)
+    async def cleanup():
+        yield
+        await dpytest.empty_queue()
+
+
+    def pytest_sessionfinish(session, exitstatus):
+        """ Code to execute after all tests. """
+
+        # dat files are created when using attachements
+        print("\n-------------------------\nClean dpytest_*.dat files")
+        fileList = glob.glob('./dpytest_*.dat')
+        for filePath in fileList:
             try:
-                os.remove(path)
-            except Exception as e:
-                print(f"Error while deleting file {path}: {e}")
+                os.remove(filePath)
+            except Exception:
+                print("Error while deleting file : ", filePath)
+
 
 With that, you should be ready to use ``dpytest`` with your bot.
 
@@ -95,13 +137,6 @@ Troubleshooting
 
 Make sure your tests take a parameter with the exact same name as the fixture,
 pytest runs them based on name, including capitalization.
-
-- I get an instance of my bot, but it just gets stuck / doesn't do anything
-  when I ``await``
-
-Make sure you passed ``event_loop`` to your bot when creating it. Pytest-asyncio
-does not necessarily use the default event loop, so your bot may not actually
-be running.
 
 --------------------
 

@@ -1,5 +1,13 @@
 # History
 
+## 0.6.0
+
+- First version for working with dpytest>=2.X.X
+    Changes have been made in backend, factories, websocket
+- Change the README
+- Change the setup.py for python >= 3.8
+- Changing in doc
+
 ## 0.5.3
 
 - Docs: Add vertical spacing for functions & methods

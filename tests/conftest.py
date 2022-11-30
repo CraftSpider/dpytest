@@ -1,22 +1,14 @@
 import glob
 import os
-import pytest
 import pytest_asyncio
 import discord
 import discord.ext.commands as commands
-import discord.ext.test as test
+import discord.ext.test as dpytest
 from discord.client import _LoopSentinel
 
 
-@pytest.fixture
-def client(event_loop):
-    c = discord.Client(loop=event_loop)
-    test.configure(c)
-    return c
-
-
 @pytest_asyncio.fixture
-async def bot(request, event_loop):
+async def bot(request):
     intents = discord.Intents.default()
     intents.members = True
     intents.message_content = True
@@ -36,14 +28,14 @@ async def bot(request, event_loop):
         for extension in mark.args:
             await b.load_extension("tests.internal." + extension)
 
-    test.configure(b)
+    dpytest.configure(b)
     return b
 
 
 @pytest_asyncio.fixture(autouse=True)
 async def cleanup():
     yield
-    await test.empty_queue()
+    await dpytest.empty_queue()
 
 
 def pytest_sessionfinish(session, exitstatus):
