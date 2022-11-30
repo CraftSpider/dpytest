@@ -5,3 +5,4 @@ coverage
 discord.py==2.1.0
 invoke
 sphinx-automodapi
+build
