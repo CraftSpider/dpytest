@@ -6,7 +6,7 @@ This project has been on pause since the 2.0.0 rewrites.
 
 # dpytest
 
-[![Build Status](https://travis-ci.com/CraftSpider/dpytest.svg?branch=master)](https://travis-ci.com/CraftSpider/dpytest)
+[![Test CI](https://github.com/CraftSpider/dpytest/actions/workflows/test-ci.yml/badge.svg)](https://github.com/CraftSpider/dpytest/actions/workflows/test-ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/dpytest/badge/?version=latest)](https://dpytest.readthedocs.io/en/latest/?badge=latest)
 [![Discord Server](https://img.shields.io/discord/523301176309972993.svg?label=Support%20Discord)](https://discord.gg/aNe8DqAuxd)
 
