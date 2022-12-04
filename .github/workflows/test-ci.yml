@@ -32,5 +32,5 @@ jobs:
     - name: Install self (dpytest)
       run: python -m pip install .
         
-    - name: Test
-      run: inv test
+    - name: Test with pytest
+      run: pytest
