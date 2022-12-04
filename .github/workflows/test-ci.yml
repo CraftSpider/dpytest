@@ -26,7 +26,6 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-        cache: pip # enables caching for faster installs (i guess)
     - name: Update pip
       run: python -m pip install --upgrade pip
       
