@@ -1,9 +1,3 @@
-# Notice: this package does not currently support discord.py 2.0.0
-
-This project has been on pause since the 2.0.0 rewrites.
-
----
-
 # dpytest
 
 [![Test CI](https://github.com/CraftSpider/dpytest/actions/workflows/test-ci.yml/badge.svg)](https://github.com/CraftSpider/dpytest/actions/workflows/test-ci.yml)
