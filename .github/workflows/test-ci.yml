@@ -40,4 +40,27 @@ jobs:
     - name: Test with pytest and coverage
       run: coverage run --source=discord.ext.test -m pytest
     - name: Report coverage
-      run: coverage report
+      run: |
+        coverage report
+        coverage html
+        coverage xml
+        coverage lcov
+    - name: Upload HTML report
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: ${{ matrix.python-version }}-cov-htmlcov
+        path: htmlcov
+        if-no-files-found: warn
+    - name: Upload XML report
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: ${{ matrix.python-version }}-cov-xml
+        path: coverage.xml
+        if-no-files-found: warn
+    - name: Upload LCOV report
+      uses: actions/upload-artifact@v3.1.1
+      with:
+        name: ${{ matrix.python-version }}-cov-lcov
+        path: coverage.lcov
+        if-no-files-found: warn
+      
