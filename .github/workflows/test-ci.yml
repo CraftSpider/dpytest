@@ -1,5 +1,4 @@
 # This workflow is a re-implementation of the workflow for Travis CI: Tests dpytest.
-# NEW: Now also lints code
 # Runs every push on any branch and on a PR targeting "master"
 
 name: Test CI
