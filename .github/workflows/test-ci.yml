@@ -38,7 +38,7 @@ jobs:
     #  run: python -m pytest
     
     - name: Test with pytest and coverage
-      run: python -m inv coverage
+      run: python -m invoke coverage
     - name: Report coverage
       run: |
         coverage report
