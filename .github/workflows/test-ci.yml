@@ -38,7 +38,7 @@ jobs:
     #  run: python -m pytest
     
     - name: Test with pytest and coverage
-      run: python -m invoke coverage
+      run: coverage run --source=discord/ext/test -m pytest
     - name: Report coverage
       run: |
         coverage report
