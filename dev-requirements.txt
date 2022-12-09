@@ -1,7 +1,7 @@
 sphinx>=3
 pytest
 pytest-asyncio
-coverage
+coverage~=6.5.0
 discord.py==2.1.0
 invoke
 sphinx-automodapi

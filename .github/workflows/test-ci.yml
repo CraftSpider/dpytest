@@ -1,4 +1,4 @@
-# This workflow is a reimplementation of the workflow for Travis CI: Tests dpytest.
+# This workflow is a re-implementation of the workflow for Travis CI: Tests dpytest.
 # Runs every push on any branch and on a PR targeting "master"
 
 name: Test CI
@@ -15,7 +15,7 @@ jobs:
 
     runs-on: ubuntu-latest
     strategy:
-      # don't cancel any remaning jobs when one fails
+      # don't cancel any remaining jobs when one fails
       fail-fast: false
       # how you define a matrix strategy
       matrix:
@@ -38,7 +38,7 @@ jobs:
     #  run: python -m pytest
     
     - name: Test with pytest and coverage
-      run: coverage run --source=discord.ext.test -m pytest
+      run: python -m inv coverage
     - name: Report coverage
       run: |
         coverage report
