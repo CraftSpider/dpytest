@@ -81,4 +81,4 @@ jobs:
       run: python -m pip install .
 
     - name: lint
-      run: python -m flake8 discord/ext/test tests/ tasks.py
+      run: flake8 discord/ext/test tests/ tasks.py
