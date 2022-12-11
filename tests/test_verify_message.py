@@ -1,4 +1,4 @@
-import discord
+import discord  # noqa: F401
 import pytest
 import discord.ext.test as dpytest
 

@@ -12,6 +12,7 @@ async def test_add_role(bot):
     await dpytest.add_role(member1, staff_role)
     assert staff_role in member1.roles
 
+
 @pytest.mark.asyncio
 async def test_edit_role(bot):
     await test_add_role(bot=bot)
@@ -24,8 +25,9 @@ async def test_edit_role(bot):
     assert bot.guilds[0].roles[2].hoist is True
     assert bot.guilds[0].roles[2].mentionable is True
     assert bot.guilds[0].roles[2].permissions.administrator is True
-    #assert staff_role in member1.roles
-    
+    # assert staff_role in member1.roles
+
+
 @pytest.mark.asyncio
 async def test_remove_role(bot):
     guild = bot.guilds[0]

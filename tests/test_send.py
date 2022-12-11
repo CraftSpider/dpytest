@@ -1,6 +1,6 @@
 import discord
 import pytest
-import discord.ext.test as dpytest
+import discord.ext.test as dpytest  # noqa: F401
 
 
 @pytest.mark.asyncio
