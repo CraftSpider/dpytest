@@ -1,4 +1,6 @@
 {
     "flake8.importStrategy": "fromEnvironment",
-    
+    "editor.rulers": [
+    120
+    ],
 }
