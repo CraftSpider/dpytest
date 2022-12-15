@@ -61,7 +61,7 @@ def make_user_dict(
 
 
 def make_user_dict(
-    username: str, discrim: typing.Union[str, int], avatar: str, 
+    username: str, discrim: typing.Union[str, int], avatar: str,
     id_num: int = -1, flags: int = 0, **kwargs: typing.Any
 ) -> _types.JsonDict:
     if isinstance(discrim, int):

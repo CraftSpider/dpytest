@@ -12,8 +12,8 @@ JsonDict = typing.Dict[str, JsonVal]
 JsonList = typing.List[JsonVal]
 Callback = typing.Callable[..., typing.Coroutine[None, None, None]]
 AnyChannel = typing.Union[
-    discord.TextChannel, 
-    discord.CategoryChannel, 
-    discord.abc.GuildChannel, 
+    discord.TextChannel,
+    discord.CategoryChannel,
+    discord.abc.GuildChannel,
     discord.abc.PrivateChannel
 ]
