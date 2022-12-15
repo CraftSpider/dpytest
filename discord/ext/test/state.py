@@ -21,7 +21,10 @@ class FakeState(dstate.ConnectionState):
 
     http: 'back.FakeHttp'  # String because of circular import
 
-    def __init__(self, client: discord.Client, http: dhttp.HTTPClient, user: discord.ClientUser = None, loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(
+        self, client: discord.Client, http: dhttp.HTTPClient,
+        user: discord.ClientUser = None, loop: asyncio.AbstractEventLoop = None
+    ) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()
         super().__init__(dispatch=client.dispatch,
@@ -59,7 +62,9 @@ class FakeState(dstate.ConnectionState):
         self._do_dispatch = True
 
     # TODO: Respect limit parameters
-    async def query_members(self, guild: discord.Guild, query: str, limit: int, user_ids: int, cache: bool, presences: bool) -> None:
+    async def query_members(
+        self, guild: discord.Guild, query: str, limit: int, user_ids: int, cache: bool, presences: bool
+    ) -> None:
         guild: discord.Guild = discord.utils.get(self.guilds, id=guild.id)
         return guild.members
 

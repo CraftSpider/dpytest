@@ -263,7 +263,9 @@ async def remove_role(member: discord.Member, role: discord.Role) -> None:
 
 
 @require_config
-async def add_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.User], message: discord.Message, emoji: str) -> None:
+async def add_reaction(
+    user: typing.Union[discord.user.BaseUser, discord.abc.User], message: discord.Message, emoji: str
+) -> None:
     """
         Add a reaction to a message, as if added by another user
 
@@ -276,7 +278,9 @@ async def add_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.Use
 
 
 @require_config
-async def remove_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.User], message: discord.Message, emoji: str) -> None:
+async def remove_reaction(
+    user: typing.Union[discord.user.BaseUser, discord.abc.User], message: discord.Message, emoji: str
+) -> None:
     """
         Remove a reaction from a message, as if done by another user
 

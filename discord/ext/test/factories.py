@@ -60,7 +60,10 @@ def make_user_dict(
 ) -> _types.JsonDict: ...
 
 
-def make_user_dict(username: str, discrim: typing.Union[str, int], avatar: str, id_num: int = -1, flags: int = 0, **kwargs: typing.Any) -> _types.JsonDict:
+def make_user_dict(
+    username: str, discrim: typing.Union[str, int], avatar: str, 
+    id_num: int = -1, flags: int = 0, **kwargs: typing.Any
+) -> _types.JsonDict:
     if isinstance(discrim, int):
         assert 0 < discrim < 10000
         discrim = f"{discrim:04}"
@@ -260,7 +263,9 @@ def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: typing.
     return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
 
 
-def dict_from_overwrite(target: typing.Union[discord.Member, discord.Role], overwrite: discord.PermissionOverwrite) -> _types.JsonDict:
+def dict_from_overwrite(
+    target: typing.Union[discord.Member, discord.Role], overwrite: discord.PermissionOverwrite
+) -> _types.JsonDict:
     allow, deny = overwrite.pair()
     ovr = {
         'id': target.id,
