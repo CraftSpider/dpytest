@@ -2,9 +2,9 @@ name: Lint
 
 on:
   push:
-    paths-ignore: [ "docs/*", "*.md", ".readthedocs.yml", ".github/dependabot.yml", ".vscode" ]
+    paths: [ "discord/ext/test/*", "tests/*", "tasks.py" ]
   pull_request:
-    paths-ignore: [ "docs/*", "*.md", ".readthedocs.yml", ".github/dependabot.yml", ".vscode" ]
+    paths: [ "discord/ext/test/*", "tests/*", "tasks.py" ]
     branches: [ "master" ]
 
 jobs:
