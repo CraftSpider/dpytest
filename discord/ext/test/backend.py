@@ -53,7 +53,7 @@ def _get_higher_locs(num: int) -> typing.Dict[str, typing.Any]:
 class FakeRequest(typing.NamedTuple):
     """
         A fake web response, for use with discord ``HTTPException``\ s
-    """
+    """  # noqa: W605
     status: int
     reason: str
 
@@ -858,8 +858,8 @@ ROLE_MENTION: typing.Pattern = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
 CHANNEL_MENTION: typing.Pattern = re.compile(r"<#[0-9]{17,21}>", re.MULTILINE)
 
 
-def find_user_mentions(content: typing.Optional[str], guild: typing.Optional[discord.Guild]) -> typing.List[
-    discord.Member]:
+def find_user_mentions(content: typing.Optional[str],
+                       guild: typing.Optional[discord.Guild]) -> typing.List[discord.Member]:
     if guild is None or content is None:
         return []  # TODO: Check for dm user mentions
     matches = re.findall(MEMBER_MENTION, content)
@@ -873,8 +873,8 @@ def find_role_mentions(content: typing.Optional[str], guild: typing.Optional[dis
     return matches
 
 
-def find_channel_mentions(content: typing.Optional[str], guild: typing.Optional[discord.Guild]) -> typing.List[
-    _types.AnyChannel]:
+def find_channel_mentions(content: typing.Optional[str],
+                          guild: typing.Optional[discord.Guild]) -> typing.List[_types.AnyChannel]:
     if guild is None or content is None:
         return []
     matches = re.findall(CHANNEL_MENTION, content)

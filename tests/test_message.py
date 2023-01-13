@@ -25,6 +25,6 @@ async def test_member_join(bot):
     )
     message_dict = dpytest.back.facts.make_message_dict(channel, author, attachments=[attach])
     try:
-        message: discord.Message = discord.Message(state=dpytest.back.get_state(), channel=channel, data=message_dict)
+        message: discord.Message = discord.Message(state=dpytest.back.get_state(), channel=channel, data=message_dict)  # noqa: E501,F841 (variable never used)
     except Exception as err:
         pytest.fail(str(err))

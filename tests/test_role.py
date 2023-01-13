@@ -19,7 +19,7 @@ async def test_edit_role(bot):
     await bot.guilds[0].create_role(name="TestRole")  # Role object
     assert len(bot.guilds[0].roles) == 3
     staff_role = bot.guilds[0].roles[1]
-    await staff_role.edit(permissions=discord.Permissions(8), colour=discord.Color.red(), hoist=True, mentionable=True, position=2)
+    await staff_role.edit(permissions=discord.Permissions(8), colour=discord.Color.red(), hoist=True, mentionable=True, position=2)  # noqa: E501
     assert bot.guilds[0].roles[2] == staff_role
     assert bot.guilds[0].roles[2].colour == discord.Color.red()
     assert bot.guilds[0].roles[2].hoist is True
