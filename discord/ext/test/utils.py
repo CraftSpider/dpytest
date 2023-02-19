@@ -20,7 +20,8 @@ def embed_eq(embed1: typing.Optional[discord.Embed], embed2: typing.Optional[dis
                 embed1.description == embed2.description,
                 embed1.url == embed2.url,
                 embed1.footer.text == embed2.footer.text,
-                embed1.image.url == embed2.image.url])
+                embed1.image.url == embed2.image.url,
+                embed1.fields == embed2.fields])
 
 
 def activity_eq(act1: typing.Optional[discord.Activity], act2: typing.Optional[discord.Activity]) -> bool:
