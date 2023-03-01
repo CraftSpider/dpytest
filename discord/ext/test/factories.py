@@ -102,6 +102,7 @@ def make_member_dict(
         deaf: bool = ...,
         mute: bool = ...,
         voice: bool = ...,
+        flags: int = ...,
         *,
         nick: str = ...,
 ) -> _types.JsonDict: ...
@@ -115,6 +116,7 @@ def make_member_dict(
         deaf: bool = False,
         mute: bool = False,
         voice: bool = False,
+        flags: int = 0,
         **kwargs: typing.Any,
 ) -> _types.JsonDict:
     out = {
@@ -125,6 +127,7 @@ def make_member_dict(
         'deaf': deaf,
         'mute': mute,
         'voice': voice,
+        'flags': flags,
     }
     items = ("nick",)
     _fill_optional(out, kwargs, items)
@@ -140,6 +143,7 @@ def dict_from_member(member: discord.Member) -> _types.JsonDict:
         'user': dict_from_user(member._user),
         'roles': list(map(lambda role: int(role.id), roles_no_default)),
         'joined_at': member.joined_at,
+        'flags': member.flags,
     }
     if voice_state is not None:
         out['deaf'] = voice_state.deaf

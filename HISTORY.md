@@ -1,5 +1,16 @@
 # History
 
+## 0.6.2
+
+This is the version for discord.py 2.2.0
+
+- Embed equality check now checks for equality of fields.
+- Fix members factories to add the "flags" key (necessary in 2.2.0)
+
+## 0.6.1
+
+- Linting
+
 ## 0.6.0
 
 - First version for working with dpytest>=2.X.X
