@@ -1,5 +1,9 @@
 # History
 
+## 0.6.3
+
+- Update requirements for discord.py 2.2.2
+
 ## 0.6.2
 
 This is the version for discord.py 2.2.0
