@@ -11,6 +11,7 @@ import discord.state as dstate
 
 from . import factories as facts
 from . import backend as back
+from .voice import FakeVoiceChannel
 
 
 class FakeState(dstate.ConnectionState):
@@ -37,6 +38,7 @@ class FakeState(dstate.ConnectionState):
         self.shard_count = client.shard_count
         self._get_websocket = lambda x: client.ws
         self._do_dispatch = True
+        self._get_client = lambda: client
 
         real_disp = self.dispatch
 
@@ -73,3 +75,28 @@ class FakeState(dstate.ConnectionState):
         Prevents chunking which can throw asyncio wait_for errors with tests under 60 seconds
         """
         return False
+
+    def parse_channel_create(self, data) -> None:
+        """
+        Need to make sure that FakeVoiceChannels are created when this is called to create VoiceChannels. Otherwise,
+        guilds would not be set up correctly.
+
+        :param data: info to use in channel creation.
+        """
+        if data['type'] == discord.ChannelType.voice.value:
+            factory, ch_type = FakeVoiceChannel, discord.ChannelType.voice.value
+        else:
+            factory, ch_type = discord.channel._channel_factory(data['type'])
+
+        if factory is None:
+            return
+
+        guild_id = discord.utils._get_as_snowflake(data, 'guild_id')
+        guild = self._get_guild(guild_id)
+        if guild is not None:
+            # the factory can't be a DMChannel or GroupChannel here
+            channel = factory(guild=guild, state=self, data=data)  # type: ignore
+            guild._add_channel(channel)  # type: ignore
+            self.dispatch('guild_channel_create', channel)
+        else:
+            return
