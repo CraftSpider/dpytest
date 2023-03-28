@@ -221,15 +221,8 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("edit_message", message.channel, message, fields)
 
-        out = facts.dict_from_message(message)
-        payload = fields.get("params").payload
-        # TODO : do something for files and stuff.
-        # if params.files:
-        #     return self.request(r, files=params.files, form=params.multipart)
-        # else:
-        #     return self.request(r, json=params.payload)
-        out.update(payload)
-        return out
+        return edit_message(message, **fields)
+
 
     async def add_reaction(self, channel_id: int, message_id: int, emoji: str) -> None:
         locs = _get_higher_locs(1)
@@ -851,6 +844,28 @@ def make_message(
     _cur_config.messages[channel.id].append(data)
 
     return state._get_message(data["id"])
+
+
+def edit_message(
+        message: discord.Message, **fields: dhttp.MultipartParameters
+) -> _types.JsonDict:
+    data = facts.dict_from_message(message)
+    payload = fields.get("params").payload
+    # TODO : do something for files and stuff.
+    # if params.files:
+    #     return self.request(r, files=params.files, form=params.multipart)
+    # else:
+    #     return self.request(r, json=params.payload)
+    data.update(payload)
+
+    state = get_state()
+    i = 0
+    while i < len(_cur_config.messages[message.channel.id]):
+        i += 1
+        if _cur_config.messages[message.channel.id][i].get("id") == data.get("id"):
+            _cur_config.messages[message.channel.id][i] = data
+
+    return data
 
 
 MEMBER_MENTION: typing.Pattern = re.compile(r"<@!?[0-9]{17,21}>", re.MULTILINE)
