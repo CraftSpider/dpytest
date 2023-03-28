@@ -858,7 +858,6 @@ def edit_message(
     #     return self.request(r, json=params.payload)
     data.update(payload)
 
-    state = get_state()
     i = 0
     while i < len(_cur_config.messages[message.channel.id]):
         if _cur_config.messages[message.channel.id][i].get("id") == data.get("id"):
