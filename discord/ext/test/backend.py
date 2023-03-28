@@ -861,9 +861,9 @@ def edit_message(
     state = get_state()
     i = 0
     while i < len(_cur_config.messages[message.channel.id]):
-        i += 1
         if _cur_config.messages[message.channel.id][i].get("id") == data.get("id"):
             _cur_config.messages[message.channel.id][i] = data
+        i += 1
 
     return data
 
