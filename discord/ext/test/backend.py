@@ -223,7 +223,6 @@ class FakeHttp(dhttp.HTTPClient):
 
         return edit_message(message, **fields)
 
-
     async def add_reaction(self, channel_id: int, message_id: int, emoji: str) -> None:
         locs = _get_higher_locs(1)
         message = locs.get("self")
