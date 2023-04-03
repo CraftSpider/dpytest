@@ -1,5 +1,10 @@
 # History
 
+## 0.6.4
+
+- Fix: edit message doesn't update message queue
+- Refactor __init__.py import to be explicit exports as per PEP 484
+
 ## 0.6.3
 
 - Update requirements for discord.py 2.2.2
