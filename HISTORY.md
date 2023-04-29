@@ -1,5 +1,18 @@
 # History
 
+## 0.6.5
+
+This release allows testing with Voice Channels.
+
+New :
+
+- `FakeVoiceChannel` and `FakeVoiceClient` classes implemetation
+- New tests
+
+Changes :
+
+- `create_channel` method can create voice channel
+
 ## 0.6.4
 
 - Fix: edit message doesn't update message queue
