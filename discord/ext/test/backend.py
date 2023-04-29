@@ -13,6 +13,7 @@ import logging
 import re
 import typing
 import datetime
+
 import discord
 import discord.http as dhttp
 import pathlib
@@ -108,6 +109,9 @@ class FakeHttp(dhttp.HTTPClient):
             channel = make_text_channel(name, guild, permission_overwrites=perms, parent_id=parent_id)
         elif channel_type == discord.ChannelType.category.value:
             channel = make_category_channel(name, guild, permission_overwrites=perms)
+        elif channel_type == discord.ChannelType.voice.value:
+            channel = make_voice_channel(name, guild, permission_overwrites=perms)
+
         else:
             raise NotImplementedError(
                 "Operation occurred that isn't captured by the tests framework. This is dpytest's fault, please report"
@@ -123,6 +127,8 @@ class FakeHttp(dhttp.HTTPClient):
         if channel.type.value == discord.ChannelType.category.value:
             for sub_channel in channel.text_channels:
                 delete_channel(sub_channel)
+            delete_channel(channel)
+        if channel.type.value == discord.ChannelType.voice.value:
             delete_channel(channel)
 
     async def get_channel(self, channel_id: int) -> _types.JsonDict:
@@ -330,11 +336,13 @@ class FakeHttp(dhttp.HTTPClient):
         return {"nick": nickname}
 
     async def edit_member(self, guild_id: int, user_id: int, *, reason: typing.Optional[str] = None,
-                          **fields: typing.Any) -> None:
+                          **fields: typing.Any) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         member = locs.get("self", None)
 
         await callbacks.dispatch_event("edit_member", fields, member, reason=reason)
+        member = update_member(member, nick=fields.get('nick'), roles=fields.get('roles'))
+        return facts.dict_from_member(member)
 
     async def get_member(self, guild_id: int, member_id: int) -> _types.JsonDict:
         locs = _get_higher_locs(1)
@@ -729,6 +737,28 @@ def make_category_channel(
         position = len(guild.categories) + 1
     c_dict = facts.make_category_channel_dict(name, id_num, position=position, guild_id=guild.id,
                                               permission_overwrites=permission_overwrites)
+    state = get_state()
+    state.parse_channel_create(c_dict)
+
+    return guild.get_channel(c_dict["id"])
+
+
+def make_voice_channel(
+        name: str,
+        guild: discord.Guild,
+        position: int = -1,
+        id_num: int = -1,
+        permission_overwrites: typing.Optional[_types.JsonDict] = None,
+        parent_id: typing.Optional[int] = None,
+        bitrate: int = 192,
+        user_limit: int = 0
+
+) -> discord.VoiceChannel:
+    if position == -1:
+        position = len(guild.voice_channels) + 1
+    c_dict = facts.make_voice_channel_dict(name, id_num, position=position, guild_id=guild.id,
+                                           permission_overwrites=permission_overwrites, parent_id=parent_id,
+                                           bitrate=bitrate, user_limit=user_limit)
     state = get_state()
     state.parse_channel_create(c_dict)
 
