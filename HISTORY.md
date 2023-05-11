@@ -1,5 +1,9 @@
 # History
 
+## 0.6.6
+
+Support asyncio tasks that have no \_\_name\_\_
+
 ## 0.6.5
 
 This release allows testing with Voice Channels.
