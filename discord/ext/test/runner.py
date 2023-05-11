@@ -61,6 +61,13 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
     return wrapper
 
 
+def _task_coro_name(task: asyncio.Task) -> typing.Optional[str]:
+    """
+        Uses getattr() to avoid AttributeErrors when the _coro doesn't have a __name__
+    """
+    return getattr(task._coro, "__name__", None)
+
+
 async def run_all_events() -> None:
     """
         Ensure that all dpy related coroutines have completed or been cancelled. If any dpy coroutines
@@ -71,10 +78,10 @@ async def run_all_events() -> None:
             pending = asyncio.all_tasks()
         else:
             pending = asyncio.Task.all_tasks()
-        if not any(map(lambda x: x._coro.__name__ == "_run_event" and not (x.done() or x.cancelled()), pending)):
+        if not any(map(lambda x: _task_coro_name(x) == "_run_event" and not (x.done() or x.cancelled()), pending)):
             break
         for task in pending:
-            if task._coro.__name__ == "_run_event" and not (task.done() or task.cancelled()):
+            if _task_coro_name(task) == "_run_event" and not (task.done() or task.cancelled()):
                 await task
 
 
@@ -84,9 +91,9 @@ async def finish_on_command_error() -> None:
         wait for dpy related coroutines, not any other coroutines currently running.
     """
     if sys.version_info[1] >= 7:
-        pending = filter(lambda x: x._coro.__name__ == "_run_event", asyncio.all_tasks())
+        pending = filter(lambda x: _task_coro_name(x) == "_run_event", asyncio.all_tasks())
     else:
-        pending = filter(lambda x: x._coro.__name__ == "_run_event", asyncio.Task.all_tasks())
+        pending = filter(lambda x: _task_coro_name(x) == "_run_event", asyncio.Task.all_tasks())
     for task in pending:
         if not (task.done() or task.cancelled()):
             await task
