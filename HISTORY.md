@@ -17,10 +17,17 @@ Changes :
 
 - `create_channel` method can create voice channel
 
+⚠️ Warning ⚠️:
+
+This can be **breaking** :
+
+the `configure()` function DOESN'T take the keyword parameter `num_channels` anymore, but instead :
+`num_text_channels` and `num_voice_channels`
+
 ## 0.6.4
 
 - Fix: edit message doesn't update message queue
-- Refactor __init__.py import to be explicit exports as per PEP 484
+- Refactor **init**.py import to be explicit exports as per PEP 484
 
 ## 0.6.3
 
