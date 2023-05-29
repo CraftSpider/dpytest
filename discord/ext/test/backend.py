@@ -281,7 +281,9 @@ class FakeHttp(dhttp.HTTPClient):
     ) -> typing.List[_types.JsonDict]:
         locs = _get_higher_locs(1)
         his = locs.get("self", None)
-        channel = his.channel
+        print(his)
+        # channel: discord.TextChannel= his.channel
+        channel = his
 
         await callbacks.dispatch_event("logs_from", channel, limit, before=None, after=None, around=None)
 
