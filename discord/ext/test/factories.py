@@ -8,6 +8,7 @@ import datetime as dt
 import discord
 from . import _types
 
+
 generated_ids: int = 0
 
 
@@ -265,6 +266,10 @@ def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: typing.
     return make_channel_dict(discord.ChannelType.private, id_num, recipients=[dict_from_user(user)], **kwargs)
 
 
+def make_voice_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -> _types.JsonDict:
+    return make_channel_dict(discord.ChannelType.voice.value, id_num, name=name, **kwargs)
+
+
 def dict_from_overwrite(target: typing.Union[discord.Member, discord.Role],
                         overwrite: discord.PermissionOverwrite) -> _types.JsonDict:
     allow, deny = overwrite.pair()
@@ -295,6 +300,15 @@ def dict_from_channel(channel: _types.AnyChannel) -> _types.JsonDict:
             'parent_id': channel.category_id
         }
     if isinstance(channel, discord.CategoryChannel):
+        return {
+            'name': channel.name,
+            'position': channel.position,
+            'id': channel.id,
+            'guild_id': channel.guild.id,
+            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+            'type': channel.type
+        }
+    if isinstance(channel, discord.VoiceChannel):
         return {
             'name': channel.name,
             'position': channel.position,

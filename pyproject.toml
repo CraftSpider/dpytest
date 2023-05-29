@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dpytest"
+authors = [{name = "Rune Tynan", email = "runetynan@gmail.com"},]
+maintainers = [{name = "CraftSpider"},
+               {name = "Sergeileduc"}]
+description = "A package that assists in writing tests for discord.py"
+dynamic = ["readme", "version"]
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
+keywords = ["discord", "discord.py", "test"]
+classifiers = [
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Topic :: Software Development :: Testing",
+]
+
+dependencies = [
+    "discord.py == 2.2.3",
+    "pytest",
+    "pytest-asyncio",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-asyncio"]
+doc = ["sphinx"]
+dev = ["flake8", "invoke", "build"]
+
+[project.urls]
+"Homepage" = "https://github.com/CraftSpider/dpytest"
+"Source" = "https://github.com/CraftSpider/dpytest"
+"Bug Tracker" = "https://github.com/CraftSpider/dpytest/issues"
+"Documentation" = "https://dpytest.readthedocs.io/"
+
+[tool.setuptools]
+packages = ["discord.ext.test"]
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md", "HISTORY.md"], content-type = "text/markdown"}
+version = {attr = "discord.ext.test.__version__"}

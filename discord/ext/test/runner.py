@@ -9,7 +9,6 @@
         :mod:`discord.ext.test.verify`
 """
 
-
 import sys
 import asyncio
 import logging
@@ -49,15 +48,24 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
     :param func: Function to decorate
     :return: Function with added check for configuration being setup
     """
+
     def wrapper(*args, **kwargs):
         if _cur_config is None:
             log.error("Attempted to make call before runner configured")
             raise RuntimeError(f"Configure runner before calling {func.__name__}")
         return func(*args, **kwargs)
+
     wrapper.__wrapped__ = func
     wrapper.__annotations__ = func.__annotations__
     wrapper.__doc__ = func.__doc__
     return wrapper
+
+
+def _task_coro_name(task: asyncio.Task) -> typing.Optional[str]:
+    """
+        Uses getattr() to avoid AttributeErrors when the _coro doesn't have a __name__
+    """
+    return getattr(task._coro, "__name__", None)
 
 
 async def run_all_events() -> None:
@@ -70,10 +78,10 @@ async def run_all_events() -> None:
             pending = asyncio.all_tasks()
         else:
             pending = asyncio.Task.all_tasks()
-        if not any(map(lambda x: x._coro.__name__ == "_run_event" and not (x.done() or x.cancelled()), pending)):
+        if not any(map(lambda x: _task_coro_name(x) == "_run_event" and not (x.done() or x.cancelled()), pending)):
             break
         for task in pending:
-            if task._coro.__name__ == "_run_event" and not (task.done() or task.cancelled()):
+            if _task_coro_name(task) == "_run_event" and not (task.done() or task.cancelled()):
                 await task
 
 
@@ -83,9 +91,9 @@ async def finish_on_command_error() -> None:
         wait for dpy related coroutines, not any other coroutines currently running.
     """
     if sys.version_info[1] >= 7:
-        pending = filter(lambda x: x._coro.__name__ == "_run_event", asyncio.all_tasks())
+        pending = filter(lambda x: _task_coro_name(x) == "_run_event", asyncio.all_tasks())
     else:
-        pending = filter(lambda x: x._coro.__name__ == "_run_event", asyncio.Task.all_tasks())
+        pending = filter(lambda x: _task_coro_name(x) == "_run_event", asyncio.Task.all_tasks())
     for task in pending:
         if not (task.done() or task.cancelled()):
             await task
@@ -139,6 +147,22 @@ async def _message_callback(message: discord.Message) -> None:
     :param message: Message sent on discord
     """
     await sent_queue.put(message)
+
+
+async def _edit_member_callback(fields: typing.Any, member: discord.Member, reason: typing.Optional[str]):
+    """
+        Internal callback. Updates a guild's voice states to reflect the given Member connecting to the given channel.
+        Other updates to members are handled in http.edit_member().
+
+    :param fields: Fields passed in from Member.edit().
+    :param member: The Member to edit.
+    :param reason: The reason for editing. Not used.
+    """
+    data = {'user_id': member.id}
+    guild = member.guild
+    channel = fields.get('channel_id')
+    if not fields.get('nick') and not fields.get('roles'):
+        guild._update_voice_state(data, channel)
 
 
 counter = count(0)
@@ -331,13 +355,15 @@ def get_config() -> RunnerConfig:
     return _cur_config
 
 
-def configure(client: discord.Client, num_guilds: int = 1, num_channels: int = 1, num_members: int = 1) -> None:
+def configure(client: discord.Client, num_guilds: int = 1, num_text_channels: int = 1,
+              num_voice_channels: int = 1, num_members: int = 1) -> None:
     """
         Set up the runner configuration. This should be done before any tests are run.
 
     :param client: Client to configure with. Should be the bot/client that is going to be tested.
     :param num_guilds: Number of guilds to start the configuration with. Default is 1
-    :param num_channels: Number of text channels in each guild to start with. Default is 1
+    :param num_text_channels: Number of text channels in each guild to start with. Default is 1
+    :param num_voice_channels: Number of voice channels in each guild to start with. Default is 1.
     :param num_members: Number of members in each guild (other than the client) to start with. Default is 1.
     """
 
@@ -367,6 +393,7 @@ def configure(client: discord.Client, num_guilds: int = 1, num_channels: int = 1
 
     # Configure global callbacks
     callbacks.set_callback(_message_callback, "send_message")
+    callbacks.set_callback(_edit_member_callback, "edit_member")
 
     back.get_state().stop_dispatch()
 
@@ -378,11 +405,14 @@ def configure(client: discord.Client, num_guilds: int = 1, num_channels: int = 1
     channels = []
     members = []
     for guild in guilds:
-        for num in range(num_channels):
-            channel = back.make_text_channel(f"Channel_{num}", guild)
+        for num in range(num_text_channels):
+            channel = back.make_text_channel(f"TextChannel_{num}", guild)
+            channels.append(channel)
+        for num in range(num_voice_channels):
+            channel = back.make_voice_channel(f"VoiceChannel_{num}", guild)
             channels.append(channel)
         for num in range(num_members):
-            user = back.make_user(f"TestUser{str(num)}", f"{num+1:04}")
+            user = back.make_user(f"TestUser{str(num)}", f"{num + 1:04}")
             member = back.make_member(user, guild, nick=user.name + f"_{str(num)}_nick")
             members.append(member)
         back.make_member(back.get_state().user, guild, nick=client.user.name + "_nick")

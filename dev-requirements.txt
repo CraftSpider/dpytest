@@ -1,9 +1,10 @@
 sphinx>=3
 pytest
 pytest-asyncio
-coverage~=7.2.3
-discord.py==2.2.2
+coverage~=7.2.6
+discord.py==2.2.3
 invoke
 sphinx-automodapi
 build
 flake8~=6.0.0
+pynacl
