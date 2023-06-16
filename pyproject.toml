@@ -24,7 +24,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "discord.py == 2.2.3",
+    "discord.py ~= 2.3",
     "pytest",
     "pytest-asyncio",
 ]
