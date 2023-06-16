@@ -1,5 +1,11 @@
 # History
 
+## 0.6.7
+
+Fix bug in channel_history
+
+Fix issue #111
+
 ## 0.6.6
 
 Support asyncio tasks that have no \_\_name\_\_
