@@ -1,0 +1,4 @@
+-r 'dev-requirements.txt'
+bump2version
+build
+twine
