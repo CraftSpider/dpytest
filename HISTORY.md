@@ -1,5 +1,9 @@
 # History
 
+## 0.6.8
+
+Test agains discord.py 2.3
+
 ## 0.6.7
 
 Fix bug in channel_history
