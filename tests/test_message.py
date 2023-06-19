@@ -4,9 +4,8 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_member_join(bot):
-    """Dont use this in your code, it's just dummy test.
-    Use verify_message() instead of 'get_message' and 'message.content'
+async def test_messasge(bot):
+    """Test make_message_dict from factory.
     """
     guild = bot.guilds[0]
     author: discord.Member = guild.members[0]
