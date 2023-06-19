@@ -484,6 +484,7 @@ def dict_from_attachment(attachment: discord.Attachment) -> _types.JsonDict:
         'proxy_url': attachment.proxy_url,
         'height': attachment.height,
         'width': attachment.width,
+        'content_type': attachment.content_type,
     }
 
 
