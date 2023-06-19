@@ -459,7 +459,7 @@ def make_attachment_dict(
         id_num: int = -1,
         height: typing.Optional[int] = None,
         width: typing.Optional[int] = None,
-        content_type: typing.Optional[int] = None
+        content_type: typing.Optional[str] = None
 ) -> _types.JsonDict:
     if id_num < 0:
         id_num = make_id()
