@@ -8,7 +8,7 @@ class Echo(Cog):
         pass
 
     @command()
-    async def echo(self, ctx, text: str):
+    async def echo(self, ctx, *, text: str):
         await ctx.send(text)
 
 

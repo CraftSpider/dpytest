@@ -1,5 +1,32 @@
 # History
 
+## 0.7.0
+
+⚠️ Warning ⚠️:
+
+This can be **breaking** :
+
+The `configure` function has changed.
+It nows accepts either an `int` (like in the previous version) OR a `list` of `string` for the parameters `guilds`, `text_channels`, `voice_channels` and `members`.
+But the names of the parameters had to be changed.
+
+`num_guilds`, `num_text_channels`, `num_voice_channels`, `num_members` are DERECATED.
+
+Example:
+
+```python
+    dpytest.configure(bot,
+                      guilds=["CoolGuild", "LameGuild"],
+                      text_channels=["Fruits", "Videogames"],
+                      voice_channels=2,
+                      members=["Joe", "Jack", "William", "Averell"])
+```
+
+Other changes:
+
+- fixes in typing
+- add `content_type` to `dict_from_attachment()`
+
 ## 0.6.8
 
 Test agains discord.py 2.3

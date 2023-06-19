@@ -355,17 +355,20 @@ def get_config() -> RunnerConfig:
     return _cur_config
 
 
-def configure(client: discord.Client, num_guilds: int = 1, num_text_channels: int = 1,
-              num_voice_channels: int = 1, num_members: int = 1) -> None:
+def configure(client: discord.Client,
+              guilds: typing.Union[int, typing.List[str]] = 1,
+              text_channels: typing.Union[int, typing.List[str]] = 1,
+              voice_channels: typing.Union[int, typing.List[str]] = 1,
+              members: typing.Union[int, typing.List[str]] = 1) -> None:
     """
         Set up the runner configuration. This should be done before any tests are run.
 
     :param client: Client to configure with. Should be the bot/client that is going to be tested.
-    :param num_guilds: Number of guilds to start the configuration with. Default is 1
-    :param num_text_channels: Number of text channels in each guild to start with. Default is 1
-    :param num_voice_channels: Number of voice channels in each guild to start with. Default is 1.
-    :param num_members: Number of members in each guild (other than the client) to start with. Default is 1.
-    """
+    :param guilds: Number or list of names of guilds to start the configuration with. Default is 1
+    :param text_channels: Number or list of names of text channels in each guild to start with. Default is 1
+    :param voice_channels: Number or list of names of voice channels in each guild to start with. Default is 1.
+    :param members: Number or list of names of members in each guild (other than the client) to start with. Default is 1.
+    """   # noqa: E501
 
     global _cur_config
 
@@ -397,26 +400,53 @@ def configure(client: discord.Client, num_guilds: int = 1, num_text_channels: in
 
     back.get_state().stop_dispatch()
 
-    guilds = []
-    for num in range(num_guilds):
-        guild = back.make_guild(f"Test Guild {num}")
-        guilds.append(guild)
+    _guilds = []
+    if isinstance(guilds, int):
+        for num in range(guilds):
+            guild = back.make_guild(f"Test Guild {num}")
+            _guilds.append(guild)
+    if isinstance(guilds, list):
+        for guild_name in guilds:
+            guild = back.make_guild(guild_name)
+            _guilds.append(guild)
 
-    channels = []
-    members = []
-    for guild in guilds:
-        for num in range(num_text_channels):
-            channel = back.make_text_channel(f"TextChannel_{num}", guild)
-            channels.append(channel)
-        for num in range(num_voice_channels):
-            channel = back.make_voice_channel(f"VoiceChannel_{num}", guild)
-            channels.append(channel)
-        for num in range(num_members):
-            user = back.make_user(f"TestUser{str(num)}", f"{num + 1:04}")
-            member = back.make_member(user, guild, nick=user.name + f"_{str(num)}_nick")
-            members.append(member)
-        back.make_member(back.get_state().user, guild, nick=client.user.name + "_nick")
+    _channels = []
+    _members = []
+    for guild in _guilds:
+        # Text channels
+        if isinstance(text_channels, int):
+            for num in range(text_channels):
+                channel = back.make_text_channel(f"TextChannel_{num}", guild)
+                _channels.append(channel)
+        if isinstance(text_channels, list):
+            for chan in text_channels:
+                channel = back.make_text_channel(chan, guild)
+                _channels.append(channel)
+
+        # Voice channels
+        if isinstance(voice_channels, int):
+            for num in range(voice_channels):
+                channel = back.make_voice_channel(f"VoiceChannel_{num}", guild)
+                _channels.append(channel)
+        if isinstance(voice_channels, list):
+            for chan in voice_channels:
+                channel = back.make_voice_channel(chan, guild)
+                _channels.append(channel)
+
+        # Members
+        if isinstance(members, int):
+            for num in range(members):
+                user = back.make_user(f"TestUser{str(num)}", f"{num + 1:04}")
+                member = back.make_member(user, guild, nick=f"{user.name}_{str(num)}_nick")
+                _members.append(member)
+        if isinstance(members, list):
+            for num, name in enumerate(members):
+                user = back.make_user(name, f"{num + 1:04}")
+                member = back.make_member(user, guild, nick=f"{user.name}_{str(num)}_nick")
+                _members.append(member)
+
+        back.make_member(back.get_state().user, guild, nick=f"{client.user.name}_nick")
 
     back.get_state().start_dispatch()
 
-    _cur_config = RunnerConfig(client, guilds, channels, members)
+    _cur_config = RunnerConfig(client, _guilds, _channels, _members)
