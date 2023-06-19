@@ -111,7 +111,6 @@ An example ``conftest.py`` might look like this:
 
     @pytest_asyncio.fixture(autouse=True)
     async def cleanup():
-        yield
         await dpytest.empty_queue()
 
 
