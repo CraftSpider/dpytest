@@ -212,15 +212,12 @@ class VerifyActivity:
         if self._activity is not _undefined:
             return activity_eq(self._activity, bot_act)
 
-        if self._name is not _undefined:
-            if self._name != bot_act.name:
-                return False
-        if self._url is not _undefined:
-            if self._url != bot_act.url:
-                return False
-        if self._type is not _undefined:
-            if self._type != bot_act.type:
-                return False
+        if self._name is not _undefined and self._name != bot_act.name:
+            return False
+        if self._url is not _undefined and self._url != bot_act.url:
+            return False
+        if self._type is not _undefined and self._type != bot_act.type:
+            return False
 
         return True
 
