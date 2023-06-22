@@ -1,5 +1,4 @@
-import glob
-import os
+from pathlib import Path
 import pytest_asyncio
 import discord
 import discord.ext.commands as commands
@@ -34,6 +33,7 @@ async def bot(request):
 
 @pytest_asyncio.fixture(autouse=True)
 async def cleanup():
+    yield
     await dpytest.empty_queue()
 
 
@@ -42,9 +42,9 @@ def pytest_sessionfinish(session, exitstatus):
 
     # dat files are created when using attachements
     print("\n-------------------------\nClean dpytest_*.dat files")
-    fileList = glob.glob('./dpytest_*.dat')
-    for filePath in fileList:
+    file_list = Path('.').glob('dpytest_*.dat')
+    for file_path in file_list:
         try:
-            os.remove(filePath)
+            file_path.unlink()
         except Exception:
-            print("Error while deleting file : ", filePath)
+            print("Error while deleting file : ", file_path)
