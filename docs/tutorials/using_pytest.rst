@@ -17,8 +17,9 @@ as:
 
 ``pytest`` will detect any functions starting with 'test' in directories it searches, and run them. It also supports
 a feature we will use heavily, called 'fixtures'. Fixtures are functions that do some common test setup, and
-then can be used in tests to always perform that setup. They can also return an object that will be passed to
-the test.
+then can be used in tests to always perform that setup, they can also return an object that will be passed to
+the test. Finally, they allow you to perform test teardown, cleaning message queue for example.
+See https://docs.pytest.org/en/latest/how-to/fixtures.html#teardown-cleanup-aka-fixture-finalization
 
 The final piece of this is ``pytest-asyncio``, a library for allowing ``pytest`` to run async tests. It is
 automatically installed when you get ``dpytest`` from pip, so you don't need to worry about installing it.
