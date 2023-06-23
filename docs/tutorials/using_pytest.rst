@@ -143,6 +143,12 @@ Troubleshooting
 Make sure your tests take a parameter with the exact same name as the fixture,
 pytest runs them based on name, including capitalization.
 
+- I use dpytest.verify().message() and it fails but it shouldn't
+- dpytest.get_message() returns a message from another test
+
+Make sure you properly emptied the queue in the previous test, otherwise you
+could have remaining messages from previous tests messing up.
+
 --------------------
 
 This is currently the end of the tutorials. Take a look at the `Runner Documentation`_ to see all the things you can
