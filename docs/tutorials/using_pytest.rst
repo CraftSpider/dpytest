@@ -47,6 +47,7 @@ Putting all this together, we can rewrite our previous tests to look like this:
 
     @pytest_asyncio.fixture
     async def bot():
+        # Setup
         intents = discord.Intents.default()
         intents.members = True
         intents.message_content = True
@@ -56,7 +57,11 @@ Putting all this together, we can rewrite our previous tests to look like this:
         await b.add_cog(Misc())
 
         dpytest.configure(b)
-        return b
+
+        yield b
+
+        # Teardown
+        await dpytest.empty_queue() # empty the global message queue as test teardown
 
 
     @pytest.mark.asyncio
@@ -99,6 +104,7 @@ An example ``conftest.py`` might look like this:
 
     @pytest_asyncio.fixture
     async def bot():
+        # Setup
         intents = discord.Intents.default()
         intents.members = True
         intents.message_content = True
@@ -106,12 +112,11 @@ An example ``conftest.py`` might look like this:
                         intents=intents)
         await b._async_setup_hook()
         dpytest.configure(b)
-        return b
 
+        yield b
 
-    @pytest_asyncio.fixture(autouse=True)
-    async def cleanup():
-        await dpytest.empty_queue()
+        # Teardown
+        await dpytest.empty_queue() # empty the global message queue as test teardown
 
 
     def pytest_sessionfinish(session, exitstatus):
