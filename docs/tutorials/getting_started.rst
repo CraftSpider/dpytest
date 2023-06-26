@@ -32,7 +32,6 @@ it goes into the ``discord.py`` extensions module. So, the most basic usage of d
         dpytest.configure(bot)
         await dpytest.message("!ping")
         assert dpytest.verify().message().contains().content("Ping:")
-        await dpytest.empty_queue() # empty the global message queue as test teardown
 
 
     async def test_foo():
@@ -40,7 +39,6 @@ it goes into the ``discord.py`` extensions module. So, the most basic usage of d
         dpytest.configure(bot)
         await dpytest.message("!hello")
         assert dpytest.verify().message().content("Hello World!")
-        await dpytest.empty_queue() # empty the global message queue as test teardown
 
 
     asyncio.run(test_ping())
