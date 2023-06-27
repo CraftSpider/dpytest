@@ -39,21 +39,22 @@ async def test_permission_setting(bot):
 
 
 # TODO : fix this
-@pytest.mark.skip(reason="test is currently broken, probably set_permission_overrides doing something wrong.")
+# @pytest.mark.skip(reason="test is currently broken, probably set_permission_overrides doing something wrong.")
 @pytest.mark.asyncio
 @pytest.mark.cogs("cogs.echo")
 async def test_bot_send_not_allowed(bot):
     """tests, that a bot gets an Exception, if not allowed to send a message"""
     g = bot.guilds[0]
     c = g.text_channels[0]
+    r = g.roles[0]
 
-    await dpytest.set_permission_overrides(g.me, c, send_messages=False)
+    await dpytest.set_permission_overrides(r, c, send_messages=False)
     with pytest.raises(discord.ext.commands.errors.CommandInvokeError):
         await dpytest.message("!echo hello", channel=c)
 
     assert dpytest.sent_queue.empty()
 
     perm = PermissionOverwrite(send_messages=True, read_messages=True)
-    await dpytest.set_permission_overrides(g.me, c, perm)
+    await dpytest.set_permission_overrides(r, c, perm)
     await dpytest.message("!echo hello", channel=c)
     assert dpytest.verify().message().content("hello")
