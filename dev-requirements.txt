@@ -1,4 +1,4 @@
-sphinx>=3
+sphinx>=7
 pytest
 pytest-asyncio
 coverage~=7.2.7

@@ -96,6 +96,13 @@ def cleanbuild(c):
         shutil.rmtree(b)
 
 
+@task
+def cleandoc(c):
+    """Clean the documentation build directory."""
+    with contextlib.suppress(FileNotFoundError):
+        shutil.rmtree(Path('.') / 'docs' / '_build')
+
+
 @task(cleantest, cleanbuild)
 def clean(c):
     """Equivalent to both cleanbuild and cleantest..."""
@@ -124,6 +131,14 @@ def coverage(c):
 def build(c):
     """Build package using python -m build."""
     c.run('python -m build')
+
+
+@task(cleandoc)
+def doc(c):
+    """Make the documentation (html)"""
+    c.run('cd docs && make html')
+    path = Path('.') / 'docs' / '_build' / 'html' / 'index.html'
+    webbrowser.open(path.resolve().as_uri())
 
 
 @task(cleanbuild)
