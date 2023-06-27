@@ -44,6 +44,10 @@ it goes into the ``discord.py`` extensions module. So, the most basic usage of d
     asyncio.run(test_ping())
     asyncio.run(test_foo())
 
+One problem that could happen is that the ``sent_queue`` is shared between the tests. So in order not to mess between
+your tests (``verify()`` pops **one** message from the queue, so in general, you won't need to do anything) you can
+explicitly call ``empty_queue()``, as shown in the next example (and later, in the ``conftests.py``).
+
 If that looks like a lot of code just to run tests, don't worry, there's a better way! We can use pytest,
 a popular Python testing library.
 

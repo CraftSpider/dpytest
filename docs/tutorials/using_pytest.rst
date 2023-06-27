@@ -17,8 +17,9 @@ as:
 
 ``pytest`` will detect any functions starting with 'test' in directories it searches, and run them. It also supports
 a feature we will use heavily, called 'fixtures'. Fixtures are functions that do some common test setup, and
-then can be used in tests to always perform that setup. They can also return an object that will be passed to
-the test.
+then can be used in tests to always perform that setup, they can also return an object that will be passed to
+the test. Finally, they allow you to perform test teardown, cleaning message queue for example.
+See https://docs.pytest.org/en/latest/how-to/fixtures.html#teardown-cleanup-aka-fixture-finalization
 
 The final piece of this is ``pytest-asyncio``, a library for allowing ``pytest`` to run async tests. It is
 automatically installed when you get ``dpytest`` from pip, so you don't need to worry about installing it.
@@ -47,6 +48,7 @@ Putting all this together, we can rewrite our previous tests to look like this:
 
     @pytest_asyncio.fixture
     async def bot():
+        # Setup
         intents = discord.Intents.default()
         intents.members = True
         intents.message_content = True
@@ -56,7 +58,11 @@ Putting all this together, we can rewrite our previous tests to look like this:
         await b.add_cog(Misc())
 
         dpytest.configure(b)
-        return b
+
+        yield b
+
+        # Teardown
+        await dpytest.empty_queue() # empty the global message queue as test teardown
 
 
     @pytest.mark.asyncio
@@ -99,6 +105,7 @@ An example ``conftest.py`` might look like this:
 
     @pytest_asyncio.fixture
     async def bot():
+        # Setup
         intents = discord.Intents.default()
         intents.members = True
         intents.message_content = True
@@ -106,12 +113,11 @@ An example ``conftest.py`` might look like this:
                         intents=intents)
         await b._async_setup_hook()
         dpytest.configure(b)
-        return b
 
+        yield b
 
-    @pytest_asyncio.fixture(autouse=True)
-    async def cleanup():
-        await dpytest.empty_queue()
+        # Teardown
+        await dpytest.empty_queue() # empty the global message queue as test teardown
 
 
     def pytest_sessionfinish(session, exitstatus):
@@ -136,6 +142,12 @@ Troubleshooting
 
 Make sure your tests take a parameter with the exact same name as the fixture,
 pytest runs them based on name, including capitalization.
+
+- I use dpytest.verify().message() and it fails but it shouldn't
+- dpytest.get_message() returns a message from another test
+
+Make sure you properly emptied the queue in the previous test, otherwise you
+could have remaining messages from previous tests messing up.
 
 --------------------
 
