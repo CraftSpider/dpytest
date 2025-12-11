@@ -20,51 +20,51 @@ jobs:
       # how you define a matrix strategy
       matrix:
         # use these pythons
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: [ "3.8", "3.9", "3.10", "3.11" ]
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3.1.2
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-        cache-dependency-path: |
-          dev-requirements.txt
-          setup.py
-      
-    - name: Install dev dependencies
-      run: python -m pip install -r dev-requirements.txt
-    - name: Install self (dpytest)
-      run: python -m pip install .
-        
-    #- name: Test with pytest
-    #  run: python -m pytest
-    
-    - name: Test with pytest and coverage
-      run: coverage run --source=discord/ext/test -m pytest
-    - name: Report coverage
-      run: |
-        coverage report
-        coverage html
-        coverage xml
-        coverage lcov
-    - name: Upload HTML report
-      uses: actions/upload-artifact@v3.1.1
-      with:
-        name: ${{ matrix.python-version }}-cov-htmlcov
-        path: htmlcov
-        if-no-files-found: warn
-    - name: Upload XML report
-      uses: actions/upload-artifact@v3.1.1
-      with:
-        name: ${{ matrix.python-version }}-cov-xml
-        path: coverage.xml
-        if-no-files-found: warn
-    - name: Upload LCOV report
-      uses: actions/upload-artifact@v3.1.1
-      with:
-        name: ${{ matrix.python-version }}-cov-lcov
-        path: coverage.lcov
-        if-no-files-found: warn
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3.1.2
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            dev-requirements.txt
+            setup.py
+
+      - name: Install dev dependencies
+        run: python -m pip install -r dev-requirements.txt
+      - name: Install self (dpytest)
+        run: python -m pip install .
+
+      #- name: Test with pytest
+      #  run: python -m pytest
+
+      - name: Test with pytest and coverage
+        run: coverage run --source=discord/ext/test -m pytest
+      - name: Report coverage
+        run: |
+          coverage report
+          coverage html
+          coverage xml
+          coverage lcov
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.python-version }}-cov-htmlcov
+          path: htmlcov
+          if-no-files-found: warn
+      - name: Upload XML report
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.python-version }}-cov-xml
+          path: coverage.xml
+          if-no-files-found: warn
+      - name: Upload LCOV report
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.python-version }}-cov-lcov
+          path: coverage.lcov
+          if-no-files-found: warn
 
