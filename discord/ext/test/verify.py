@@ -92,7 +92,7 @@ class VerifyMessage:
 
     def _expectation(self) -> str:
         if self._nothing:
-            return f"no messages"
+            return "no messages"
         else:
             contains = "contains"
             content = f"content={self._content}" if self._content is not _Undef else ""
@@ -105,7 +105,7 @@ class VerifyMessage:
         if self._nothing:
             return f"{self._used} messages"
         elif self._used is None:
-            return f"no message"
+            return "no message"
         else:
             return str(self._used)
 

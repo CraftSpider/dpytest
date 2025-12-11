@@ -15,7 +15,7 @@ AnyChannel = typing.Union[discord.TextChannel, discord.CategoryChannel,
 discord.abc.GuildChannel, discord.abc.PrivateChannel]
 
 if typing.TYPE_CHECKING:
-    from discord.types import *
+    from discord.types import role, gateway
 else:
     def __getattr__(name: str) -> typing.Optional[typing.Type[typing.Any]]:
         if name.startswith("role") or name.startswith("gateway"):

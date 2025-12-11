@@ -195,7 +195,7 @@ def make_role_dict(
 
 
 # discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
-def dict_from_role(role: discord.Role) -> Role:
+def dict_from_role(role: discord.Role) -> _types.role.Role:
     return {
         'id': role.id,
         'name': role.name,

@@ -977,7 +977,7 @@ def add_reaction(message: discord.Message, user: typing.Union[discord.user.BaseU
             "name": emoji
         }
 
-    data: MessageReactionAddEvent = {
+    data: _types.gateway.MessageReactionAddEvent = {
         "message_id": message.id,
         "channel_id": message.channel.id,
         "user_id": user.id,
@@ -1027,7 +1027,7 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
             "name": emoji
         }
 
-    data: MessageReactionRemoveEvent = {
+    data: _types.gateway.MessageReactionRemoveEvent = {
         "message_id": message.id,
         "channel_id": message.channel.id,
         "user_id": user.id,
