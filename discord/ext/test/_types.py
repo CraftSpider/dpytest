@@ -17,8 +17,13 @@ discord.abc.GuildChannel, discord.abc.PrivateChannel]
 if typing.TYPE_CHECKING:
     from discord.types import role, gateway
 else:
-    def __getattr__(name: str) -> typing.Optional[typing.Type[typing.Any]]:
-        if name.startswith("role") or name.startswith("gateway"):
-            return typing.Any
-        else:
-            return None
+    class OpenNamespace:
+        def __getattr__(self, item: str) -> typing.Self:
+            return self
+
+        def __subclasscheck__(self, subclass: type) -> typing.Literal[True]:
+            return True
+
+
+    def __getattr__(name: str) -> OpenNamespace:
+        return OpenNamespace()
