@@ -11,10 +11,13 @@ JsonVal = typing.Union[str, int, bool, typing.Dict[str, 'JsonVal'], typing.List[
 JsonDict = typing.Dict[str, JsonVal]
 JsonList = typing.List[JsonVal]
 Callback = typing.Callable[..., typing.Coroutine[None, None, None]]
-AnyChannel = typing.Union[discord.TextChannel, discord.CategoryChannel,
-discord.abc.GuildChannel, discord.abc.PrivateChannel]
+AnyChannel = typing.Union[
+    discord.TextChannel, discord.CategoryChannel,
+    discord.abc.GuildChannel, discord.abc.PrivateChannel
+]
 
 if typing.TYPE_CHECKING:
+    # noqa: F401
     from discord.types import role, gateway
 else:
     class OpenNamespace:
