@@ -8,10 +8,6 @@ import datetime as dt
 import discord
 from . import _types
 
-if typing.TYPE_CHECKING:
-    from discord.types.gateway import Role
-    from discord.types.role import RoleColours
-
 generated_ids: int = 0
 
 
@@ -163,14 +159,14 @@ def make_role_dict(
         id_num: int = -1,
         colour: int = 0,
         color: typing.Optional[int] = None,
-        colors: typing.Optional[RoleColours] = None,
+        colors: typing.Optional[_types.role.RoleColours] = None,
         hoist: bool = False,
         position: int = -1,
         permissions: int = 104324161,
         managed: bool = False,
         mentionable: bool = False,
         flags: int = 0,
-) -> Role:
+) -> _types.role.Role:
     if id_num < 0:
         id_num = make_id()
     if color is not None:
@@ -178,7 +174,7 @@ def make_role_dict(
             raise ValueError("Both 'colour' and 'color' can be supplied at the same time")
         colour = color
     if colors is None:
-        colors: RoleColours = {
+        colors: _types.role.RoleColours = {
             'primary_color': colour,
             'secondary_color': None,
             'tertiary_color': None,

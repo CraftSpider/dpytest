@@ -20,10 +20,6 @@ import pathlib
 import urllib.parse
 import urllib.request
 
-if typing.TYPE_CHECKING:
-    from discord.types.gateway import MessageReactionAddEvent, MessageReactionRemoveEvent, GuildRoleUpdateEvent
-    from discord.types.role import RoleColours
-
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 
 
@@ -622,7 +618,7 @@ def make_role(
         id_num: int = -1,
         colour: int = 0,
         color: typing.Optional[int] = None,
-        colors: typing.Optional[RoleColours] = None,
+        colors: typing.Optional[_types.role.RoleColours] = None,
         permissions: int = 104324161,
         hoist: bool = False,
         mentionable: bool = False,
@@ -635,6 +631,7 @@ def make_role(
     :param id_num: ID of the new role, or nothing to auto-generate
     :param colour: Color of the new role
     :param color: Alias for above
+    :param colors: Colors for multi-color roles
     :param permissions: Permissions for the new role
     :param hoist: Whether the new role is hoisted
     :param mentionable: Whether the new role is mentionable
@@ -662,7 +659,7 @@ def update_role(
         role: discord.Role,
         colour: typing.Optional[int] = None,
         color: typing.Optional[int] = None,
-        colors: typing.Optional[RoleColours] = None,
+        colors: typing.Optional[_types.role.RoleColours] = None,
         permissions: typing.Optional[int] = None,
         hoist: typing.Optional[bool] = None,
         mentionable: typing.Optional[bool] = None,
@@ -675,6 +672,7 @@ def update_role(
     :param role: Role to update
     :param colour: New color for the role
     :param color: Alias for above
+    :param colors: Colors for multi-color roles
     :param permissions: New permissions
     :param hoist: New hoist value
     :param mentionable: New mention value

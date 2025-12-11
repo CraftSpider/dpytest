@@ -12,4 +12,13 @@ JsonDict = typing.Dict[str, JsonVal]
 JsonList = typing.List[JsonVal]
 Callback = typing.Callable[..., typing.Coroutine[None, None, None]]
 AnyChannel = typing.Union[discord.TextChannel, discord.CategoryChannel,
-                          discord.abc.GuildChannel, discord.abc.PrivateChannel]
+discord.abc.GuildChannel, discord.abc.PrivateChannel]
+
+if typing.TYPE_CHECKING:
+    from discord.types import *
+else:
+    def __getattr__(name: str) -> typing.Optional[typing.Type[typing.Any]]:
+        if name.startswith("role") or name.startswith("gateway"):
+            return typing.Any
+        else:
+            return None
