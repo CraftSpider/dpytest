@@ -20,6 +20,9 @@ import pathlib
 import urllib.parse
 import urllib.request
 
+from discord.abc import Snowflake
+from requests import Response
+
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 
 
@@ -51,12 +54,16 @@ def _get_higher_locs(num: int) -> dict[str, typing.Any]:
     return locs
 
 
-class FakeRequest(typing.NamedTuple):
+class FakeRequest(Response):
     """
         A fake web response, for use with discord ``HTTPException``\ s
-    """  # noqa: W605
-    status: int
-    reason: str
+    """
+
+    def __init__(self, status: int, reason: str):
+        super().__init__()
+        self.status = status
+        self.status_code = status
+        self.reason = reason
 
 
 class FakeHttp(dhttp.HTTPClient):
@@ -352,7 +359,7 @@ class FakeHttp(dhttp.HTTPClient):
         return facts.dict_from_member(member)
 
     async def edit_role(self, guild_id: int, role_id: int, *, reason: str | None = None,
-                        **fields: typing.Any) -> _types.JsonDict:
+                        **fields: typing.Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
         role = locs.get("self")
         guild = role.guild
@@ -372,7 +379,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_role(role)
 
     async def create_role(self, guild_id: int, *, reason: str | None = None,
-                          **fields: typing.Any) -> _types.JsonDict:
+                          **fields: typing.Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         role = make_role(guild=guild, **fields)
@@ -413,20 +420,21 @@ class FakeHttp(dhttp.HTTPClient):
         roles = [x for x in member.roles if x != role and x.id != member.guild.id]
         update_member(member, roles=roles)
 
-    async def application_info(self) -> _types.JsonDict:
+    async def application_info(self) -> _types.appinfo.AppInfo:
         # TODO: make these values configurable
         user = self.state.user
-        data = {
+        data: _types.appinfo.AppInfo = {
             "id": user.id,
             "name": user.name,
-            "icon": user.avatar,
+            "icon": user.avatar.url if user.avatar else None,
             "description": "A test discord application",
-            "rpc_origins": None,
+            "rpc_origins": [],
             "bot_public": True,
             "bot_require_code_grant": False,
             "owner": facts.make_user_dict("TestOwner", "0001", None),
-            "summary": None,
-            "verify_key": None
+            "summary": "",
+            "verify_key": "",
+            "flags": 0,
         }
 
         appinfo = discord.AppInfo(self.state, data)
@@ -475,7 +483,7 @@ class FakeHttp(dhttp.HTTPClient):
         with open(path, 'rb') as fd:
             return fd.read()
 
-    async def get_user(self, user_id: int) -> _types.JsonDict:
+    async def get_user(self, user_id: int) -> _types.user.User:
         # return self.request(Route('GET', '/users/{user_id}', user_id=user_id))
         locs = _get_higher_locs(1)
         client = locs.get("self", None)
@@ -493,9 +501,10 @@ class FakeHttp(dhttp.HTTPClient):
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         unpin_message(channel_id, message_id)
 
-    async def get_guilds(self, limit: int, before: int | None = None, after: int | None = None):
+    async def get_guilds(self, limit: int, before: Snowflake | None = None, after: Snowflake | None = None,
+                         with_counts: bool = True):
         # self.request(Route('GET', '/users/@me/guilds')
-        await callbacks.dispatch_event("get_guilds", limit, before=None, after=None)
+        await callbacks.dispatch_event("get_guilds", limit, before=before, after=after, with_counts=with_counts)
         guilds = get_state().guilds  # List[]
 
         guilds_new = [{
@@ -531,8 +540,9 @@ class FakeHttp(dhttp.HTTPClient):
                 start = next(i for i, v in enumerate(guilds) if v.id == before)
             return guilds_new[start - limit: start]
 
-    async def get_guild(self, guild_id: int) -> _types.JsonDict:
+    async def get_guild(self, guild_id: Snowflake, *, with_counts: bool = True) -> _types.guild.Guild:
         # return self.request(Route('GET', '/guilds/{guild_id}', guild_id=guild_id))
+        # TODO: Respect with_counts
         locs = _get_higher_locs(1)
         client = locs.get("self", None)
         guild = discord.utils.get(client.guilds, id=guild_id)
@@ -583,7 +593,7 @@ def make_guild(
 
     owner_id = state.user.id if owner else 0
 
-    data = facts.make_guild_dict(
+    data: _types.gateway.GuildCreateEvent = facts.make_guild_dict(
         name, owner_id, roles, id_num=id_num, member_count=member_count, members=members, channels=channels
     )
 
