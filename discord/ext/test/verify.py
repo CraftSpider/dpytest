@@ -41,14 +41,14 @@ class VerifyMessage:
         ``assert dpytest.verify().message().content("Hello World!")``
     """
 
-    _used: typing.Union[discord.Message, int, _Undef, None]
+    _used: discord.Message | int | _Undef | None
 
     _contains: bool
     _peek: bool
     _nothing: bool
-    _content: typing.Union[None, _Undef, str]
-    _embed: typing.Union[None, _Undef, discord.Embed]
-    _attachment: typing.Union[None, _Undef, str, pathlib.Path]
+    _content: str | _Undef | None
+    _embed: discord.Embed | _Undef | None
+    _attachment: str | pathlib.Path | _Undef | None
 
     def __init__(self) -> None:
         self._used = _undefined
@@ -173,7 +173,7 @@ class VerifyMessage:
         self._nothing = True
         return self
 
-    def content(self, content: typing.Optional[str]) -> 'VerifyMessage':
+    def content(self, content: str | None) -> 'VerifyMessage':
         """
             Check that the message content matches the input
 
@@ -185,7 +185,7 @@ class VerifyMessage:
         self._content = content
         return self
 
-    def embed(self, embed: typing.Optional[discord.Embed]) -> 'VerifyMessage':
+    def embed(self, embed: discord.Embed | None) -> 'VerifyMessage':
         """
             Check that the message embed matches the input
 
@@ -197,7 +197,7 @@ class VerifyMessage:
         self._embed = embed
         return self
 
-    def attachment(self, attach: typing.Optional[typing.Union[str, pathlib.Path]]) -> 'VerifyMessage':
+    def attachment(self, attach: str | pathlib.Path | None) -> 'VerifyMessage':
         """
             Check that the message attachment matches the input
 

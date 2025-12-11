@@ -7,14 +7,11 @@ import typing
 
 T = typing.TypeVar('T')
 
-JsonVal = typing.Union[str, int, bool, typing.Dict[str, 'JsonVal'], typing.List['JsonVal']]
-JsonDict = typing.Dict[str, JsonVal]
-JsonList = typing.List[JsonVal]
+JsonVal = str | int | bool | dict[str, 'JsonVal'] | list['JsonVal']
+JsonDict = dict[str, JsonVal]
+JsonList = list[JsonVal]
 Callback = typing.Callable[..., typing.Coroutine[None, None, None]]
-AnyChannel = typing.Union[
-    discord.TextChannel, discord.CategoryChannel,
-    discord.abc.GuildChannel, discord.abc.PrivateChannel
-]
+AnyChannel = discord.TextChannel | discord.CategoryChannel | discord.abc.GuildChannel | discord.abc.PrivateChannel
 
 if typing.TYPE_CHECKING:
     # noqa: F401

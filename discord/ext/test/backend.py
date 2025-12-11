@@ -28,16 +28,16 @@ class BackendState(typing.NamedTuple):
         The dpytest backend, with all the state it needs to hold to be able to pretend to be
         discord. Generally only used internally, but exposed through :py:func:`get_state`
     """
-    messages: typing.Dict[int, typing.List[_types.JsonDict]]
+    messages: dict[int, list[_types.JsonDict]]
     state: dstate.FakeState
 
 
 log = logging.getLogger("discord.ext.tests")
-_cur_config: typing.Optional[BackendState] = None
+_cur_config: BackendState | None = None
 _undefined = object()  # default value for when NoneType has special meaning
 
 
-def _get_higher_locs(num: int) -> typing.Dict[str, typing.Any]:
+def _get_higher_locs(num: int) -> dict[str, typing.Any]:
     """
         Get the local variables from higher in the call-stack. Should only be used in FakeHttp for
         retrieving information not passed to it by its caller.
@@ -96,7 +96,7 @@ class FakeHttp(dhttp.HTTPClient):
             guild_id: int,
             channel_type: discord.ChannelType,
             *,
-            reason: typing.Optional[str] = None,
+            reason: str | None = None,
             **options: typing.Any
     ) -> _types.JsonDict:
         locs = _get_higher_locs(1)
@@ -213,7 +213,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("send_typing", channel)
 
-    async def delete_message(self, channel_id: int, message_id: int, *, reason: typing.Optional[str] = None) -> None:
+    async def delete_message(self, channel_id: int, message_id: int, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         message = locs.get("self", None)
 
@@ -282,10 +282,10 @@ class FakeHttp(dhttp.HTTPClient):
             self,
             channel_id: int,
             limit: int,
-            before: typing.Optional[int] = None,
-            after: typing.Optional[int] = None,
-            around: typing.Optional[int] = None
-    ) -> typing.List[_types.JsonDict]:
+            before: int | None = None,
+            after: int | None = None,
+            around: int | None = None
+    ) -> list[_types.JsonDict]:
         locs = _get_higher_locs(1)
         channel = locs.get("self", None)
 
@@ -305,7 +305,7 @@ class FakeHttp(dhttp.HTTPClient):
                 start = next(i for i, v in enumerate(messages) if v["id"] == before)
             return messages[start - limit:start]
 
-    async def kick(self, user_id: int, guild_id: int, reason: typing.Optional[str] = None) -> None:
+    async def kick(self, user_id: int, guild_id: int, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         member = locs.get("user", None)
@@ -315,7 +315,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_member(member)
 
     async def ban(self, user_id: int, guild_id: int, delete_message_days: int = 1,
-                  reason: typing.Optional[str] = None) -> None:
+                  reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         member = locs.get("user", None)
@@ -325,7 +325,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_member(member)
 
     async def change_my_nickname(self, guild_id: int, nickname: str, *,
-                                 reason: typing.Optional[str] = None) -> _types.JsonDict:
+                                 reason: str | None = None) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         me = locs.get("self", None)
 
@@ -335,7 +335,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         return {"nick": nickname}
 
-    async def edit_member(self, guild_id: int, user_id: int, *, reason: typing.Optional[str] = None,
+    async def edit_member(self, guild_id: int, user_id: int, *, reason: str | None = None,
                           **fields: typing.Any) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         member = locs.get("self", None)
@@ -351,7 +351,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         return facts.dict_from_member(member)
 
-    async def edit_role(self, guild_id: int, role_id: int, *, reason: typing.Optional[str] = None,
+    async def edit_role(self, guild_id: int, role_id: int, *, reason: str | None = None,
                         **fields: typing.Any) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         role = locs.get("self")
@@ -362,7 +362,7 @@ class FakeHttp(dhttp.HTTPClient):
         update_role(role, **fields)
         return facts.dict_from_role(role)
 
-    async def delete_role(self, guild_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
+    async def delete_role(self, guild_id: int, role_id: int, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         role = locs.get("self")
         guild = role.guild
@@ -371,7 +371,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         delete_role(role)
 
-    async def create_role(self, guild_id: int, *, reason: typing.Optional[str] = None,
+    async def create_role(self, guild_id: int, *, reason: str | None = None,
                           **fields: typing.Any) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
@@ -381,8 +381,8 @@ class FakeHttp(dhttp.HTTPClient):
 
         return facts.dict_from_role(role)
 
-    async def move_role_position(self, guild_id: int, positions: typing.List[_types.JsonDict], *,
-                                 reason: typing.Optional[str] = None) -> None:
+    async def move_role_position(self, guild_id: int, positions: list[_types.JsonDict], *,
+                                 reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         role = locs.get("self", None)
         guild = role.guild
@@ -392,7 +392,7 @@ class FakeHttp(dhttp.HTTPClient):
         for pair in positions:
             guild._roles[pair["id"]].position = pair["position"]
 
-    async def add_role(self, guild_id: int, user_id: int, role_id: int, *, reason: typing.Optional[str] = None) -> None:
+    async def add_role(self, guild_id: int, user_id: int, role_id: int, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         member = locs.get("self", None)
         role = locs.get("role", None)
@@ -403,7 +403,7 @@ class FakeHttp(dhttp.HTTPClient):
         update_member(member, roles=roles)
 
     async def remove_role(self, guild_id: int, user_id: int, role_id: int, *,
-                          reason: typing.Optional[str] = None) -> None:
+                          reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         member = locs.get("self", None)
         role = locs.get("role", None)
@@ -435,7 +435,7 @@ class FakeHttp(dhttp.HTTPClient):
         return data
 
     async def delete_channel_permissions(self, channel_id: int, target_id: int, *,
-                                         reason: typing.Optional[str] = None) -> None:
+                                         reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         channel: discord.TextChannel = locs.get("self", None)
         target = locs.get("target", None)
@@ -455,7 +455,7 @@ class FakeHttp(dhttp.HTTPClient):
             deny_value: int,
             perm_type: str,
             *,
-            reason: typing.Optional[str] = None
+            reason: str | None = None
     ) -> None:
         locs = _get_higher_locs(1)
         channel: discord.TextChannel = locs.get("self", None)
@@ -483,17 +483,17 @@ class FakeHttp(dhttp.HTTPClient):
         member = discord.utils.get(guild.members, id=user_id)
         return facts.dict_from_user(member._user)
 
-    async def pin_message(self, channel_id: int, message_id: int, reason: typing.Optional[str] = None) -> None:
+    async def pin_message(self, channel_id: int, message_id: int, reason: str | None = None) -> None:
         # return self.request(Route('PUT', '/channels/{channel_id}/pins/{message_id}',
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         pin_message(channel_id, message_id)
 
-    async def unpin_message(self, channel_id: int, message_id: int, reason: typing.Optional[str] = None) -> None:
+    async def unpin_message(self, channel_id: int, message_id: int, reason: str | None = None) -> None:
         # return self.request(Route('DELETE', '/channels/{channel_id}/pins/{message_id}',
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         unpin_message(channel_id, message_id)
 
-    async def get_guilds(self, limit: int, before: typing.Optional[int] = None, after: typing.Optional[int] = None):
+    async def get_guilds(self, limit: int, before: int | None = None, after: int | None = None):
         # self.request(Route('GET', '/users/@me/guilds')
         await callbacks.dispatch_event("get_guilds", limit, before=None, after=None)
         guilds = get_state().guilds  # List[]
@@ -552,9 +552,9 @@ def get_state() -> dstate.FakeState:
 
 def make_guild(
         name: str,
-        members: typing.List[discord.Member] = None,
-        channels: typing.List[_types.AnyChannel] = None,
-        roles: typing.List[discord.Role] = None,
+        members: list[discord.Member] = None,
+        channels: list[_types.AnyChannel] = None,
+        roles: list[discord.Role] = None,
         owner: bool = False,
         id_num: int = -1,
 ) -> discord.Guild:
@@ -592,7 +592,7 @@ def make_guild(
     return state._get_guild(id_num)
 
 
-def update_guild(guild: discord.Guild, roles: typing.List[discord.Role] = None) -> discord.Guild:
+def update_guild(guild: discord.Guild, roles: list[discord.Role] = None) -> discord.Guild:
     """
         Update an existing guild with new information, triggers a guild update but not any individual item
         create/edit calls
@@ -617,8 +617,8 @@ def make_role(
         guild: discord.Guild,
         id_num: int = -1,
         colour: int = 0,
-        color: typing.Optional[int] = None,
-        colors: typing.Optional[_types.role.RoleColours] = None,
+        color: int | None = None,
+        colors: _types.role.RoleColours | None = None,
         permissions: int = 104324161,
         hoist: bool = False,
         mentionable: bool = False,
@@ -657,13 +657,13 @@ def make_role(
 
 def update_role(
         role: discord.Role,
-        colour: typing.Optional[int] = None,
-        color: typing.Optional[int] = None,
-        colors: typing.Optional[_types.role.RoleColours] = None,
-        permissions: typing.Optional[int] = None,
-        hoist: typing.Optional[bool] = None,
-        mentionable: typing.Optional[bool] = None,
-        name: typing.Optional[str] = None,
+        colour: int | None = None,
+        color: int | None = None,
+        colors: _types.role.RoleColours | None = None,
+        permissions: int | None = None,
+        hoist: bool | None = None,
+        mentionable: bool | None = None,
+        name: str | None = None,
 ) -> discord.Role:
     """
         Update an existing role with new data, triggering a role update event.
@@ -721,8 +721,8 @@ def make_text_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: typing.Optional[_types.JsonDict] = None,
-        parent_id: typing.Optional[int] = None,
+        permission_overwrites: _types.JsonDict | None = None,
+        parent_id: int | None = None,
 ) -> discord.TextChannel:
     if position == -1:
         position = len(guild.channels) + 1
@@ -741,7 +741,7 @@ def make_category_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: typing.Optional[_types.JsonDict] = None,
+        permission_overwrites: _types.JsonDict | None = None,
 ) -> discord.CategoryChannel:
     if position == -1:
         position = len(guild.categories) + 1
@@ -758,8 +758,8 @@ def make_voice_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: typing.Optional[_types.JsonDict] = None,
-        parent_id: typing.Optional[int] = None,
+        permission_overwrites: _types.JsonDict | None = None,
+        parent_id: int | None = None,
         bitrate: int = 192,
         user_limit: int = 0
 
@@ -784,8 +784,8 @@ def delete_channel(channel: _types.AnyChannel) -> None:
 
 def update_text_channel(
         channel: discord.TextChannel,
-        target: typing.Union[discord.User, discord.Role],
-        override: typing.Optional[discord.PermissionOverwrite] = _undefined
+        target: discord.User | discord.Role,
+        override: discord.PermissionOverwrite | None = _undefined
 ) -> None:
     c_dict = facts.dict_from_channel(channel)
     if override is not _undefined:
@@ -801,7 +801,7 @@ def update_text_channel(
     state.parse_channel_update(c_dict)
 
 
-def make_user(username: str, discrim: typing.Union[str, int], avatar: typing.Optional[str] = None,
+def make_user(username: str, discrim: str | int, avatar: str | None = None,
               id_num: int = -1) -> discord.User:
     if id_num == -1:
         id_num = facts.make_id()
@@ -814,9 +814,9 @@ def make_user(username: str, discrim: typing.Union[str, int], avatar: typing.Opt
     return user
 
 
-def make_member(user: typing.Union[discord.user.BaseUser, discord.abc.User], guild: discord.Guild,
-                nick: typing.Optional[str] = None,
-                roles: typing.Optional[typing.List[discord.Role]] = None) -> discord.Member:
+def make_member(user: discord.user.BaseUser | discord.abc.User, guild: discord.Guild,
+                nick: str | None = None,
+                roles: list[discord.Role] | None = None) -> discord.Member:
     if roles is None:
         roles = []
     roles = list(map(lambda x: x.id, roles))
@@ -829,8 +829,8 @@ def make_member(user: typing.Union[discord.user.BaseUser, discord.abc.User], gui
     return guild.get_member(user.id)
 
 
-def update_member(member: discord.Member, nick: typing.Optional[str] = None,
-                  roles: typing.Optional[typing.List[discord.Role]] = None) -> discord.Member:
+def update_member(member: discord.Member, nick: str | None = None,
+                  roles: list[discord.Role] | None = None) -> discord.Member:
     data = facts.dict_from_member(member)
     if nick is not None:
         data["nick"] = nick
@@ -851,12 +851,12 @@ def delete_member(member: discord.Member) -> None:
 
 def make_message(
         content: str,
-        author: typing.Union[discord.user.BaseUser, discord.abc.User],
+        author: discord.user.BaseUser | discord.abc.User,
         channel: _types.AnyChannel,
         tts: bool = False,
-        embeds: typing.Optional[typing.List[discord.Embed]] = None,
-        attachments: typing.Optional[typing.List[discord.Attachment]] = None,
-        nonce: typing.Optional[int] = None,
+        embeds: list[discord.Embed] | None = None,
+        attachments: list[discord.Attachment] | None = None,
+        nonce: int | None = None,
         id_num: int = -1,
 ) -> discord.Message:
     guild = channel.guild if hasattr(channel, "guild") else None
@@ -911,23 +911,23 @@ ROLE_MENTION: typing.Pattern = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
 CHANNEL_MENTION: typing.Pattern = re.compile(r"<#[0-9]{17,21}>", re.MULTILINE)
 
 
-def find_user_mentions(content: typing.Optional[str],
-                       guild: typing.Optional[discord.Guild]) -> typing.List[discord.Member]:
+def find_user_mentions(content: str | None, guild: discord.Guild | None) -> list[discord.Member]:
     if guild is None or content is None:
         return []  # TODO: Check for dm user mentions
     matches = re.findall(MEMBER_MENTION, content)
     return [discord.utils.get(guild.members, id=int(re.search(r'\d+', match)[0])) for match in matches]  # noqa: E501
 
 
-def find_role_mentions(content: typing.Optional[str], guild: typing.Optional[discord.Guild]) -> typing.List[int]:
+def find_role_mentions(content: str | None, guild: discord.Guild | None) -> list[int]:
     if guild is None or content is None:
         return []
     matches = re.findall(ROLE_MENTION, content)
     return matches
 
 
-def find_channel_mentions(content: typing.Optional[str],
-                          guild: typing.Optional[discord.Guild]) -> typing.List[_types.AnyChannel]:
+def find_channel_mentions(content: str | None,
+                          guild: discord.Guild | None
+                          ) -> list[_types.AnyChannel]:
     if guild is None or content is None:
         return []
     matches = re.findall(CHANNEL_MENTION, content)
@@ -950,7 +950,7 @@ def delete_message(message: discord.Message) -> None:
     del _cur_config.messages[message.channel.id][index]
 
 
-def make_attachment(filename: pathlib.Path, name: typing.Optional[str] = None, id_num: int = -1) -> discord.Attachment:
+def make_attachment(filename: pathlib.Path, name: str | None = None, id_num: int = -1) -> discord.Attachment:
     if name is None:
         name = str(filename.name)
     if not filename.is_file():
@@ -963,7 +963,7 @@ def make_attachment(filename: pathlib.Path, name: typing.Optional[str] = None, i
     )
 
 
-def add_reaction(message: discord.Message, user: typing.Union[discord.user.BaseUser, discord.abc.User],
+def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord.abc.User,
                  emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
@@ -1000,7 +1000,7 @@ def add_reaction(message: discord.Message, user: typing.Union[discord.user.BaseU
         if "reactions" not in message_data:
             message_data["reactions"] = []
 
-        react: typing.Optional[_types.JsonDict] = None
+        react: _types.JsonDict | None = None
         for react in message_data["reactions"]:
             if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
                 break
@@ -1047,7 +1047,7 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
         if "reactions" not in message_data:
             message_data["reactions"] = []
 
-        react: typing.Optional[_types.JsonDict] = None
+        react: _types.JsonDict | None = None
         for react in message_data["reactions"]:
             if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
                 break
@@ -1102,10 +1102,10 @@ def configure(client: discord.Client) -> None: ...
 
 
 @typing.overload
-def configure(client: typing.Optional[discord.Client], *, use_dummy: bool = ...) -> None: ...
+def configure(client: discord.Client | None, *, use_dummy: bool = ...) -> None: ...
 
 
-def configure(client: typing.Optional[discord.Client], *, use_dummy: bool = False) -> None:
+def configure(client: discord.Client | None, *, use_dummy: bool = False) -> None:
     """
         Configure the backend, optionally with the provided client
 

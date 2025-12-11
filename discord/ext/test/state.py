@@ -67,7 +67,7 @@ class FakeState(dstate.ConnectionState):
         guild: discord.Guild = discord.utils.get(self.guilds, id=guild.id)
         return guild.members
 
-    async def chunk_guild(self, guild: discord.Guild, *, wait: bool = True, cache: typing.Optional[bool] = None):
+    async def chunk_guild(self, guild: discord.Guild, *, wait: bool = True, cache: bool | None = None):
         pass
 
     def _guild_needs_chunking(self, guild: discord.Guild):

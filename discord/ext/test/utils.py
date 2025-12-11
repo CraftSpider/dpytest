@@ -8,7 +8,7 @@ import discord
 import typing
 
 
-def embed_eq(embed1: typing.Optional[discord.Embed], embed2: typing.Optional[discord.Embed]) -> bool:
+def embed_eq(embed1: discord.Embed | None, embed2: discord.Embed | None) -> bool:
     if embed1 == embed2:
         return True
     elif embed1 is None and embed2 is not None:
@@ -24,7 +24,7 @@ def embed_eq(embed1: typing.Optional[discord.Embed], embed2: typing.Optional[dis
                 embed1.fields == embed2.fields])
 
 
-def activity_eq(act1: typing.Optional[discord.Activity], act2: typing.Optional[discord.Activity]) -> bool:
+def activity_eq(act1: discord.Activity | None, act2: discord.Activity | None) -> bool:
     if act1 == act2:
         return True
     elif act1 is None and act2 is not None:

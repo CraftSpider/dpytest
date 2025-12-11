@@ -34,8 +34,8 @@ class FakeWebSocket(gateway.DiscordWebSocket):
     async def change_presence(
             self,
             *,
-            activity: typing.Optional[discord.BaseActivity] = None,
-            status: typing.Optional[str] = None,
+            activity: discord.BaseActivity | None = None,
+            status: str | None = None,
             since: float = 0.0
     ) -> None:
         self.cur_event = "presence"
