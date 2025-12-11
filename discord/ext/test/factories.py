@@ -8,6 +8,9 @@ import datetime as dt
 import discord
 from . import _types
 
+if typing.TYPE_CHECKING:
+    from discord.types.gateway import Role
+    from discord.types.role import RoleColours
 
 generated_ids: int = 0
 
@@ -160,43 +163,59 @@ def make_role_dict(
         id_num: int = -1,
         colour: int = 0,
         color: typing.Optional[int] = None,
+        colors: typing.Optional[RoleColours] = None,
         hoist: bool = False,
         position: int = -1,
         permissions: int = 104324161,
         managed: bool = False,
         mentionable: bool = False,
-) -> _types.JsonDict:
+        flags: int = 0,
+) -> Role:
     if id_num < 0:
         id_num = make_id()
     if color is not None:
         if colour != 0:
             raise ValueError("Both 'colour' and 'color' can be supplied at the same time")
         colour = color
+    if colors is None:
+        colors: RoleColours = {
+            'primary_color': colour,
+            'secondary_color': None,
+            'tertiary_color': None,
+        }
     return {
         'id': id_num,
         'name': name,
         'color': colour,
+        'colors': colors,
         'hoist': hoist,
         'position': position,
         'permissions_new': permissions,
         'permissions': permissions,
         'managed': managed,
-        'mentionable': mentionable
+        'mentionable': mentionable,
+        'flags': flags,
     }
 
 
 # discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
-def dict_from_role(role: discord.Role) -> _types.JsonDict:
+def dict_from_role(role: discord.Role) -> Role:
     return {
         'id': role.id,
         'name': role.name,
         'color': role.colour.value,
+        'colors': {
+            'primary_color': role.colour.value,
+            'secondary_color': role.secondary_color.value if role.secondary_color else None,
+            'tertiary_color': role.tertiary_color.value if role.tertiary_color else None,
+        },
         'hoist': role.hoist,
         'position': role.position,
         'permissions_new': role.permissions.value,
         'permissions': role.permissions.value,
         'managed': role.managed,
-        'mentionable': role.mentionable
+        'mentionable': role.mentionable,
+        'flags': role.flags.value,
     }
 
 

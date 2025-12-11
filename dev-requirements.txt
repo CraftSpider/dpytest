@@ -8,3 +8,4 @@ sphinx-automodapi
 build
 flake8~=6.0.0
 pynacl
+typing-extensions

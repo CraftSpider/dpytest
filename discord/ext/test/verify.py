@@ -19,7 +19,6 @@ from .utils import embed_eq, activity_eq
 
 
 class _Undef:
-
     _singleton = None
 
     def __new__(cls):
@@ -42,7 +41,8 @@ class VerifyMessage:
         ``assert dpytest.verify().message().content("Hello World!")``
     """
 
-    _invert: bool
+    _used: typing.Union[discord.Message, int, _Undef, None]
+
     _contains: bool
     _peek: bool
     _nothing: bool
@@ -51,7 +51,7 @@ class VerifyMessage:
     _attachment: typing.Union[None, _Undef, str, pathlib.Path]
 
     def __init__(self) -> None:
-        self._used = False
+        self._used = _undefined
 
         self._contains = False
         self._peek = False
@@ -65,10 +65,17 @@ class VerifyMessage:
             import warnings
             warnings.warn("VerifyMessage dropped without being used, did you forget an `assert`?", RuntimeWarning)
 
+    def __str__(self) -> str:
+        if self._used is not _Undef:
+            return f"Expected {self._expectation()}, found {self._found}"
+        else:
+            return f"VerifyMessage(expects={self._expectation()})"
+
     def __bool__(self) -> bool:
-        self._used = True
+        self._used = None
 
         if self._nothing:
+            self._used = sent_queue.qsize()
             return sent_queue.qsize() == 0
 
         if self._peek:
@@ -79,8 +86,28 @@ class VerifyMessage:
             except asyncio.QueueEmpty:
                 # By now we're expecting a message, not getting one is a failure
                 return False
+        self._used = message
 
         return self._check_msg(message)
+
+    def _expectation(self) -> str:
+        if self._nothing:
+            return f"no messages"
+        else:
+            contains = "contains"
+            content = f"content={self._content}" if self._content is not _Undef else ""
+            embed = f"embed={self._embed}" if self._embed is not _Undef else ""
+            attachment = f"attachment={self._attachment}" if self._attachment is not _Undef else ""
+            event = " ".join(filter(lambda x: x, [contains, content, embed, attachment]))
+            return f"message {event}"
+
+    def _diff_msg(self) -> str:
+        if self._nothing:
+            return f"{self._used} messages"
+        elif self._used is None:
+            return f"no message"
+        else:
+            return str(self._used)
 
     def _check_msg(self, msg: discord.Message) -> bool:
         # If any attributes are 'None', check that they don't exist

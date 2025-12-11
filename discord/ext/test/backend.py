@@ -20,6 +20,10 @@ import pathlib
 import urllib.parse
 import urllib.request
 
+if typing.TYPE_CHECKING:
+    from discord.types.gateway import MessageReactionAddEvent, MessageReactionRemoveEvent, GuildRoleUpdateEvent
+    from discord.types.role import RoleColours
+
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 
 
@@ -221,7 +225,8 @@ class FakeHttp(dhttp.HTTPClient):
 
         delete_message(message)
 
-    async def edit_message(self, channel_id: int, message_id: int, **fields: dhttp.MultipartParameters) -> _types.JsonDict:  # noqa: E501
+    async def edit_message(self, channel_id: int, message_id: int,
+                           **fields: dhttp.MultipartParameters) -> _types.JsonDict:  # noqa: E501
         locs = _get_higher_locs(1)
         message = locs.get("self", None)
 
@@ -374,17 +379,7 @@ class FakeHttp(dhttp.HTTPClient):
                           **fields: typing.Any) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
-
-        # discordpy 2.6.0 introduced the "colors" field - 
-        # https://github.com/Rapptz/discord.py/commit/cb7300990f656c0964ea48115354f9416e96dcd1
-        # In order to ensure compatibility with existing dpytest code, let's just grab the primary color
-        # for the role we are attempting to create.
-        colors: dict[str, int] = fields.get("colors")
-        if colors:
-            fields["color"] = colors.get("primary_color", 0)
-            fields.pop("colors")
-
-        role = make_role(guild=guild, **fields, )
+        role = make_role(guild=guild, **fields)
 
         await callbacks.dispatch_event("create_role", guild, role, reason=reason)
 
@@ -627,6 +622,7 @@ def make_role(
         id_num: int = -1,
         colour: int = 0,
         color: typing.Optional[int] = None,
+        colors: typing.Optional[RoleColours] = None,
         permissions: int = 104324161,
         hoist: bool = False,
         mentionable: bool = False,
@@ -645,7 +641,8 @@ def make_role(
     :return: Newly created role
     """
     r_dict = facts.make_role_dict(
-        name, id_num=id_num, colour=colour, color=color, permissions=permissions, hoist=hoist, mentionable=mentionable
+        name, id_num=id_num, colour=colour, color=color, colors=colors, permissions=permissions, hoist=hoist,
+        mentionable=mentionable
     )
     # r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
     r_dict["position"] = 1
@@ -665,6 +662,7 @@ def update_role(
         role: discord.Role,
         colour: typing.Optional[int] = None,
         color: typing.Optional[int] = None,
+        colors: typing.Optional[RoleColours] = None,
         permissions: typing.Optional[int] = None,
         hoist: typing.Optional[bool] = None,
         mentionable: typing.Optional[bool] = None,
@@ -683,11 +681,16 @@ def update_role(
     :param name: New name for the role
     :return: Role that was updated
     """
-    data = {"guild_id": role.guild.id, "role": facts.dict_from_role(role)}
+    data = {
+        "guild_id": role.guild.id,
+        "role": facts.dict_from_role(role),
+    }
     if color is not None:
         colour = color
     if colour is not None:
         data["role"]["color"] = colour
+    if colors is not None:
+        data["role"]["colors"] = colors
     if permissions is not None:
         data["role"]["permissions"] = int(permissions)
         data["role"]["permissions_new"] = int(permissions)
@@ -976,11 +979,13 @@ def add_reaction(message: discord.Message, user: typing.Union[discord.user.BaseU
             "name": emoji
         }
 
-    data = {
+    data: MessageReactionAddEvent = {
         "message_id": message.id,
         "channel_id": message.channel.id,
         "user_id": user.id,
-        "emoji": emoji
+        "emoji": emoji,
+        "burst": False,
+        "type": 0,
     }
     if message.guild:
         data["guild_id"] = message.guild.id
@@ -1024,11 +1029,13 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
             "name": emoji
         }
 
-    data = {
+    data: MessageReactionRemoveEvent = {
         "message_id": message.id,
         "channel_id": message.channel.id,
         "user_id": user.id,
-        "emoji": emoji
+        "emoji": emoji,
+        "burst": False,
+        "type": 0,
     }
     if message.guild:
         data["guild_id"] = message.guild.id
