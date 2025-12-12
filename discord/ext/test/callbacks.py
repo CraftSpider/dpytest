@@ -8,9 +8,7 @@ import logging
 import typing
 from . import _types
 
-
 log = logging.getLogger("discord.ext.tests")
-
 
 _callbacks = {}
 
@@ -54,7 +52,7 @@ def get_callback(event: str) -> _types.Callback:
     return _callbacks[event]
 
 
-def remove_callback(event: str) -> typing.Optional[_types.Callback]:
+def remove_callback(event: str) -> _types.Callback | None:
     """
         Remove the callback set for an event, returning it, or None if one isn't set
 

@@ -1,10 +1,10 @@
-
 import pytest
 import discord.ext.test as dpytest  # noqa: F401
+import discord.ext.commands as commands
 
 
 @pytest.mark.asyncio
-async def test_edit(bot):
+async def test_edit(bot: commands.Bot):
     guild = bot.guilds[0]
     channel = guild.channels[0]
 

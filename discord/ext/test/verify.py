@@ -9,7 +9,6 @@
         :mod:`discord.ext.test.runner`
 """
 
-import typing
 import asyncio
 import pathlib
 import discord
@@ -18,8 +17,22 @@ from .runner import sent_queue, get_config
 from .utils import embed_eq, activity_eq
 
 
-class _Undef:
+def _msg_to_str(msg: discord.Message) -> str:
+    author = f"author=\"{msg.author.name}\""
+    out = [author]
+    if msg.content:
+        out.append(f"content=\"{msg.content}\"")
+    if msg.embeds:
+        embeds = ", ".join(map(lambda e: str(e.to_dict()), msg.embeds))
+        out.append(f"embeds=[{embeds}]")
+    if msg.attachments:
+        attachments = ", ".join(map(lambda a: a.filename, msg.attachments))
+        out.append(f"attachments=[{attachments}]")
+    inner = " ".join(out)
+    return f"Message({inner})"
 
+
+class _Undef:
     _singleton = None
 
     def __new__(cls):
@@ -42,16 +55,17 @@ class VerifyMessage:
         ``assert dpytest.verify().message().content("Hello World!")``
     """
 
-    _invert: bool
+    _used: discord.Message | int | _Undef | None
+
     _contains: bool
     _peek: bool
     _nothing: bool
-    _content: typing.Union[None, _Undef, str]
-    _embed: typing.Union[None, _Undef, discord.Embed]
-    _attachment: typing.Union[None, _Undef, str, pathlib.Path]
+    _content: str | _Undef | None
+    _embed: discord.Embed | _Undef | None
+    _attachment: str | pathlib.Path | _Undef | None
 
     def __init__(self) -> None:
-        self._used = False
+        self._used = _undefined
 
         self._contains = False
         self._peek = False
@@ -65,10 +79,17 @@ class VerifyMessage:
             import warnings
             warnings.warn("VerifyMessage dropped without being used, did you forget an `assert`?", RuntimeWarning)
 
+    def __repr__(self) -> str:
+        if self._used is not _undefined:
+            return f"<VerifyMessage expected=[{self._expectation()}] found={_msg_to_str(self._used)}>"
+        else:
+            return f"<VerifyMessage expects={self._expectation()}>"
+
     def __bool__(self) -> bool:
-        self._used = True
+        self._used = None
 
         if self._nothing:
+            self._used = sent_queue.qsize()
             return sent_queue.qsize() == 0
 
         if self._peek:
@@ -79,8 +100,28 @@ class VerifyMessage:
             except asyncio.QueueEmpty:
                 # By now we're expecting a message, not getting one is a failure
                 return False
+        self._used = message
 
         return self._check_msg(message)
+
+    def _expectation(self) -> str:
+        if self._nothing:
+            return "no messages"
+        else:
+            contains = "contains"
+            content = f"content=\"{self._content}\"" if self._content is not _undefined else ""
+            embed = f"embed={str(self._embed.to_dict())}" if self._embed is not _undefined else ""
+            attachment = f"attachment={self._attachment}" if self._attachment is not _undefined else ""
+            event = " ".join(filter(lambda x: x, [contains, content, embed, attachment]))
+            return f"{event}"
+
+    def _diff_msg(self) -> str:
+        if self._nothing:
+            return f"{self._used} messages"
+        elif self._used is None:
+            return "no message"
+        else:
+            return str(self._used)
 
     def _check_msg(self, msg: discord.Message) -> bool:
         # If any attributes are 'None', check that they don't exist
@@ -146,7 +187,7 @@ class VerifyMessage:
         self._nothing = True
         return self
 
-    def content(self, content: typing.Optional[str]) -> 'VerifyMessage':
+    def content(self, content: str | None) -> 'VerifyMessage':
         """
             Check that the message content matches the input
 
@@ -158,7 +199,7 @@ class VerifyMessage:
         self._content = content
         return self
 
-    def embed(self, embed: typing.Optional[discord.Embed]) -> 'VerifyMessage':
+    def embed(self, embed: discord.Embed | None) -> 'VerifyMessage':
         """
             Check that the message embed matches the input
 
@@ -170,7 +211,7 @@ class VerifyMessage:
         self._embed = embed
         return self
 
-    def attachment(self, attach: typing.Optional[typing.Union[str, pathlib.Path]]) -> 'VerifyMessage':
+    def attachment(self, attach: str | pathlib.Path | None) -> 'VerifyMessage':
         """
             Check that the message attachment matches the input
 

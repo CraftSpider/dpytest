@@ -11,9 +11,10 @@ class FakeVoiceClient(VoiceClient):
     whenever connect() is called on a VoiceChannel, so we need to override that method and pass in the fake version
     to prevent the program from actually making calls to the Discord API.
     """
+
     async def connect(self, *, reconnect: bool, timeout: float, self_deaf: bool = False,
                       self_mute: bool = False) -> None:
-        self._connected.set()
+        self._connection._connected.set()
 
 
 class FakeVoiceChannel(VoiceChannel):

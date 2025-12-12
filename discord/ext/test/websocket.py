@@ -7,7 +7,7 @@ import typing
 import discord
 import discord.gateway as gateway
 
-from . import callbacks, _types
+from . import callbacks
 
 
 class FakeWebSocket(gateway.DiscordWebSocket):
@@ -22,7 +22,7 @@ class FakeWebSocket(gateway.DiscordWebSocket):
         self.event_args = ()
         self.event_kwargs = {}
 
-    async def send(self, data: _types.JsonDict) -> None:
+    async def send(self, data: str) -> None:
         self._dispatch('socket_raw_send', data)
         if self.cur_event is None:
             raise ValueError("Unhandled Websocket send event")
@@ -34,8 +34,8 @@ class FakeWebSocket(gateway.DiscordWebSocket):
     async def change_presence(
             self,
             *,
-            activity: typing.Optional[discord.BaseActivity] = None,
-            status: typing.Optional[str] = None,
+            activity: discord.BaseActivity | None = None,
+            status: str | None = None,
             since: float = 0.0
     ) -> None:
         self.cur_event = "presence"

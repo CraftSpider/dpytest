@@ -29,13 +29,13 @@ class RunnerConfig(typing.NamedTuple):
     """
 
     client: discord.Client
-    guilds: typing.List[discord.Guild]
-    channels: typing.List[discord.abc.GuildChannel]
-    members: typing.List[discord.Member]
+    guilds: list[discord.Guild]
+    channels: list[discord.abc.GuildChannel]
+    members: list[discord.Member]
 
 
 log = logging.getLogger("discord.ext.tests")
-_cur_config: typing.Optional[RunnerConfig] = None
+_cur_config: RunnerConfig | None = None
 sent_queue: PeekableQueue = PeekableQueue()
 error_queue: PeekableQueue = PeekableQueue()
 
@@ -61,7 +61,7 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
     return wrapper
 
 
-def _task_coro_name(task: asyncio.Task) -> typing.Optional[str]:
+def _task_coro_name(task: asyncio.Task) -> str | None:
     """
         Uses getattr() to avoid AttributeErrors when the _coro doesn't have a __name__
     """
@@ -149,7 +149,7 @@ async def _message_callback(message: discord.Message) -> None:
     await sent_queue.put(message)
 
 
-async def _edit_member_callback(fields: typing.Any, member: discord.Member, reason: typing.Optional[str]):
+async def _edit_member_callback(fields: typing.Any, member: discord.Member, reason: str | None):
     """
         Internal callback. Updates a guild's voice states to reflect the given Member connecting to the given channel.
         Other updates to members are handled in http.edit_member().
@@ -171,9 +171,9 @@ counter = count(0)
 @require_config
 async def message(
         content: str,
-        channel: typing.Union[_types.AnyChannel, int] = 0,
-        member: typing.Union[discord.Member, int] = 0,
-        attachments: typing.List[typing.Union[pathlib.Path, str]] = None
+        channel: _types.AnyChannel | int = 0,
+        member: discord.Member | int = 0,
+        attachments: list[pathlib.Path | str] = None
 ) -> discord.Message:
     """
         Fake a message being sent by some user to a channel.
@@ -219,9 +219,9 @@ async def message(
 
 @require_config
 async def set_permission_overrides(
-        target: typing.Union[discord.User, discord.Role],
+        target: discord.User | discord.Role,
         channel: discord.abc.GuildChannel,
-        overrides: typing.Optional[discord.PermissionOverwrite] = None,
+        overrides: discord.PermissionOverwrite | None = None,
         **kwargs: typing.Any,
 ) -> None:
     """
@@ -287,7 +287,7 @@ async def remove_role(member: discord.Member, role: discord.Role) -> None:
 
 
 @require_config
-async def add_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.User],
+async def add_reaction(user: discord.user.BaseUser | discord.abc.User,
                        message: discord.Message, emoji: str) -> None:
     """
         Add a reaction to a message, as if added by another user
@@ -301,7 +301,7 @@ async def add_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.Use
 
 
 @require_config
-async def remove_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.User],
+async def remove_reaction(user: discord.user.BaseUser | discord.abc.User,
                           message: discord.Message, emoji: str) -> None:
     """
         Remove a reaction from a message, as if done by another user
@@ -316,11 +316,11 @@ async def remove_reaction(user: typing.Union[discord.user.BaseUser, discord.abc.
 
 @require_config
 async def member_join(
-        guild: typing.Union[discord.Guild, int] = 0,
-        user: typing.Optional[discord.User] = None,
+        guild: discord.Guild | int = 0,
+        user: discord.User | None = None,
         *,
         name: str = None,
-        discrim: typing.Union[str, int] = None
+        discrim: str | int = None
 ) -> discord.Member:
     """
         Have a new member join a guild, either an existing or new user for the framework
@@ -356,10 +356,10 @@ def get_config() -> RunnerConfig:
 
 
 def configure(client: discord.Client,
-              guilds: typing.Union[int, typing.List[str]] = 1,
-              text_channels: typing.Union[int, typing.List[str]] = 1,
-              voice_channels: typing.Union[int, typing.List[str]] = 1,
-              members: typing.Union[int, typing.List[str]] = 1) -> None:
+              guilds: int | list[str] = 1,
+              text_channels: int | list[str] = 1,
+              voice_channels: int | list[str] = 1,
+              members: int | list[str] = 1) -> None:
     """
         Set up the runner configuration. This should be done before any tests are run.
 
@@ -368,7 +368,7 @@ def configure(client: discord.Client,
     :param text_channels: Number or list of names of text channels in each guild to start with. Default is 1
     :param voice_channels: Number or list of names of voice channels in each guild to start with. Default is 1.
     :param members: Number or list of names of members in each guild (other than the client) to start with. Default is 1.
-    """   # noqa: E501
+    """  # noqa: E501
 
     global _cur_config
 

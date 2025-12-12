@@ -7,9 +7,27 @@ import typing
 
 T = typing.TypeVar('T')
 
-JsonVal = typing.Union[str, int, bool, typing.Dict[str, 'JsonVal'], typing.List['JsonVal']]
-JsonDict = typing.Dict[str, JsonVal]
-JsonList = typing.List[JsonVal]
 Callback = typing.Callable[..., typing.Coroutine[None, None, None]]
-AnyChannel = typing.Union[discord.TextChannel, discord.CategoryChannel,
-                          discord.abc.GuildChannel, discord.abc.PrivateChannel]
+AnyChannel = (discord.TextChannel | discord.CategoryChannel | discord.abc.GuildChannel
+              | discord.abc.PrivateChannel | discord.Thread)
+
+if typing.TYPE_CHECKING:
+    from discord.types import (
+        role, gateway, appinfo, user, guild, emoji, channel, message, sticker,  # noqa: F401
+        scheduled_event, member  # noqa: F401
+    )
+
+    AnyChannelJson = channel.VoiceChannel | channel.TextChannel | channel.DMChannel | channel.CategoryChannel
+else:
+    class OpenNamespace:
+        def __getattr__(self, item: str) -> typing.Self:
+            return self
+
+        def __subclasscheck__(self, subclass: type) -> typing.Literal[True]:
+            return True
+
+        def __or__(self, other: T) -> T:
+            return other
+
+    def __getattr__(name: str) -> OpenNamespace:
+        return OpenNamespace()
