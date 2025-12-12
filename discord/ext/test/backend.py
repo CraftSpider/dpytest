@@ -331,6 +331,12 @@ class FakeHttp(dhttp.HTTPClient):
 
         delete_member(member)
 
+    async def unban(self, user_id: Snowflake, guild_id: Snowflake, *, reason: str | None = None) -> None:
+        locs = _get_higher_locs(1)
+        guild = locs.get("self", None)
+        member = locs.get("user", None)
+        await callbacks.dispatch_event("unban", guild, member, reason=reason)
+
     async def change_my_nickname(self, guild_id: int, nickname: str, *,
                                  reason: str | None = None) -> _types.member.Nickname:
         locs = _get_higher_locs(1)
