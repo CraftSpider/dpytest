@@ -4,7 +4,6 @@
 """
 
 import asyncio
-import typing
 import discord
 import discord.http as dhttp
 import discord.state as dstate

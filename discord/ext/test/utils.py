@@ -5,7 +5,6 @@
 
 import asyncio
 import discord
-import typing
 
 
 def embed_eq(embed1: discord.Embed | None, embed2: discord.Embed | None) -> bool:

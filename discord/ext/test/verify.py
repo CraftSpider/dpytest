@@ -9,7 +9,6 @@
         :mod:`discord.ext.test.runner`
 """
 
-import typing
 import asyncio
 import pathlib
 import discord

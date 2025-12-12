@@ -7,7 +7,7 @@ import typing
 import discord
 import discord.gateway as gateway
 
-from . import callbacks, _types
+from . import callbacks
 
 
 class FakeWebSocket(gateway.DiscordWebSocket):
