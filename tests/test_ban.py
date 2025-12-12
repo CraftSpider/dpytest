@@ -1,7 +1,7 @@
 
 import pytest
 import discord
-import discord.ext.test as dpytest
+
 
 @pytest.mark.asyncio
 async def test_ban_user(bot: discord.Client):
