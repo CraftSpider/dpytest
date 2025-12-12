@@ -92,7 +92,7 @@ def _fill_optional(
 ) -> None: ...
 
 
-def _fill_optional(data: _types.JsonDict, obj: typing.Any, items: typing.Iterable[str]) -> None:
+def _fill_optional(data: dict[str, typing.Any], obj: typing.Any, items: typing.Iterable[str]) -> None:
     if isinstance(obj, dict):
         obj: dict[str, typing.Any]
         for item in items:
@@ -171,7 +171,7 @@ def dict_from_object(obj: discord.User) -> _types.user.User: ...
 
 
 @typing.overload
-def dict_from_object(obj: discord.Member) -> _types.guild.Member: ...
+def dict_from_object(obj: discord.Member) -> _types.member.MemberWithUser: ...
 
 
 @typing.overload
@@ -256,7 +256,7 @@ def _from_user(user: discord.User) -> _types.user.User:
 
 
 @dict_from_object.register(discord.Member)
-def _from_member(member: discord.Member) -> _types.guild.Member:
+def _from_member(member: discord.Member) -> _types.member.MemberWithUser:
     # discord code adds default role to every member later on in Member constructor
     roles_no_default = list(filter(lambda r: not r == member.guild.default_role, member.roles))
     out: _types.guild.Member = {
@@ -649,7 +649,7 @@ def dict_from_overwrite(target: discord.Member | discord.Role,
     return ovr
 
 
-# TODO: Convert attachments, reactions, activity, and application to a dict.
+# TODO: Convert reactions, activity, and application to a dict.
 def make_message_dict(
         channel: _types.AnyChannel,
         author: discord.user.BaseUser,
@@ -742,8 +742,8 @@ def make_attachment_dict(
         id_num: int = -1,
         height: int | None = None,
         width: int | None = None,
-        content_type: str | None = None
-) -> _types.JsonDict:
+        content_type: str = "txt"
+) -> _types.message.Attachment:
     if id_num < 0:
         id_num = make_id()
     return {

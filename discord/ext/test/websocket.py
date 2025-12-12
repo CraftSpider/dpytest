@@ -22,7 +22,7 @@ class FakeWebSocket(gateway.DiscordWebSocket):
         self.event_args = ()
         self.event_kwargs = {}
 
-    async def send(self, data: _types.JsonDict) -> None:
+    async def send(self, data: str) -> None:
         self._dispatch('socket_raw_send', data)
         if self.cur_event is None:
             raise ValueError("Unhandled Websocket send event")

@@ -7,9 +7,6 @@ import typing
 
 T = typing.TypeVar('T')
 
-JsonVal = str | int | bool | dict[str, 'JsonVal'] | list['JsonVal']
-JsonDict = dict[str, JsonVal]
-JsonList = list[JsonVal]
 Callback = typing.Callable[..., typing.Coroutine[None, None, None]]
 AnyChannel = discord.TextChannel | discord.CategoryChannel | discord.abc.GuildChannel | discord.abc.PrivateChannel | discord.Thread
 

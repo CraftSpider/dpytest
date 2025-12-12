@@ -31,7 +31,7 @@ class BackendState(typing.NamedTuple):
         The dpytest backend, with all the state it needs to hold to be able to pretend to be
         discord. Generally only used internally, but exposed through :py:func:`get_state`
     """
-    messages: dict[int, list[_types.JsonDict]]
+    messages: dict[int, list[_types.message.Message]]
     state: dstate.FakeState
 
 
@@ -105,7 +105,7 @@ class FakeHttp(dhttp.HTTPClient):
             *,
             reason: str | None = None,
             **options: typing.Any
-    ) -> _types.JsonDict:
+    ) -> _types.channel.PartialChannel:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         name = locs.get("name", None)
@@ -138,7 +138,7 @@ class FakeHttp(dhttp.HTTPClient):
         if channel.type.value == discord.ChannelType.voice.value:
             delete_channel(channel)
 
-    async def get_channel(self, channel_id: int) -> _types.JsonDict:
+    async def get_channel(self, channel_id: int) -> _types.channel.PartialChannel:
         await callbacks.dispatch_event("get_channel", channel_id)
 
         find = None
@@ -150,7 +150,7 @@ class FakeHttp(dhttp.HTTPClient):
             raise discord.errors.NotFound(FakeRequest(404, "Not Found"), "Unknown Channel")
         return find
 
-    async def start_private_message(self, user_id: int) -> _types.JsonDict:
+    async def start_private_message(self, user_id: int) -> _types.channel.DMChannel:
         locs = _get_higher_locs(1)
         user = locs.get("self", None)
 
@@ -273,7 +273,7 @@ class FakeHttp(dhttp.HTTPClient):
         message = locs.get("self")
         clear_reactions(message)
 
-    async def get_message(self, channel_id: int, message_id: int) -> _types.JsonDict:
+    async def get_message(self, channel_id: int, message_id: int) -> _types.message.Message:
         locs = _get_higher_locs(1)
         channel = locs.get("self")
 
@@ -292,7 +292,7 @@ class FakeHttp(dhttp.HTTPClient):
             before: int | None = None,
             after: int | None = None,
             around: int | None = None
-    ) -> list[_types.JsonDict]:
+    ) -> list[_types.message.Message]:
         locs = _get_higher_locs(1)
         channel = locs.get("self", None)
 
@@ -332,7 +332,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_member(member)
 
     async def change_my_nickname(self, guild_id: int, nickname: str, *,
-                                 reason: str | None = None) -> _types.JsonDict:
+                                 reason: str | None = None) -> _types.member.Nickname:
         locs = _get_higher_locs(1)
         me = locs.get("self", None)
 
@@ -353,7 +353,7 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def get_member(self, guild_id: int, member_id: int) -> _types.guild.Member:
         locs = _get_higher_locs(1)
-        guild = locs.get("self", None)
+        guild: discord.Guild = locs.get("self", None)
         member = discord.utils.get(guild.members, id=member_id)
 
         return facts.dict_from_object(member)
@@ -388,8 +388,8 @@ class FakeHttp(dhttp.HTTPClient):
 
         return facts.dict_from_object(role)
 
-    async def move_role_position(self, guild_id: int, positions: list[_types.JsonDict], *,
-                                 reason: str | None = None) -> None:
+    async def move_role_position(self, guild_id: int, positions: list[_types.guild.RolePositionUpdate], *,
+                                 reason: str | None = None) -> list[_types.role.Role]:
         locs = _get_higher_locs(1)
         role = locs.get("self", None)
         guild = role.guild
@@ -398,6 +398,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         for pair in positions:
             guild._roles[pair["id"]].position = pair["position"]
+        return list(guild._roles.values())
 
     async def add_role(self, guild_id: int, user_id: int, role_id: int, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
@@ -431,7 +432,7 @@ class FakeHttp(dhttp.HTTPClient):
             "rpc_origins": [],
             "bot_public": True,
             "bot_require_code_grant": False,
-            "owner": facts.make_user_dict("TestOwner", "0001", None),
+            "owner": facts.make_user_dict("TestOwner", "0001", ""),
             "summary": "",
             "verify_key": "",
             "flags": 0,
@@ -544,7 +545,7 @@ class FakeHttp(dhttp.HTTPClient):
         # return self.request(Route('GET', '/guilds/{guild_id}', guild_id=guild_id))
         # TODO: Respect with_counts
         locs = _get_higher_locs(1)
-        client = locs.get("self", None)
+        client: discord.Client = locs.get("self", None)
         guild = discord.utils.get(client.guilds, id=guild_id)
         return facts.dict_from_object(guild)
 
@@ -648,7 +649,7 @@ def make_role(
     :return: Newly created role
     """
     r_dict = facts.make_role_dict(
-        name, id_num=id_num, colour=colour, color=color, colors=colors, permissions=permissions, hoist=hoist,
+        name, id_num=id_num, colour=colour, color=color, colors=colors, permissions=str(permissions), hoist=hoist,
         mentionable=mentionable
     )
     # r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
@@ -731,7 +732,7 @@ def make_text_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: _types.JsonDict | None = None,
+        permission_overwrites: _types.channel.PermissionOverwrite | None = None,
         parent_id: int | None = None,
 ) -> discord.TextChannel:
     if position == -1:
@@ -751,7 +752,7 @@ def make_category_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: _types.JsonDict | None = None,
+        permission_overwrites: _types.channel.PermissionOverwrite | None = None,
 ) -> discord.CategoryChannel:
     if position == -1:
         position = len(guild.categories) + 1
@@ -768,7 +769,7 @@ def make_voice_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: _types.JsonDict | None = None,
+        permission_overwrites: _types.channel.PermissionOverwrite | None = None,
         parent_id: int | None = None,
         bitrate: int = 192,
         user_limit: int = 0
@@ -977,7 +978,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
                  emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
-        emoji = {
+        emoji: _types.message.PartialEmoji = {
             "id": temp[0],
             "name": temp[1]
         }
@@ -1010,16 +1011,27 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
         if "reactions" not in message_data:
             message_data["reactions"] = []
 
-        react: _types.JsonDict | None = None
+        react: _types.message.Reaction | None = None
         for react in message_data["reactions"]:
             if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
                 break
 
         if react is None:
-            react = {"count": 0, "me": False, "emoji": emoji}
+            react: _types.message.Reaction = {
+                "count": 0,
+                "me": False,
+                "emoji": emoji,
+                "me_burst": False,
+                "count_details": {
+                    "burst": 0,
+                    "normal": 0,
+                },
+                "burst_colors": [],
+            }
             message_data["reactions"].append(react)
 
         react["count"] += 1
+        react["count_details"]["normal"] += 1
         if user.id == state.user.id:
             react["me"] = True
 
@@ -1027,7 +1039,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
 def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
-        emoji = {
+        emoji: _types.message.PartialEmoji = {
             "id": temp[0],
             "name": temp[1]
         }
@@ -1057,7 +1069,7 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
         if "reactions" not in message_data:
             message_data["reactions"] = []
 
-        react: _types.JsonDict | None = None
+        react: _types.message.Reaction | None = None
         for react in message_data["reactions"]:
             if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
                 break
@@ -1065,6 +1077,7 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
             return
 
         react["count"] -= 1
+        react["count_details"]["normal"] -= 1
         if user.id == state.user.id:
             react["me"] = False
 
