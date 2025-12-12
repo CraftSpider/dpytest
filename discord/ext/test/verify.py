@@ -17,6 +17,21 @@ from .runner import sent_queue, get_config
 from .utils import embed_eq, activity_eq
 
 
+def _msg_to_str(msg: discord.Message) -> str:
+    author = f"author=\"{msg.author.name}\""
+    out = [author]
+    if msg.content:
+        out.append(f"content=\"{msg.content}\"")
+    if msg.embeds:
+        embeds = ", ".join(map(lambda e: str(e.to_dict()), msg.embeds))
+        out.append(f"embeds=[{embeds}]")
+    if msg.attachments:
+        attachments = ", ".join(map(lambda a: a.filename, msg.attachments))
+        out.append(f"attachments=[{attachments}]")
+    inner = " ".join(out)
+    return f"Message({inner})"
+
+
 class _Undef:
     _singleton = None
 
@@ -64,11 +79,11 @@ class VerifyMessage:
             import warnings
             warnings.warn("VerifyMessage dropped without being used, did you forget an `assert`?", RuntimeWarning)
 
-    def __str__(self) -> str:
-        if self._used is not _Undef:
-            return f"Expected {self._expectation()}, found {self._found}"
+    def __repr__(self) -> str:
+        if self._used is not _undefined:
+            return f"<VerifyMessage expected=[{self._expectation()}] found={_msg_to_str(self._used)}>"
         else:
-            return f"VerifyMessage(expects={self._expectation()})"
+            return f"<VerifyMessage expects={self._expectation()}>"
 
     def __bool__(self) -> bool:
         self._used = None
@@ -94,11 +109,11 @@ class VerifyMessage:
             return "no messages"
         else:
             contains = "contains"
-            content = f"content={self._content}" if self._content is not _Undef else ""
-            embed = f"embed={self._embed}" if self._embed is not _Undef else ""
-            attachment = f"attachment={self._attachment}" if self._attachment is not _Undef else ""
+            content = f"content=\"{self._content}\"" if self._content is not _undefined else ""
+            embed = f"embed={str(self._embed.to_dict())}" if self._embed is not _undefined else ""
+            attachment = f"attachment={self._attachment}" if self._attachment is not _undefined else ""
             event = " ".join(filter(lambda x: x, [contains, content, embed, attachment]))
-            return f"message {event}"
+            return f"{event}"
 
     def _diff_msg(self) -> str:
         if self._nothing:
