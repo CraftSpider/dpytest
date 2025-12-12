@@ -6,6 +6,6 @@ discord.py~=2.3
 invoke
 sphinx-automodapi
 build
-flake8~=6.0.0
+flake8~=7.0.0
 pynacl
 typing-extensions

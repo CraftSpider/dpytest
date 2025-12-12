@@ -8,7 +8,8 @@ import typing
 T = typing.TypeVar('T')
 
 Callback = typing.Callable[..., typing.Coroutine[None, None, None]]
-AnyChannel = discord.TextChannel | discord.CategoryChannel | discord.abc.GuildChannel | discord.abc.PrivateChannel | discord.Thread
+AnyChannel = (discord.TextChannel | discord.CategoryChannel | discord.abc.GuildChannel
+              | discord.abc.PrivateChannel | discord.Thread)
 
 if typing.TYPE_CHECKING:
     from discord.types import (
@@ -25,7 +26,7 @@ else:
         def __subclasscheck__(self, subclass: type) -> typing.Literal[True]:
             return True
 
-        def __or__(self, other):
+        def __or__(self, other: T) -> T:
             return other
 
     def __getattr__(name: str) -> OpenNamespace:
