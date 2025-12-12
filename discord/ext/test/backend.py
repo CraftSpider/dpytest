@@ -374,6 +374,16 @@ class FakeHttp(dhttp.HTTPClient):
                           **fields: typing.Any) -> _types.JsonDict:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
+
+        # discordpy 2.6.0 introduced the "colors" field - 
+        # https://github.com/Rapptz/discord.py/commit/cb7300990f656c0964ea48115354f9416e96dcd1
+        # In order to ensure compatibility with existing dpytest code, let's just grab the primary color
+        # for the role we are attempting to create.
+        colors: dict[str, int] = fields.get("colors")
+        if colors:
+            fields["color"] = colors.get("primary_color", 0)
+            fields.pop("colors")
+
         role = make_role(guild=guild, **fields, )
 
         await callbacks.dispatch_event("create_role", guild, role, reason=reason)
