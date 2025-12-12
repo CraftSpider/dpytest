@@ -343,20 +343,20 @@ class FakeHttp(dhttp.HTTPClient):
         return {"nick": nickname}
 
     async def edit_member(self, guild_id: int, user_id: int, *, reason: str | None = None,
-                          **fields: typing.Any) -> _types.JsonDict:
+                          **fields: typing.Any) -> _types.guild.Member:
         locs = _get_higher_locs(1)
         member = locs.get("self", None)
 
         await callbacks.dispatch_event("edit_member", fields, member, reason=reason)
         member = update_member(member, nick=fields.get('nick'), roles=fields.get('roles'))
-        return facts.dict_from_member(member)
+        return facts.dict_from_object(member)
 
-    async def get_member(self, guild_id: int, member_id: int) -> _types.JsonDict:
+    async def get_member(self, guild_id: int, member_id: int) -> _types.guild.Member:
         locs = _get_higher_locs(1)
         guild = locs.get("self", None)
         member = discord.utils.get(guild.members, id=member_id)
 
-        return facts.dict_from_member(member)
+        return facts.dict_from_object(member)
 
     async def edit_role(self, guild_id: int, role_id: int, *, reason: str | None = None,
                         **fields: typing.Any) -> _types.role.Role:
@@ -367,7 +367,7 @@ class FakeHttp(dhttp.HTTPClient):
         await callbacks.dispatch_event("edit_role", guild, role, fields, reason=reason)
 
         update_role(role, **fields)
-        return facts.dict_from_role(role)
+        return facts.dict_from_object(role)
 
     async def delete_role(self, guild_id: int, role_id: int, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
@@ -386,7 +386,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         await callbacks.dispatch_event("create_role", guild, role, reason=reason)
 
-        return facts.dict_from_role(role)
+        return facts.dict_from_object(role)
 
     async def move_role_position(self, guild_id: int, positions: list[_types.JsonDict], *,
                                  reason: str | None = None) -> None:
@@ -489,7 +489,7 @@ class FakeHttp(dhttp.HTTPClient):
         client = locs.get("self", None)
         guild = client.guilds[0]
         member = discord.utils.get(guild.members, id=user_id)
-        return facts.dict_from_user(member._user)
+        return facts.dict_from_object(member._user)
 
     async def pin_message(self, channel_id: int, message_id: int, reason: str | None = None) -> None:
         # return self.request(Route('PUT', '/channels/{channel_id}/pins/{message_id}',
@@ -519,7 +519,7 @@ class FakeHttp(dhttp.HTTPClient):
             'verification_level': guild.verification_level,
             'default_message_notifications': guild.default_notifications.value,
             'explicit_content_filter': guild.explicit_content_filter,
-            'roles': list(map(facts.dict_from_role, guild.roles)),
+            'roles': list(map(facts.dict_from_object, guild.roles)),
             'emojis': list(map(facts.dict_from_emoji, guild.emojis)),
             'features': guild.features,
             'mfa_level': guild.mfa_level,
@@ -614,7 +614,7 @@ def update_guild(guild: discord.Guild, roles: list[discord.Role] = None) -> disc
     data = facts.dict_from_guild(guild)
 
     if roles is not None:
-        data["roles"] = list(map(facts.dict_from_role, roles))
+        data["roles"] = list(map(facts.dict_from_object, roles))
 
     state = get_state()
     state.parse_guild_update(data)
@@ -691,7 +691,7 @@ def update_role(
     """
     data = {
         "guild_id": role.guild.id,
-        "role": facts.dict_from_role(role),
+        "role": facts.dict_from_object(role),
     }
     if color is not None:
         colour = color
@@ -841,7 +841,7 @@ def make_member(user: discord.user.BaseUser | discord.abc.User, guild: discord.G
 
 def update_member(member: discord.Member, nick: str | None = None,
                   roles: list[discord.Role] | None = None) -> discord.Member:
-    data = facts.dict_from_member(member)
+    data = facts.dict_from_object(member)
     if nick is not None:
         data["nick"] = nick
     if roles is not None:
@@ -854,7 +854,7 @@ def update_member(member: discord.Member, nick: str | None = None,
 
 
 def delete_member(member: discord.Member) -> None:
-    out = facts.dict_from_member(member)
+    out = facts.dict_from_object(member)
     state = get_state()
     state.parse_guild_member_remove(out)
 
@@ -999,7 +999,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
         data["guild_id"] = message.guild.id
     # when reactions are added by something other than the bot client, we want the user to end up in the payload.
     if isinstance(user, discord.Member):
-        data["member"] = facts.dict_from_member(user)
+        data["member"] = facts.dict_from_object(user)
 
     state = get_state()
     state.parse_message_reaction_add(data)

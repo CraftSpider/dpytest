@@ -122,19 +122,6 @@ def make_user_dict(username: str, discrim: str | int, avatar: str, id_num: int =
     return out
 
 
-def dict_from_user(user: discord.User) -> _types.user.User:
-    out: _types.user.User = {
-        'id': user.id,
-        'global_name': user.global_name,
-        'username': user.name,
-        'discriminator': user.discriminator,
-        'avatar': user.avatar.url if user.avatar else None,
-    }
-    items = ("bot", "mfa_enabled", "locale", "verified", "email", "premium_type")
-    _fill_optional(out, user, items)
-    return out
-
-
 def make_member_dict(
         guild: discord.Guild,
         user: discord.User,
@@ -147,7 +134,7 @@ def make_member_dict(
 ) -> _types.guild.Member:
     out: _types.guild.Member = {
         'guild_id': guild.id,
-        'user': dict_from_user(user),
+        'user': dict_from_object(user),
         'roles': roles,
         'joined_at': joined,
         'deaf': deaf,
@@ -159,12 +146,40 @@ def make_member_dict(
     return out
 
 
-def dict_from_member(member: discord.Member) -> _types.guild.Member:
+@typing.overload
+def dict_from_object(obj: discord.User) -> _types.user.User: ...
+@typing.overload
+def dict_from_object(obj: discord.Member) -> _types.guild.Member: ...
+@typing.overload
+def dict_from_object(obj: discord.Role) -> _types.role.Role: ...
+
+
+@functools.singledispatch
+def dict_from_object(obj: typing.Any) -> typing.Never:
+    raise TypeError(f"Unrecognized discord model type {type(obj)}")
+
+
+@dict_from_object.register(discord.User)
+def _from_user(user: discord.User) -> _types.user.User:
+    out: _types.user.User = {
+        'id': user.id,
+        'global_name': user.global_name,
+        'username': user.name,
+        'discriminator': user.discriminator,
+        'avatar': user.avatar.url if user.avatar else None,
+    }
+    items = ("bot", "mfa_enabled", "locale", "verified", "email", "premium_type")
+    _fill_optional(out, user, items)
+    return out
+
+
+@dict_from_object.register(discord.Member)
+def _from_member(member: discord.Member) -> _types.guild.Member:
     # discord code adds default role to every member later on in Member constructor
     roles_no_default = list(filter(lambda r: not r == member.guild.default_role, member.roles))
     out: _types.guild.Member = {
         'guild_id': member.guild.id,
-        'user': dict_from_user(member._user),
+        'user': dict_from_object(member._user),
         'roles': list(map(lambda role: int(role.id), roles_no_default)),
         'joined_at': str(int(member.joined_at.timestamp())) if member.joined_at else None,
         'flags': member.flags.value,
@@ -174,6 +189,64 @@ def dict_from_member(member: discord.Member) -> _types.guild.Member:
     items = ("nick",)
     _fill_optional(out, member, items)
     return out
+
+
+@dict_from_object.register(discord.Role)
+def _from_role(role: discord.Role) -> _types.role.Role:
+    return {
+        'id': role.id,
+        'name': role.name,
+        'color': role.colour.value,
+        'colors': {
+            'primary_color': role.colour.value,
+            'secondary_color': role.secondary_color.value if role.secondary_color else None,
+            'tertiary_color': role.tertiary_color.value if role.tertiary_color else None,
+        },
+        'hoist': role.hoist,
+        'position': role.position,
+        'permissions': str(role.permissions.value),
+        'managed': role.managed,
+        'mentionable': role.mentionable,
+        'flags': role.flags.value,
+    }
+
+
+# TODO: support all channel attributes
+@dict_from_object.register(discord.TextChannel)
+def _from_text_channel(channel: discord.TextChannel) -> _types.channel.TextChannel:
+    return {
+        'name': channel.name,
+        'position': channel.position,
+        'id': channel.id,
+        'guild_id': channel.guild.id,
+        'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+        'type': channel.type,
+        'parent_id': channel.category_id,
+        'nsfw': channel.nsfw,
+    }
+
+
+@dict_from_object.register(discord.DMChannel)
+def _from_dm_channel(channel: discord.DMChannel) -> _types.channel.DMChannel:
+    pass
+
+
+@dict_from_object.register(discord.CategoryChannel)
+def _from_category_channel(channel: discord.CategoryChannel) -> _types.channel.CategoryChannel:
+    return {
+        'name': channel.name,
+        'position': channel.position,
+        'id': channel.id,
+        'guild_id': channel.guild.id,
+        'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+        'type': channel.type,
+        'nsfw': channel.nsfw,
+        'parent_id': channel.category_id,
+    }
+
+
+@dict_from_object.register(discord.VoiceChannel)
+def _from_voice_channel(channel: discord.VoiceChannel)
 
 
 # discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
@@ -213,26 +286,6 @@ def make_role_dict(
         'managed': managed,
         'mentionable': mentionable,
         'flags': flags,
-    }
-
-
-# discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
-def dict_from_role(role: discord.Role) -> _types.role.Role:
-    return {
-        'id': role.id,
-        'name': role.name,
-        'color': role.colour.value,
-        'colors': {
-            'primary_color': role.colour.value,
-            'secondary_color': role.secondary_color.value if role.secondary_color else None,
-            'tertiary_color': role.tertiary_color.value if role.tertiary_color else None,
-        },
-        'hoist': role.hoist,
-        'position': role.position,
-        'permissions': str(role.permissions.value),
-        'managed': role.managed,
-        'mentionable': role.mentionable,
-        'flags': role.flags.value,
     }
 
 
@@ -293,7 +346,7 @@ def make_category_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any
 
 
 def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: typing.Any) -> _types.channel.DMChannel:
-    return make_channel_dict(discord.ChannelType.private.value, id_num, recipients=[dict_from_user(user)], **kwargs)
+    return make_channel_dict(discord.ChannelType.private.value, id_num, recipients=[dict_from_object(user)], **kwargs)
 
 
 def make_voice_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -> _types.channel.VoiceChannel:
@@ -310,64 +363,6 @@ def dict_from_overwrite(target: discord.Member | discord.Role,
         'type': 0 if isinstance(target, discord.Role) else 1
     }
     return ovr
-
-
-@typing.overload
-def dict_from_channel(channel: discord.TextChannel) -> _types.channel.TextChannel: ...
-
-
-@typing.overload
-def dict_from_channel(channel: discord.DMChannel) -> _types.channel.DMChannel: ...
-
-
-@typing.overload
-def dict_from_channel(channel: discord.CategoryChannel) -> _types.channel.CategoryChannel: ...
-
-
-@typing.overload
-def dict_from_channel(channel: discord.VoiceChannel) -> _types.channel.VoiceChannel: ...
-
-
-# TODO: support all channel attributes
-def dict_from_channel(channel: _types.AnyChannel) -> _types.AnyChannelJson:
-    if isinstance(channel, discord.TextChannel):
-        out: _types.channel.TextChannel = {
-            'name': channel.name,
-            'position': channel.position,
-            'id': channel.id,
-            'guild_id': channel.guild.id,
-            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
-            'type': channel.type,
-            'parent_id': channel.category_id,
-            'nsfw': channel.nsfw,
-        }
-    elif isinstance(channel, discord.CategoryChannel):
-        out: _types.channel.CategoryChannel = {
-            'name': channel.name,
-            'position': channel.position,
-            'id': channel.id,
-            'guild_id': channel.guild.id,
-            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
-            'type': channel.type,
-            'nsfw': channel.nsfw,
-            'parent_id': channel.category_id,
-        }
-    elif isinstance(channel, discord.VoiceChannel):
-        out: _types.channel.VoiceChannel = {
-            'name': channel.name,
-            'position': channel.position,
-            'id': channel.id,
-            'guild_id': channel.guild.id,
-            'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
-            'type': channel.type,
-            'nsfw': channel.nsfw,
-            'parent_id': channel.category_id,
-            'bitrate': channel.bitrate,
-            'user_limit': channel.user_limit,
-        }
-    else:
-        raise TypeError(f"Invalid channel type {type(channel)}")
-    return out
 
 
 # TODO: Convert attachments, reactions, activity, and application to a dict.
@@ -406,10 +401,10 @@ def make_message_dict(
         kwargs["guild_id"] = channel.guild.id
     if isinstance(author, discord.Member):
         author = author._user
-        kwargs["member"] = dict_from_user(author)
+        kwargs["member"] = dict_from_object(author)
     if timestamp is None:
         timestamp = str(int(discord.utils.snowflake_time(id_num).timestamp()))
-    mentions = list(map(dict_from_user, mentions)) if mentions else []
+    mentions = list(map(dict_from_object, mentions)) if mentions else []
     mention_channels = list(map(_mention_from_channel, mention_channels)) if mention_channels else []
     attachments = list(map(dict_from_attachment, attachments)) if attachments else []
     embeds = list(map(discord.Embed.to_dict, embeds)) if embeds else []
@@ -417,7 +412,7 @@ def make_message_dict(
     out: _types.message.Message = {
         'id': id_num,
         'channel_id': channel.id,
-        'author': dict_from_user(author),
+        'author': dict_from_object(author),
         'content': content,
         'timestamp': timestamp,
         'edited_timestamp': edited_timestamp,
@@ -458,8 +453,8 @@ def _mention_from_role(role: discord.Role) -> int:
 def dict_from_message(message: discord.Message) -> _types.message.Message:
     out: _types.message.Message = {
         'id': message.id,
-        'author': dict_from_user(message.author),
-        'mentions': list(map(dict_from_user, message.mentions)),
+        'author': dict_from_object(message.author),
+        'mentions': list(map(dict_from_object, message.mentions)),
         'mention_roles': list(map(_mention_from_role, message.role_mentions)),
         'mention_channels': list(map(_mention_from_channel, message.channel_mentions)),
         'edited_timestamp': str(int(message.edited_at.timestamp())) if message.edited_at else None,
@@ -696,7 +691,7 @@ def dict_from_guild(guild: discord.Guild) -> _types.guild.Guild:
         'verification_level': guild.verification_level.value,
         'default_message_notifications': guild.default_notifications.value,
         'explicit_content_filter': guild.explicit_content_filter.value,
-        'roles': list(map(dict_from_role, guild.roles)),
+        'roles': list(map(dict_from_object, guild.roles)),
         'emojis': list(map(dict_from_emoji, guild.emojis)),
         'features': guild.features,
         'mfa_level': guild.mfa_level.value,
