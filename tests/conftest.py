@@ -7,7 +7,7 @@ from discord.client import _LoopSentinel
 
 
 @pytest_asyncio.fixture
-async def bot(request):
+async def bot(request) -> commands.Bot:
     intents = discord.Intents.default()
     intents.members = True
     intents.message_content = True

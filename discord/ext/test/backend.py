@@ -124,7 +124,7 @@ class FakeHttp(dhttp.HTTPClient):
                 "Operation occurred that isn't captured by the tests framework. This is dpytest's fault, please report"
                 "an issue on github. Debug Info: only TextChannels and CategoryChannels are currently supported."
             )
-        return facts.dict_from_channel(channel)
+        return facts.dict_from_object(channel)
 
     async def delete_channel(self, channel_id: int, *, reason: str = None) -> None:
         locs = _get_higher_locs(1)
@@ -145,7 +145,7 @@ class FakeHttp(dhttp.HTTPClient):
         for guild in _cur_config.state.guilds:
             for channel in guild.channels:
                 if channel.id == channel_id:
-                    find = facts.dict_from_channel(channel)
+                    find = facts.dict_from_object(channel)
         if find is None:
             raise discord.errors.NotFound(FakeRequest(404, "Not Found"), "Unknown Channel")
         return find
@@ -163,7 +163,7 @@ class FakeHttp(dhttp.HTTPClient):
             channel_id: int,
             *,
             params: dhttp.MultipartParameters
-    ) -> _types.JsonDict:
+    ) -> _types.message.Message:
         locs = _get_higher_locs(1)
         channel = locs.get("channel", None)
 
@@ -212,7 +212,7 @@ class FakeHttp(dhttp.HTTPClient):
                                )
         await callbacks.dispatch_event("send_message", message)
 
-        return facts.dict_from_message(message)
+        return facts.dict_from_object(message)
 
     async def send_typing(self, channel_id: int) -> None:
         locs = _get_higher_locs(1)
@@ -229,7 +229,7 @@ class FakeHttp(dhttp.HTTPClient):
         delete_message(message)
 
     async def edit_message(self, channel_id: int, message_id: int,
-                           **fields: dhttp.MultipartParameters) -> _types.JsonDict:  # noqa: E501
+                           **fields: dhttp.MultipartParameters) -> _types.message.Message:  # noqa: E501
         locs = _get_higher_locs(1)
         message = locs.get("self", None)
 
@@ -520,7 +520,7 @@ class FakeHttp(dhttp.HTTPClient):
             'default_message_notifications': guild.default_notifications.value,
             'explicit_content_filter': guild.explicit_content_filter,
             'roles': list(map(facts.dict_from_object, guild.roles)),
-            'emojis': list(map(facts.dict_from_emoji, guild.emojis)),
+            'emojis': list(map(facts.dict_from_object, guild.emojis)),
             'features': guild.features,
             'mfa_level': guild.mfa_level,
             'application_id': None,
@@ -546,7 +546,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         client = locs.get("self", None)
         guild = discord.utils.get(client.guilds, id=guild_id)
-        return facts.dict_from_guild(guild)
+        return facts.dict_from_object(guild)
 
 
 def get_state() -> dstate.FakeState:
@@ -611,7 +611,7 @@ def update_guild(guild: discord.Guild, roles: list[discord.Role] = None) -> disc
     :param roles: New role list for the guild
     :return: Updated guild object
     """
-    data = facts.dict_from_guild(guild)
+    data = facts.dict_from_object(guild)
 
     if roles is not None:
         data["roles"] = list(map(facts.dict_from_object, roles))
@@ -797,7 +797,7 @@ def update_text_channel(
         target: discord.User | discord.Role,
         override: discord.PermissionOverwrite | None = _undefined
 ) -> None:
-    c_dict = facts.dict_from_channel(channel)
+    c_dict = facts.dict_from_object(channel)
     if override is not _undefined:
         ovr = c_dict.get("permission_overwrites", [])
         existing = [o for o in ovr if o.get("id") == target.id]
@@ -897,8 +897,8 @@ def make_message(
 
 def edit_message(
         message: discord.Message, **fields: dhttp.MultipartParameters
-) -> _types.JsonDict:
-    data = facts.dict_from_message(message)
+) -> _types.message.Message:
+    data = facts.dict_from_object(message)
     payload = fields.get("params").payload
     # TODO : do something for files and stuff.
     # if params.files:

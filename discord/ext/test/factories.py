@@ -38,6 +38,14 @@ def _fill_optional(
 
 @typing.overload
 def _fill_optional(
+        data: _types.user.User,
+        obj: discord.ClientUser | dict[str, typing.Any],
+        items: typing.Iterable[str]
+) -> None: ...
+
+
+@typing.overload
+def _fill_optional(
         data: _types.guild.Member,
         obj: discord.Member | dict[str, typing.Any],
         items: typing.Iterable[str]
@@ -146,17 +154,91 @@ def make_member_dict(
     return out
 
 
+def user_with_member(user: discord.User | discord.Member) -> _types.member.UserWithMember:
+    if isinstance(user, discord.Member):
+        member = dict_from_object(user)
+        user = user._user
+    else:
+        member = None
+    out = dict_from_object(user)
+    if member:
+        out['member'] = member
+    return out
+
+
 @typing.overload
 def dict_from_object(obj: discord.User) -> _types.user.User: ...
+
+
 @typing.overload
 def dict_from_object(obj: discord.Member) -> _types.guild.Member: ...
+
+
 @typing.overload
 def dict_from_object(obj: discord.Role) -> _types.role.Role: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.TextChannel) -> _types.channel.TextChannel: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.DMChannel) -> _types.channel.DMChannel: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.CategoryChannel) -> _types.channel.CategoryChannel: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.VoiceChannel) -> _types.channel.VoiceChannel: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.Message) -> _types.message.Message: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.Attachment) -> _types.message.Attachment: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.Emoji) -> _types.emoji.Emoji: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.Sticker) -> _types.sticker.Sticker: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.StageInstance) -> _types.channel.StageInstance: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent: ...
+
+
+@typing.overload
+def dict_from_object(obj: discord.Guild) -> _types.guild.Guild: ...
 
 
 @functools.singledispatch
 def dict_from_object(obj: typing.Any) -> typing.Never:
     raise TypeError(f"Unrecognized discord model type {type(obj)}")
+
+
+@dict_from_object.register(discord.ClientUser)
+def _from_client_user(user: discord.ClientUser) -> _types.user.User:
+    out: _types.user.User = {
+        'id': user.id,
+        'global_name': user.global_name,
+        'username': user.name,
+        'discriminator': user.discriminator,
+        'avatar': user.avatar.url if user.avatar else None,
+    }
+    items = ("bot", "mfa_enabled", "locale", "verified", "email", "premium_type")
+    _fill_optional(out, user, items)
+    return out
 
 
 @dict_from_object.register(discord.User)
@@ -246,7 +328,209 @@ def _from_category_channel(channel: discord.CategoryChannel) -> _types.channel.C
 
 
 @dict_from_object.register(discord.VoiceChannel)
-def _from_voice_channel(channel: discord.VoiceChannel)
+def _from_voice_channel(channel: discord.VoiceChannel) -> _types.channel.VoiceChannel:
+    return {
+        'name': channel.name,
+        'position': channel.position,
+        'id': channel.id,
+        'guild_id': channel.guild.id,
+        'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+        'type': channel.type,
+        'nsfw': channel.nsfw,
+        'parent_id': channel.category_id,
+        'bitrate': channel.bitrate,
+        'user_limit': channel.user_limit,
+    }
+
+
+@dict_from_object.register(discord.Message)
+def _from_message(message: discord.Message) -> _types.message.Message:
+    if isinstance(message.author, discord.Member):
+        member = dict_from_object(message.author)
+        user = message.author._user
+    else:
+        member = None
+        user = message.author
+    out: _types.message.Message = {
+        'id': message.id,
+        'author': dict_from_object(user),
+        'mentions': list(map(user_with_member, message.mentions)),
+        'mention_roles': list(map(_mention_from_role, message.role_mentions)),
+        'mention_channels': list(map(_mention_from_channel, message.channel_mentions)),
+        'edited_timestamp': str(int(message.edited_at.timestamp())) if message.edited_at else None,
+        'embeds': list(map(discord.Embed.to_dict, message.embeds)),
+        'attachments': list(map(dict_from_object, message.attachments)),
+        'channel_id': message.channel.id,
+        'content': message.content,
+        'timestamp': str(int(message.created_at.timestamp())),
+        'tts': message.tts,
+        'mention_everyone': message.mention_everyone,
+        'pinned': message.pinned,
+        'type': message.type.value,
+    }
+    if member:
+        out['member'] = member
+
+    items = ('content', 'pinned', 'activity',
+             'mention_everyone', 'tts', 'type', 'nonce')
+    _fill_optional(out, message, items)
+    return out
+
+
+@dict_from_object.register(discord.Attachment)
+def _from_attachment(attachment: discord.Attachment) -> _types.message.Attachment:
+    return {
+        'id': attachment.id,
+        'filename': attachment.filename,
+        'size': attachment.size,
+        'url': attachment.url,
+        'proxy_url': attachment.proxy_url,
+        'height': attachment.height,
+        'width': attachment.width,
+        'content_type': attachment.content_type,
+    }
+
+
+@dict_from_object.register(discord.Emoji)
+def _from_emoji(emoji: discord.Emoji) -> _types.emoji.Emoji:
+    out: _types.emoji.Emoji = {
+        'id': emoji.id,
+        'name': emoji.name,
+    }
+    items = ("roles", "user", "require_colons", "managed", "animated", "available")
+    _fill_optional(out, emoji, items)
+    return out
+
+
+@dict_from_object.register(discord.Sticker)
+def _from_sticker(sticker: discord.Sticker) -> _types.sticker.Sticker:
+    if isinstance(sticker, discord.StandardSticker):
+        out: _types.sticker.StandardSticker = {
+            'id': sticker.id,
+            'name': sticker.name,
+            'description': sticker.description,
+            'tags': ",".join(sticker.tags),
+            'format_type': sticker.format.value,
+            'type': 1,
+            'sort_value': sticker.sort_value,
+            'pack_id': sticker.pack_id,
+        }
+    elif isinstance(sticker, discord.GuildSticker):
+        out: _types.sticker.GuildSticker = {
+            'id': sticker.id,
+            'name': sticker.name,
+            'description': sticker.description,
+            'tags': sticker.tags,
+            'format_type': sticker.format.value,
+            'type': 2,
+            'available': sticker.available,
+            'guild_id': sticker.guild_id,
+        }
+        items = ("user",)
+        _fill_optional(out, sticker, items)
+    else:
+        raise TypeError(f"Invalid type for sticker {type(sticker)}")
+    return out
+
+
+@dict_from_object.register(discord.StageInstance)
+def _from_stage_instance(stage_instance: discord.StageInstance) -> _types.channel.StageInstance:
+    return {
+        'id': stage_instance.id,
+        'guild_id': stage_instance.guild.id,
+        'channel_id': stage_instance.channel_id,
+        'topic': stage_instance.topic,
+        'privacy_level': stage_instance.privacy_level.value,
+        'discoverable_disabled': stage_instance.discoverable_disabled,
+        'guild_scheduled_event_id': stage_instance.scheduled_event_id,
+    }
+
+
+@dict_from_object.register(discord.ScheduledEvent)
+def _from_scheduled_event(event: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent:
+    if event.entity_type == discord.EntityType.stage_instance:
+        out: _types.scheduled_event.StageInstanceScheduledEvent = {
+            'id': event.id,
+            'guild_id': event.guild_id,
+            'entity_id': event.entity_id,
+            'name': event.name,
+            'scheduled_start_time': str(int(event.start_time.timestamp())),
+            'privacy_level': event.privacy_level.value,
+            'status': event.status.value,
+            'entity_type': 1,
+            'channel_id': event.channel_id or 0,
+            'entity_metadata': None,
+        }
+        if event.end_time:
+            out["scheduled_end_time"] = str(int(event.end_time.timestamp()))
+    elif event.entity_type == discord.EntityType.voice:
+        out: _types.scheduled_event.VoiceScheduledEvent = {
+            'id': event.id,
+            'guild_id': event.guild_id,
+            'entity_id': event.entity_id,
+            'name': event.name,
+            'scheduled_start_time': str(int(event.start_time.timestamp())),
+            'privacy_level': event.privacy_level.value,
+            'status': event.status.value,
+            'entity_type': 2,
+            'channel_id': event.channel_id or 0,
+            'entity_metadata': None,
+        }
+        if event.end_time:
+            out["scheduled_end_time"] = str(int(event.end_time.timestamp()))
+    else:
+        out: _types.scheduled_event.ExternalScheduledEvent = {
+            'id': event.id,
+            'guild_id': event.guild_id,
+            'entity_id': event.entity_id,
+            'name': event.name,
+            'scheduled_start_time': str(int(event.start_time.timestamp())),
+            'privacy_level': event.privacy_level.value,
+            'status': event.status.value,
+            'entity_type': 3,
+            'channel_id': None,
+            'scheduled_end_time': str(int(event.end_time.timestamp())),
+            'entity_metadata': {"location": event.location or ""}
+        }
+    return out
+
+
+@dict_from_object.register(discord.Guild)
+def _from_guild(guild: discord.Guild) -> _types.guild.Guild:
+    return {
+        'id': guild.id,
+        'name': guild.name,
+        'icon': guild.icon.url,
+        'splash': guild.splash.url,
+        'owner_id': guild.owner_id,
+        'region': guild.region,
+        'afk_channel_id': guild.afk_channel.id if guild.afk_channel else None,
+        'afk_timeout': guild.afk_timeout,
+        'verification_level': guild.verification_level.value,
+        'default_message_notifications': guild.default_notifications.value,
+        'explicit_content_filter': guild.explicit_content_filter.value,
+        'roles': list(map(dict_from_object, guild.roles)),
+        'emojis': list(map(dict_from_object, guild.emojis)),
+        'features': guild.features,
+        'mfa_level': guild.mfa_level.value,
+        'application_id': None,
+        'system_channel_id': guild.system_channel.id if guild.system_channel else None,
+        'owner': guild.owner_id == guild.me.id,
+        'discovery_splash': guild.discovery_splash.url if guild.discovery_splash else None,
+        'stickers': list(map(dict_from_object, guild.stickers)),
+        'banner': guild.banner.url if guild.banner else None,
+        'description': guild.description,
+        'incidents_data': guild._incidents_data,
+        'nsfw_level': guild.nsfw_level.value,
+        'system_channel_flags': guild.system_channel_flags.value,
+        'rules_channel_id': guild.rules_channel.id if guild.rules_channel else None,
+        'vanity_url_code': guild.vanity_url_code,
+        'premium_tier': guild.premium_tier,
+        'preferred_locale': guild.preferred_locale.value,
+        'public_updates_channel_id': guild.public_updates_channel.id if guild.public_updates_channel else None,
+        'stage_instances': list(map(dict_from_object, guild.stage_instances)),
+        'guild_scheduled_events': list(map(dict_from_object, guild.scheduled_events)),
+    }
 
 
 # discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
@@ -375,7 +659,7 @@ def make_message_dict(
         edited_timestamp: str | None = None,
         tts: bool = False,
         mention_everyone: bool = False,
-        mentions: list[discord.User] = None,
+        mentions: list[discord.User | discord.Member] = None,
         mention_roles: list[int] = None,
         mention_channels: list[_types.AnyChannel] = None,
         attachments: list[discord.Attachment] = None,
@@ -404,9 +688,9 @@ def make_message_dict(
         kwargs["member"] = dict_from_object(author)
     if timestamp is None:
         timestamp = str(int(discord.utils.snowflake_time(id_num).timestamp()))
-    mentions = list(map(dict_from_object, mentions)) if mentions else []
+    mentions = list(map(user_with_member, mentions)) if mentions else []
     mention_channels = list(map(_mention_from_channel, mention_channels)) if mention_channels else []
-    attachments = list(map(dict_from_attachment, attachments)) if attachments else []
+    attachments = list(map(dict_from_object, attachments)) if attachments else []
     embeds = list(map(discord.Embed.to_dict, embeds)) if embeds else []
 
     out: _types.message.Message = {
@@ -431,12 +715,12 @@ def make_message_dict(
     return out
 
 
-def _mention_from_channel(channel: _types.AnyChannel) -> _types.TODO:
-    out = {
+def _mention_from_channel(channel: _types.AnyChannel) -> _types.message.ChannelMention:
+    out: _types.message.ChannelMention = {
         "id": channel.id,
         "type": str(channel.type),
-        "guild_id": None,
-        "name": None
+        "guild_id": 0,
+        "name": ""
     }
     if hasattr(channel, "guild"):
         out["guild_id"] = channel.guild.id
@@ -448,31 +732,6 @@ def _mention_from_channel(channel: _types.AnyChannel) -> _types.TODO:
 
 def _mention_from_role(role: discord.Role) -> int:
     return role.id
-
-
-def dict_from_message(message: discord.Message) -> _types.message.Message:
-    out: _types.message.Message = {
-        'id': message.id,
-        'author': dict_from_object(message.author),
-        'mentions': list(map(dict_from_object, message.mentions)),
-        'mention_roles': list(map(_mention_from_role, message.role_mentions)),
-        'mention_channels': list(map(_mention_from_channel, message.channel_mentions)),
-        'edited_timestamp': str(int(message.edited_at.timestamp())) if message.edited_at else None,
-        'embeds': list(map(discord.Embed.to_dict, message.embeds)),
-        'attachments': list(map(dict_from_attachment, message.attachments)),
-        'channel_id': message.channel.id,
-        'content': message.content,
-        'timestamp': str(int(message.created_at.timestamp())),
-        'tts': message.tts,
-        'mention_everyone': message.mention_everyone,
-        'pinned': message.pinned,
-        'type': message.type.value,
-    }
-
-    items = ('content', 'pinned', 'activity',
-             'mention_everyone', 'tts', 'type', 'nonce')
-    _fill_optional(out, message, items)
-    return out
 
 
 def make_attachment_dict(
@@ -497,119 +756,6 @@ def make_attachment_dict(
         'width': width,
         'content_type': content_type
     }
-
-
-def dict_from_attachment(attachment: discord.Attachment) -> _types.JsonDict:
-    return {
-        'id': attachment.id,
-        'filename': attachment.filename,
-        'size': attachment.size,
-        'url': attachment.url,
-        'proxy_url': attachment.proxy_url,
-        'height': attachment.height,
-        'width': attachment.width,
-        'content_type': attachment.content_type,
-    }
-
-
-def dict_from_emoji(emoji: discord.Emoji) -> _types.emoji.Emoji:
-    out: _types.emoji.Emoji = {
-        'id': emoji.id,
-        'name': emoji.name,
-    }
-    items = ("roles", "user", "require_colons", "managed", "animated", "available")
-    _fill_optional(out, emoji, items)
-    return out
-
-
-def dict_from_sticker(sticker: discord.Sticker) -> _types.sticker.Sticker:
-    if isinstance(sticker, discord.StandardSticker):
-        out: _types.sticker.StandardSticker = {
-            'id': sticker.id,
-            'name': sticker.name,
-            'description': sticker.description,
-            'tags': ",".join(sticker.tags),
-            'format_type': sticker.format.value,
-            'type': 1,
-            'sort_value': sticker.sort_value,
-            'pack_id': sticker.pack_id,
-        }
-    elif isinstance(sticker, discord.GuildSticker):
-        out: _types.sticker.GuildSticker = {
-            'id': sticker.id,
-            'name': sticker.name,
-            'description': sticker.description,
-            'tags': sticker.tags,
-            'format_type': sticker.format.value,
-            'type': 2,
-            'available': sticker.available,
-            'guild_id': sticker.guild_id,
-        }
-        items = ("user",)
-        _fill_optional(out, sticker, items)
-    else:
-        raise TypeError(f"Invalid type for sticker {type(sticker)}")
-    return out
-
-
-def dict_from_stage_instance(stage_instance: discord.StageInstance) -> _types.channel.StageInstance:
-    return {
-        'id': stage_instance.id,
-        'guild_id': stage_instance.guild.id,
-        'channel_id': stage_instance.channel_id,
-        'topic': stage_instance.topic,
-        'privacy_level': stage_instance.privacy_level.value,
-        'discoverable_disabled': stage_instance.discoverable_disabled,
-        'guild_scheduled_event_id': stage_instance.scheduled_event_id,
-    }
-
-
-def dict_from_scheduled_event(event: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent:
-    if event.entity_type == discord.EntityType.stage_instance:
-        out: _types.scheduled_event.StageInstanceScheduledEvent = {
-            'id': event.id,
-            'guild_id': event.guild_id,
-            'entity_id': event.entity_id,
-            'name': event.name,
-            'scheduled_start_time': str(int(event.start_time.timestamp())),
-            'privacy_level': event.privacy_level.value,
-            'status': event.status.value,
-            'entity_type': 1,
-            'channel_id': event.channel_id or 0,
-            'entity_metadata': None,
-        }
-        if event.end_time:
-            out["scheduled_end_time"] = str(int(event.end_time.timestamp()))
-    elif event.entity_type == discord.EntityType.voice:
-        out: _types.scheduled_event.VoiceScheduledEvent = {
-            'id': event.id,
-            'guild_id': event.guild_id,
-            'entity_id': event.entity_id,
-            'name': event.name,
-            'scheduled_start_time': str(int(event.start_time.timestamp())),
-            'privacy_level': event.privacy_level.value,
-            'status': event.status.value,
-            'entity_type': 2,
-            'channel_id': event.channel_id or 0,
-            'entity_metadata': None,
-        }
-        if event.end_time:
-            out["scheduled_end_time"] = str(int(event.end_time.timestamp()))
-    else:
-        out: _types.scheduled_event.ExternalScheduledEvent = {
-            'id': event.id,
-            'guild_id': event.guild_id,
-            'entity_id': event.entity_id,
-            'name': event.name,
-            'scheduled_start_time': str(int(event.start_time.timestamp())),
-            'privacy_level': event.privacy_level.value,
-            'status': event.status.value,
-            'entity_type': 3,
-            'channel_id': None,
-            'scheduled_end_time': str(int(event.end_time.timestamp())),
-            'entity_metadata': {"location": event.location or ""}
-        }
-    return out
 
 
 def make_guild_dict(
@@ -676,40 +822,3 @@ def make_guild_dict(
              "joined_at", "large", "unavailable", "member_count", "voice_states", "members", "channels", "presences")
     _fill_optional(out, kwargs, items)
     return out
-
-
-def dict_from_guild(guild: discord.Guild) -> _types.guild.Guild:
-    return {
-        'id': guild.id,
-        'name': guild.name,
-        'icon': guild.icon.url,
-        'splash': guild.splash.url,
-        'owner_id': guild.owner_id,
-        'region': guild.region,
-        'afk_channel_id': guild.afk_channel.id if guild.afk_channel else None,
-        'afk_timeout': guild.afk_timeout,
-        'verification_level': guild.verification_level.value,
-        'default_message_notifications': guild.default_notifications.value,
-        'explicit_content_filter': guild.explicit_content_filter.value,
-        'roles': list(map(dict_from_object, guild.roles)),
-        'emojis': list(map(dict_from_emoji, guild.emojis)),
-        'features': guild.features,
-        'mfa_level': guild.mfa_level.value,
-        'application_id': None,
-        'system_channel_id': guild.system_channel.id if guild.system_channel else None,
-        'owner': guild.owner_id == guild.me.id,
-        'discovery_splash': guild.discovery_splash.url if guild.discovery_splash else None,
-        'stickers': list(map(dict_from_sticker, guild.stickers)),
-        'banner': guild.banner.url if guild.banner else None,
-        'description': guild.description,
-        'incidents_data': guild._incidents_data,
-        'nsfw_level': guild.nsfw_level.value,
-        'system_channel_flags': guild.system_channel_flags.value,
-        'rules_channel_id': guild.rules_channel.id if guild.rules_channel else None,
-        'vanity_url_code': guild.vanity_url_code,
-        'premium_tier': guild.premium_tier,
-        'preferred_locale': guild.preferred_locale.value,
-        'public_updates_channel_id': guild.public_updates_channel.id if guild.public_updates_channel else None,
-        'stage_instances': list(map(dict_from_stage_instance, guild.stage_instances)),
-        'guild_scheduled_events': list(map(dict_from_scheduled_event, guild.scheduled_events)),
-    }

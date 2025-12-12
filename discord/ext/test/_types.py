@@ -15,7 +15,8 @@ AnyChannel = discord.TextChannel | discord.CategoryChannel | discord.abc.GuildCh
 
 if typing.TYPE_CHECKING:
     # noqa: F401
-    from discord.types import role, gateway, appinfo, user, guild, emoji, channel, message, sticker, scheduled_event
+    from discord.types import role, gateway, appinfo, user, guild, emoji, channel, message, sticker, scheduled_event, \
+        member
 
     AnyChannelJson = channel.VoiceChannel | channel.TextChannel | channel.DMChannel | channel.CategoryChannel
 else:
@@ -25,6 +26,9 @@ else:
 
         def __subclasscheck__(self, subclass: type) -> typing.Literal[True]:
             return True
+
+        def __or__(self, other):
+            return other
 
 
     def __getattr__(name: str) -> OpenNamespace:
