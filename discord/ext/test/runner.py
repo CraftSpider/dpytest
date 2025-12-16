@@ -49,7 +49,9 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
     :return: Function with added check for configuration being setup
     """
 
-    def wrapper(*args, **kwargs):
+    wrapper: _types.Wrapper
+
+    def wrapper(*args, **kwargs):  # type: ignore[no-redef]
         if _cur_config is None:
             log.error("Attempted to make call before runner configured")
             raise RuntimeError(f"Configure runner before calling {func.__name__}")
@@ -63,9 +65,9 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
 
 def _task_coro_name(task: asyncio.Task) -> str | None:
     """
-        Uses getattr() to avoid AttributeErrors when the _coro doesn't have a __name__
+        Uses getattr() to avoid AttributeErrors when the coroutine doesn't have a __name__
     """
-    return getattr(task._coro, "__name__", None)
+    return getattr(task.get_coro(), "__name__", None)
 
 
 async def run_all_events() -> None:
@@ -162,7 +164,8 @@ async def _edit_member_callback(fields: typing.Any, member: discord.Member, reas
     guild = member.guild
     channel = fields.get('channel_id')
     if not fields.get('nick') and not fields.get('roles'):
-        guild._update_voice_state(data, channel)
+        # Data is allowed to not contain fields
+        guild._update_voice_state(data, channel)  # type: ignore[arg-type]
 
 
 counter = count(0)
@@ -173,7 +176,7 @@ async def message(
         content: str,
         channel: _types.AnyChannel | int = 0,
         member: discord.Member | int = 0,
-        attachments: list[pathlib.Path | str] = None
+        attachments: list[pathlib.Path | str] | None = None
 ) -> discord.Message:
     """
         Fake a message being sent by some user to a channel.
@@ -185,19 +188,19 @@ async def message(
     :return: New message that was sent
     """
     if isinstance(channel, int):
-        channel = _cur_config.channels[channel]
+        channel = get_config().channels[channel]
     if isinstance(member, int):
-        member = _cur_config.members[member]
+        member = get_config().members[member]
     import os
     if attachments is None:
         attachments = []
-    attachments = [
+    attachments_model = [
         discord.Attachment(
             data={
                 'id': counter.__next__(),
                 'filename': os.path.basename(attachment),
                 'size': 0,
-                'url': attachment,
+                'url': str(attachment),
                 'proxy_url': "",
                 'height': 0,
                 'width': 0
@@ -206,7 +209,7 @@ async def message(
         ) for attachment in attachments
     ]
 
-    mes = back.make_message(content, member, channel, attachments=attachments)
+    mes = back.make_message(content, member, channel, attachments=attachments_model)
 
     await run_all_events()
 
@@ -219,8 +222,8 @@ async def message(
 
 @require_config
 async def set_permission_overrides(
-        target: discord.User | discord.Role,
-        channel: discord.abc.GuildChannel,
+        target: discord.Member | discord.Role | int,
+        channel: discord.abc.GuildChannel | int,
         overrides: discord.PermissionOverwrite | None = None,
         **kwargs: typing.Any,
 ) -> None:
@@ -239,14 +242,14 @@ async def set_permission_overrides(
             overrides = discord.PermissionOverwrite(**kwargs)
 
     if isinstance(target, int):
-        target = _cur_config.members[target]
+        target = get_config().members[target]
     if isinstance(channel, int):
-        channel = _cur_config.channels[channel]
+        channel = get_config().channels[channel]
 
-    if not isinstance(channel, discord.abc.GuildChannel):
-        raise TypeError(f"channel '{channel}' must be a abc.GuildChannel, not '{type(channel)}''")
+    if not isinstance(channel, discord.abc.TextChannel):
+        raise TypeError(f"channel '{channel}' must be a discord.TextChannel, not '{type(channel)}''")
     if not isinstance(target, (discord.abc.User, discord.Role)):
-        raise TypeError(f"target '{target}' must be a abc.User or Role, not '{type(target)}''")
+        raise TypeError(f"target '{target}' must be an abc.User or Role, not '{type(target)}''")
 
     # TODO: This will probably break for video channels/non-standard text channels
     back.update_text_channel(channel, target, overrides)
@@ -261,7 +264,7 @@ async def add_role(member: discord.Member, role: discord.Role) -> None:
     :param role: Role to be added
     """
     if isinstance(member, int):
-        member = _cur_config.members[member]
+        member = get_config().members[member]
     if not isinstance(role, discord.Role):
         raise TypeError("Role argument must be of type discord.Role")
 
@@ -278,7 +281,7 @@ async def remove_role(member: discord.Member, role: discord.Role) -> None:
     :param role: Role to remove
     """
     if isinstance(member, int):
-        member = _cur_config.members[member]
+        member = get_config().members[member]
     if not isinstance(role, discord.Role):
         raise TypeError("Role argument must be of type discord.Role")
 
@@ -301,7 +304,7 @@ async def add_reaction(user: discord.user.BaseUser | discord.abc.User,
 
 
 @require_config
-async def remove_reaction(user: discord.user.BaseUser | discord.abc.User,
+async def remove_reaction(user: discord.user.BaseUser,
                           message: discord.Message, emoji: str) -> None:
     """
         Remove a reaction from a message, as if done by another user
@@ -319,8 +322,8 @@ async def member_join(
         guild: discord.Guild | int = 0,
         user: discord.User | None = None,
         *,
-        name: str = None,
-        discrim: str | int = None
+        name: str | None = None,
+        discrim: str | int | None = None
 ) -> discord.Member:
     """
         Have a new member join a guild, either an existing or new user for the framework
@@ -332,7 +335,7 @@ async def member_join(
     """
     import random
     if isinstance(guild, int):
-        guild = _cur_config.guilds[guild]
+        guild = _cur_config.guilds[guild]  # type: ignore[union-attr]
 
     if user is None:
         if name is None:
@@ -352,6 +355,8 @@ def get_config() -> RunnerConfig:
 
     :return: Current runner config
     """
+    if _cur_config is None:
+        raise RuntimeError("Runner not configured yet")
     return _cur_config
 
 
@@ -384,7 +389,9 @@ def configure(client: discord.Client,
     if hasattr(client, "on_command_error"):
         old_error = client.on_command_error
 
-    async def on_command_error(ctx, error):
+    on_command_error: _types.FnWithOld
+
+    async def on_command_error(ctx, error):  # type: ignore[no-redef]
         try:
             if old_error:
                 await old_error(ctx, error)
@@ -392,7 +399,8 @@ def configure(client: discord.Client,
             await error_queue.put((ctx, error))
 
     on_command_error.__old__ = old_error
-    client.on_command_error = on_command_error
+
+    client.on_command_error = on_command_error  # type: ignore[attr-defined]
 
     # Configure global callbacks
     callbacks.set_callback(_message_callback, "send_message")
@@ -410,28 +418,28 @@ def configure(client: discord.Client,
             guild = back.make_guild(guild_name)
             _guilds.append(guild)
 
-    _channels = []
+    _channels: list[discord.abc.GuildChannel] = []
     _members = []
     for guild in _guilds:
         # Text channels
         if isinstance(text_channels, int):
             for num in range(text_channels):
-                channel = back.make_text_channel(f"TextChannel_{num}", guild)
-                _channels.append(channel)
+                text = back.make_text_channel(f"TextChannel_{num}", guild)
+                _channels.append(text)
         if isinstance(text_channels, list):
             for chan in text_channels:
-                channel = back.make_text_channel(chan, guild)
-                _channels.append(channel)
+                text = back.make_text_channel(chan, guild)
+                _channels.append(text)
 
         # Voice channels
         if isinstance(voice_channels, int):
             for num in range(voice_channels):
-                channel = back.make_voice_channel(f"VoiceChannel_{num}", guild)
-                _channels.append(channel)
+                voice = back.make_voice_channel(f"VoiceChannel_{num}", guild)
+                _channels.append(voice)
         if isinstance(voice_channels, list):
             for chan in voice_channels:
-                channel = back.make_voice_channel(chan, guild)
-                _channels.append(channel)
+                voice = back.make_voice_channel(chan, guild)
+                _channels.append(voice)
 
         # Members
         if isinstance(members, int):
@@ -445,7 +453,9 @@ def configure(client: discord.Client,
                 member = back.make_member(user, guild, nick=f"{user.name}_{str(num)}_nick")
                 _members.append(member)
 
-        back.make_member(back.get_state().user, guild, nick=f"{client.user.name}_nick")
+        client_user = back.get_state().user
+        if client_user is not None:
+            back.make_member(client_user, guild, nick=f"{client_user.name}_nick")
 
     back.get_state().start_dispatch()
 

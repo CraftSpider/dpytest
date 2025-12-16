@@ -28,7 +28,7 @@ class FakeVoiceChannel(VoiceChannel):
             *,
             timeout: float = 60.0,
             reconnect: bool = True,
-            cls: Callable[[Client, Connectable], T] = FakeVoiceClient,
+            cls: Callable[[Client, Connectable], T] = FakeVoiceClient,  # type: ignore[assignment]
             self_deaf: bool = False,
             self_mute: bool = False,
     ) -> T:

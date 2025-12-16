@@ -46,7 +46,7 @@ def _fill_optional(
 
 @typing.overload
 def _fill_optional(
-        data: _types.guild.Member,
+        data: _types.member.Member | _types.member.MemberWithUser,
         obj: discord.Member | dict[str, typing.Any],
         items: typing.Iterable[str]
 ) -> None: ...
@@ -92,9 +92,12 @@ def _fill_optional(
 ) -> None: ...
 
 
-def _fill_optional(data: dict[str, typing.Any], obj: typing.Any, items: typing.Iterable[str]) -> None:
+def _fill_optional(  # type: ignore[misc]
+        data: dict[str, typing.Any],
+        obj: typing.Any,
+        items: typing.Iterable[str]
+) -> None:
     if isinstance(obj, dict):
-        obj: dict[str, typing.Any]
         for item in items:
             result = obj.pop(item, None)
             if result is None:
@@ -108,7 +111,7 @@ def _fill_optional(data: dict[str, typing.Any], obj: typing.Any, items: typing.I
                 data[item] = getattr(obj, item)
 
 
-def make_user_dict(username: str, discrim: str | int, avatar: str, id_num: int = -1, flags: int = 0,
+def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num: int = -1, flags: int = 0,
                    **kwargs: typing.Any) -> _types.user.User:
     if isinstance(discrim, int):
         assert 0 < discrim < 10000
@@ -131,17 +134,15 @@ def make_user_dict(username: str, discrim: str | int, avatar: str, id_num: int =
 
 
 def make_member_dict(
-        guild: discord.Guild,
-        user: discord.User,
-        roles: list[int],
+        user: discord.user.BaseUser,
+        roles: list[_types.gateway.Snowflake],
         joined: str | None = None,
         deaf: bool = False,
         mute: bool = False,
         flags: int = 0,
         **kwargs: typing.Any,
-) -> _types.guild.Member:
-    out: _types.guild.Member = {
-        'guild_id': guild.id,
+) -> _types.member.MemberWithUser:
+    out: _types.member.MemberWithUser = {
         'user': dict_from_object(user),
         'roles': roles,
         'joined_at': joined,
@@ -156,80 +157,80 @@ def make_member_dict(
 
 def user_with_member(user: discord.User | discord.Member) -> _types.member.UserWithMember:
     if isinstance(user, discord.Member):
-        member = dict_from_object(user)
+        member: _types.member.Member | None = dict_from_object(user)
         user = user._user
     else:
         member = None
-    out = dict_from_object(user)
+    out: _types.member.UserWithMember = dict_from_object(user)
     if member:
         out['member'] = member
     return out
 
 
-@typing.overload
-def dict_from_object(obj: discord.User) -> _types.user.User: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.Member) -> _types.member.MemberWithUser: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.Role) -> _types.role.Role: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.TextChannel) -> _types.channel.TextChannel: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.DMChannel) -> _types.channel.DMChannel: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.CategoryChannel) -> _types.channel.CategoryChannel: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.VoiceChannel) -> _types.channel.VoiceChannel: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.Message) -> _types.message.Message: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.Attachment) -> _types.message.Attachment: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.Emoji) -> _types.emoji.Emoji: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.Sticker) -> _types.sticker.Sticker: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.StageInstance) -> _types.channel.StageInstance: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent: ...
-
-
-@typing.overload
-def dict_from_object(obj: discord.Guild) -> _types.guild.Guild: ...
+# @typing.overload
+# def dict_from_object(obj: discord.User) -> _types.member.UserWithMember: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.Member) -> _types.member.MemberWithUser: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.Role) -> _types.role.Role: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.TextChannel) -> _types.channel.TextChannel: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.DMChannel) -> _types.channel.DMChannel: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.CategoryChannel) -> _types.channel.CategoryChannel: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.VoiceChannel) -> _types.channel.VoiceChannel: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.Message) -> _types.message.Message: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.Attachment) -> _types.message.Attachment: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.Emoji) -> _types.emoji.Emoji: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.Sticker) -> _types.sticker.Sticker: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.StageInstance) -> _types.channel.StageInstance: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent: ...
+#
+#
+# @typing.overload
+# def dict_from_object(obj: discord.Guild) -> _types.guild.Guild: ...
 
 
 @functools.singledispatch
-def dict_from_object(obj: typing.Any) -> typing.Never:
+def dict_from_object(obj: typing.Any) -> typing.Any:
     raise TypeError(f"Unrecognized discord model type {type(obj)}")
 
 
 @dict_from_object.register(discord.ClientUser)
-def _from_client_user(user: discord.ClientUser) -> _types.user.User:
-    out: _types.user.User = {
+def _from_client_user(user: discord.ClientUser) -> _types.member.UserWithMember:
+    out: _types.member.UserWithMember = {
         'id': user.id,
         'global_name': user.global_name,
         'username': user.name,
@@ -259,8 +260,8 @@ def _from_user(user: discord.User) -> _types.user.User:
 def _from_member(member: discord.Member) -> _types.member.MemberWithUser:
     # discord code adds default role to every member later on in Member constructor
     roles_no_default = list(filter(lambda r: not r == member.guild.default_role, member.roles))
-    out: _types.guild.Member = {
-        'guild_id': member.guild.id,
+    out: _types.member.MemberWithUser = {
+        'guild_id': member.guild.id,  # type: ignore[typeddict-unknown-key]
         'user': dict_from_object(member._user),
         'roles': list(map(lambda role: int(role.id), roles_no_default)),
         'joined_at': str(int(member.joined_at.timestamp())) if member.joined_at else None,
@@ -302,7 +303,7 @@ def _from_text_channel(channel: discord.TextChannel) -> _types.channel.TextChann
         'id': channel.id,
         'guild_id': channel.guild.id,
         'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
-        'type': channel.type,
+        'type': channel.type.value,
         'parent_id': channel.category_id,
         'nsfw': channel.nsfw,
     }
@@ -310,7 +311,14 @@ def _from_text_channel(channel: discord.TextChannel) -> _types.channel.TextChann
 
 @dict_from_object.register(discord.DMChannel)
 def _from_dm_channel(channel: discord.DMChannel) -> _types.channel.DMChannel:
-    pass
+    return {
+        'id': channel.id,
+        'name': "",
+        'type': channel.type.value,
+        # TODO: Map this correctly?
+        'last_message_id': 0,
+        'recipients': list(map(dict_from_object, channel.recipients))
+    }
 
 
 @dict_from_object.register(discord.CategoryChannel)
@@ -321,7 +329,7 @@ def _from_category_channel(channel: discord.CategoryChannel) -> _types.channel.C
         'id': channel.id,
         'guild_id': channel.guild.id,
         'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
-        'type': channel.type,
+        'type': channel.type.value,
         'nsfw': channel.nsfw,
         'parent_id': channel.category_id,
     }
@@ -335,7 +343,7 @@ def _from_voice_channel(channel: discord.VoiceChannel) -> _types.channel.VoiceCh
         'id': channel.id,
         'guild_id': channel.guild.id,
         'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
-        'type': channel.type,
+        'type': channel.type.value,
         'nsfw': channel.nsfw,
         'parent_id': channel.category_id,
         'bitrate': channel.bitrate,
@@ -346,7 +354,7 @@ def _from_voice_channel(channel: discord.VoiceChannel) -> _types.channel.VoiceCh
 @dict_from_object.register(discord.Message)
 def _from_message(message: discord.Message) -> _types.message.Message:
     if isinstance(message.author, discord.Member):
-        member = dict_from_object(message.author)
+        member: _types.member.Member | None = dict_from_object(message.author)
         user = message.author._user
     else:
         member = None
@@ -366,7 +374,7 @@ def _from_message(message: discord.Message) -> _types.message.Message:
         'tts': message.tts,
         'mention_everyone': message.mention_everyone,
         'pinned': message.pinned,
-        'type': message.type.value,
+        'type': message.type.value,  # type: ignore[typeddict-item]
     }
     if member:
         out['member'] = member
@@ -379,7 +387,7 @@ def _from_message(message: discord.Message) -> _types.message.Message:
 
 @dict_from_object.register(discord.Attachment)
 def _from_attachment(attachment: discord.Attachment) -> _types.message.Attachment:
-    return {
+    out: _types.message.Attachment = {
         'id': attachment.id,
         'filename': attachment.filename,
         'size': attachment.size,
@@ -387,8 +395,10 @@ def _from_attachment(attachment: discord.Attachment) -> _types.message.Attachmen
         'proxy_url': attachment.proxy_url,
         'height': attachment.height,
         'width': attachment.width,
-        'content_type': attachment.content_type,
     }
+    if attachment.content_type:
+        out['content_type'] = attachment.content_type
+    return out
 
 
 @dict_from_object.register(discord.Emoji)
@@ -405,7 +415,7 @@ def _from_emoji(emoji: discord.Emoji) -> _types.emoji.Emoji:
 @dict_from_object.register(discord.Sticker)
 def _from_sticker(sticker: discord.Sticker) -> _types.sticker.Sticker:
     if isinstance(sticker, discord.StandardSticker):
-        out: _types.sticker.StandardSticker = {
+        standard: _types.sticker.StandardSticker = {
             'id': sticker.id,
             'name': sticker.name,
             'description': sticker.description,
@@ -415,22 +425,23 @@ def _from_sticker(sticker: discord.Sticker) -> _types.sticker.Sticker:
             'sort_value': sticker.sort_value,
             'pack_id': sticker.pack_id,
         }
+        return standard
     elif isinstance(sticker, discord.GuildSticker):
-        out: _types.sticker.GuildSticker = {
+        guild: _types.sticker.GuildSticker = {
             'id': sticker.id,
             'name': sticker.name,
             'description': sticker.description,
-            'tags': sticker.tags,
+            'tags': sticker.emoji,
             'format_type': sticker.format.value,
             'type': 2,
             'available': sticker.available,
             'guild_id': sticker.guild_id,
         }
         items = ("user",)
-        _fill_optional(out, sticker, items)
+        _fill_optional(guild, sticker, items)
+        return guild
     else:
         raise TypeError(f"Invalid type for sticker {type(sticker)}")
-    return out
 
 
 @dict_from_object.register(discord.StageInstance)
@@ -449,7 +460,7 @@ def _from_stage_instance(stage_instance: discord.StageInstance) -> _types.channe
 @dict_from_object.register(discord.ScheduledEvent)
 def _from_scheduled_event(event: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent:
     if event.entity_type == discord.EntityType.stage_instance:
-        out: _types.scheduled_event.StageInstanceScheduledEvent = {
+        stage: _types.scheduled_event.StageInstanceScheduledEvent = {
             'id': event.id,
             'guild_id': event.guild_id,
             'entity_id': event.entity_id,
@@ -462,9 +473,10 @@ def _from_scheduled_event(event: discord.ScheduledEvent) -> _types.guild.GuildSc
             'entity_metadata': None,
         }
         if event.end_time:
-            out["scheduled_end_time"] = str(int(event.end_time.timestamp()))
+            stage["scheduled_end_time"] = str(int(event.end_time.timestamp()))
+        return stage
     elif event.entity_type == discord.EntityType.voice:
-        out: _types.scheduled_event.VoiceScheduledEvent = {
+        voice: _types.scheduled_event.VoiceScheduledEvent = {
             'id': event.id,
             'guild_id': event.guild_id,
             'entity_id': event.entity_id,
@@ -477,9 +489,10 @@ def _from_scheduled_event(event: discord.ScheduledEvent) -> _types.guild.GuildSc
             'entity_metadata': None,
         }
         if event.end_time:
-            out["scheduled_end_time"] = str(int(event.end_time.timestamp()))
+            voice["scheduled_end_time"] = str(int(event.end_time.timestamp()))
+        return voice
     else:
-        out: _types.scheduled_event.ExternalScheduledEvent = {
+        external: _types.scheduled_event.ExternalScheduledEvent = {
             'id': event.id,
             'guild_id': event.guild_id,
             'entity_id': event.entity_id,
@@ -489,10 +502,11 @@ def _from_scheduled_event(event: discord.ScheduledEvent) -> _types.guild.GuildSc
             'status': event.status.value,
             'entity_type': 3,
             'channel_id': None,
-            'scheduled_end_time': str(int(event.end_time.timestamp())),
+            # end_time guaranteed non-None for external events
+            'scheduled_end_time': str(int(event.end_time.timestamp())),  # type: ignore[union-attr]
             'entity_metadata': {"location": event.location or ""}
         }
-    return out
+        return external
 
 
 @dict_from_object.register(discord.Guild)
@@ -500,10 +514,10 @@ def _from_guild(guild: discord.Guild) -> _types.guild.Guild:
     return {
         'id': guild.id,
         'name': guild.name,
-        'icon': guild.icon.url,
-        'splash': guild.splash.url,
-        'owner_id': guild.owner_id,
-        'region': guild.region,
+        'icon': guild.icon.url if guild.icon else None,
+        'splash': guild.splash.url if guild.splash else None,
+        'owner_id': guild.owner_id or 0,
+        'region': "us-west",  # deprecated?
         'afk_channel_id': guild.afk_channel.id if guild.afk_channel else None,
         'afk_timeout': guild.afk_timeout,
         'verification_level': guild.verification_level.value,
@@ -525,7 +539,7 @@ def _from_guild(guild: discord.Guild) -> _types.guild.Guild:
         'system_channel_flags': guild.system_channel_flags.value,
         'rules_channel_id': guild.rules_channel.id if guild.rules_channel else None,
         'vanity_url_code': guild.vanity_url_code,
-        'premium_tier': guild.premium_tier,
+        'premium_tier': guild.premium_tier,  # type: ignore[typeddict-item]
         'preferred_locale': guild.preferred_locale.value,
         'public_updates_channel_id': guild.public_updates_channel.id if guild.public_updates_channel else None,
         'stage_instances': list(map(dict_from_object, guild.stage_instances)),
@@ -554,7 +568,7 @@ def make_role_dict(
             raise ValueError("Both 'colour' and 'color' can be supplied at the same time")
         colour = color
     if colors is None:
-        colors: _types.role.RoleColours = {
+        colors = {
             'primary_color': colour,
             'secondary_color': None,
             'tertiary_color': None,
@@ -605,8 +619,11 @@ def make_channel_dict(
 ) -> _types.channel.CategoryChannel: ...
 
 
-def make_channel_dict(ctype: typing.Literal[0, 1, 2, 3], id_num: int = -1,
-                      **kwargs: typing.Any) -> _types.channel.PartialChannel:
+def make_channel_dict(
+        ctype: typing.Literal[0, 1, 2, 3, 4],
+        id_num: int = -1,
+        **kwargs: typing.Any,
+) -> _types.channel.Channel:
     if id_num < 0:
         id_num = make_id()
     out: _types.channel.PartialChannel = {
@@ -618,7 +635,7 @@ def make_channel_dict(ctype: typing.Literal[0, 1, 2, 3], id_num: int = -1,
              "user_limit", "rate_limit_per_user", "recipients", "icon", "owner_id", "application_id", "parent_id",
              "last_pin_timestamp")
     _fill_optional(out, kwargs, items)
-    return out
+    return out  # type: ignore[return-value]
 
 
 def make_text_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -> _types.channel.TextChannel:
@@ -637,7 +654,7 @@ def make_voice_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -
     return make_channel_dict(discord.ChannelType.voice.value, id_num, name=name, **kwargs)
 
 
-def dict_from_overwrite(target: discord.Member | discord.Role,
+def dict_from_overwrite(target: discord.Member | discord.Role | discord.Object,
                         overwrite: discord.PermissionOverwrite) -> _types.channel.PermissionOverwrite:
     allow, deny = overwrite.pair()
     ovr: _types.channel.PermissionOverwrite = {
@@ -652,21 +669,21 @@ def dict_from_overwrite(target: discord.Member | discord.Role,
 # TODO: Convert reactions, activity, and application to a dict.
 def make_message_dict(
         channel: _types.AnyChannel,
-        author: discord.user.BaseUser,
+        author: discord.user.BaseUser | discord.Member,
         id_num: int = -1,
-        content: str = None,
-        timestamp: str = None,
+        content: str = "",
+        timestamp: str | None = None,
         edited_timestamp: str | None = None,
         tts: bool = False,
         mention_everyone: bool = False,
-        mentions: list[discord.User | discord.Member] = None,
-        mention_roles: list[int] = None,
-        mention_channels: list[_types.AnyChannel] = None,
-        attachments: list[discord.Attachment] = None,
+        mentions: list[discord.User | discord.Member] | None = None,
+        mention_roles: list[_types.gateway.Snowflake] | None = None,
+        mention_channels: list[_types.AnyChannel] | None = None,
+        attachments: list[discord.Attachment] | None = None,
         embeds: list[discord.Embed] | None = None,
         pinned: bool = False,
         type: int = 0,
-        **kwargs,
+        **kwargs: typing.Any,
 ) -> _types.message.Message:
     if mentions is None:
         mentions = []
@@ -677,8 +694,6 @@ def make_message_dict(
     if attachments is None:
         attachments = []
 
-    if not content:
-        content = ""
     if id_num < 0:
         id_num = make_id()
     if isinstance(channel, discord.abc.GuildChannel):
@@ -688,10 +703,10 @@ def make_message_dict(
         kwargs["member"] = dict_from_object(author)
     if timestamp is None:
         timestamp = str(int(discord.utils.snowflake_time(id_num).timestamp()))
-    mentions = list(map(user_with_member, mentions)) if mentions else []
-    mention_channels = list(map(_mention_from_channel, mention_channels)) if mention_channels else []
-    attachments = list(map(dict_from_object, attachments)) if attachments else []
-    embeds = list(map(discord.Embed.to_dict, embeds)) if embeds else []
+    mentions_json = list(map(user_with_member, mentions)) if mentions else []
+    mention_channels_json = list(map(_mention_from_channel, mention_channels)) if mention_channels else []
+    attachments_json = list(map(dict_from_object, attachments)) if attachments else []
+    embeds_json = list(map(discord.Embed.to_dict, embeds)) if embeds else []
 
     out: _types.message.Message = {
         'id': id_num,
@@ -701,14 +716,14 @@ def make_message_dict(
         'timestamp': timestamp,
         'edited_timestamp': edited_timestamp,
         'tts': tts,
-        'mention_channels': mention_channels,
+        'mention_channels': mention_channels_json,
         'mention_everyone': mention_everyone,
-        'mentions': mentions,
+        'mentions': mentions_json,
         'mention_roles': mention_roles,
-        'attachments': attachments,
-        'embeds': embeds,
+        'attachments': attachments_json,
+        'embeds': embeds_json,
         'pinned': pinned,
-        'type': type,
+        'type': type,  # type: ignore[typeddict-item]
     }
     items = ('guild_id', 'member', 'reactions', 'nonce', 'webhook_id', 'activity', 'application')
     _fill_optional(out, kwargs, items)
@@ -718,12 +733,12 @@ def make_message_dict(
 def _mention_from_channel(channel: _types.AnyChannel) -> _types.message.ChannelMention:
     out: _types.message.ChannelMention = {
         "id": channel.id,
-        "type": str(channel.type),
+        "type": channel.type.value,
         "guild_id": 0,
         "name": ""
     }
     if hasattr(channel, "guild"):
-        out["guild_id"] = channel.guild.id
+        out["guild_id"] = channel.guild.id if channel.guild else 0
     if hasattr(channel, "name"):
         out["name"] = channel.name
 
@@ -769,11 +784,11 @@ def make_guild_dict(
         region: str = "en_north",
         afk_channel_id: int | None = None,
         afk_timeout: int = 600,
-        verification_level: int = 0,
-        default_message_notifications: int = 0,
-        explicit_content_filter: int = 0,
-        features: list[str] | None = None,
-        mfa_level: int = 0,
+        verification_level: typing.Literal[0, 1, 2, 3, 4] = 0,
+        default_message_notifications: typing.Literal[0, 1] = 0,
+        explicit_content_filter: typing.Literal[0, 1, 2] = 0,
+        features: list[_types.guild.GuildFeature] | None = None,
+        mfa_level: typing.Literal[0, 1] = 0,
         application_id: int | None = None,
         system_channel_id: int | None = None,
         **kwargs: typing.Any,
@@ -793,9 +808,9 @@ def make_guild_dict(
         'region': region,
         'afk_channel_id': afk_channel_id,
         'afk_timeout': afk_timeout,
-        'verification_level': verification_level,
-        'default_message_notifications': default_message_notifications,
-        'explicit_content_filter': explicit_content_filter,
+        'verification_level': verification_level,  # type: ignore[typeddict-item]
+        'default_message_notifications': default_message_notifications,  # type: ignore[typeddict-item]
+        'explicit_content_filter': explicit_content_filter,  # type: ignore[typeddict-item]
         'roles': roles,
         'emojis': emojis,
         'members': [],

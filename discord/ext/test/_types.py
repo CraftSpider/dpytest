@@ -1,15 +1,40 @@
 """
     Internal module for type-hinting aliases. Ensures single common definitions.
 """
+from enum import Enum
+from typing import Callable, Coroutine, Literal, Self, TypeVar, Any, ParamSpec, Protocol
+from mypy_extensions import VarArg, KwArg
 
 import discord
 import typing
 
-T = typing.TypeVar('T')
+T = TypeVar('T')
+P = ParamSpec('P')
 
-Callback = typing.Callable[..., typing.Coroutine[None, None, None]]
+Callback = Callable[..., Coroutine[None, None, None]]
 AnyChannel = (discord.TextChannel | discord.CategoryChannel | discord.abc.GuildChannel
-              | discord.abc.PrivateChannel | discord.Thread)
+              | discord.DMChannel | discord.Thread)
+
+
+class Wrapper(Protocol[P, T]):
+    __wrapped__: Callable[P, T]
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        ...
+
+
+class FnWithOld(Protocol[P, T]):
+    __old__: Callable[P, T] | None
+
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T:
+        ...
+
+
+class Undef(Enum):
+    undefined = None
+
+
+undefined: Literal[Undef.undefined] = Undef.undefined
 
 if typing.TYPE_CHECKING:
     from discord.types import (
@@ -20,10 +45,10 @@ if typing.TYPE_CHECKING:
     AnyChannelJson = channel.VoiceChannel | channel.TextChannel | channel.DMChannel | channel.CategoryChannel
 else:
     class OpenNamespace:
-        def __getattr__(self, item: str) -> typing.Self:
+        def __getattr__(self, item: str) -> Self:
             return self
 
-        def __subclasscheck__(self, subclass: type) -> typing.Literal[True]:
+        def __subclasscheck__(self, subclass: type) -> Literal[True]:
             return True
 
         def __or__(self, other: T) -> T:

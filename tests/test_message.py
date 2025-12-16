@@ -4,7 +4,7 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_messasge(bot):
+async def test_messasge(bot) -> None:
     """Test make_message_dict from factory.
     """
     guild = bot.guilds[0]

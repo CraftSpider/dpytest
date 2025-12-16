@@ -11,10 +11,13 @@
 
 import asyncio
 import pathlib
+from typing import TypeVar, Callable
+
 import discord
 
 from .runner import sent_queue, get_config
 from .utils import embed_eq, activity_eq
+from ._types import Undef, undefined
 
 
 def _msg_to_str(msg: discord.Message) -> str:
@@ -32,19 +35,16 @@ def _msg_to_str(msg: discord.Message) -> str:
     return f"Message({inner})"
 
 
-class _Undef:
-    _singleton = None
-
-    def __new__(cls):
-        if cls._singleton is None:
-            cls._singleton = super().__new__(cls)
-        return cls._singleton
-
-    def __eq__(self, other):
-        return self is other
+T = TypeVar('T')
 
 
-_undefined = _Undef()
+def opt_undef_or(start: str, v: T | Undef | None, f: Callable[[T], str]) -> str:
+    if v is undefined:
+        return ""
+    elif v is None:
+        return f"{start}=Empty"
+    else:
+        return f"{start}={f(v)}"
 
 
 class VerifyMessage:
@@ -55,24 +55,24 @@ class VerifyMessage:
         ``assert dpytest.verify().message().content("Hello World!")``
     """
 
-    _used: discord.Message | int | _Undef | None
+    _used: discord.Message | int | Undef | None
 
     _contains: bool
     _peek: bool
     _nothing: bool
-    _content: str | _Undef | None
-    _embed: discord.Embed | _Undef | None
-    _attachment: str | pathlib.Path | _Undef | None
+    _content: str | Undef | None
+    _embed: discord.Embed | Undef | None
+    _attachment: str | pathlib.Path | Undef | None
 
     def __init__(self) -> None:
-        self._used = _undefined
+        self._used = undefined
 
         self._contains = False
         self._peek = False
         self._nothing = False
-        self._content = _undefined
-        self._embed = _undefined
-        self._attachment = _undefined
+        self._content = undefined
+        self._embed = undefined
+        self._attachment = undefined
 
     def __del__(self) -> None:
         if not self._used:
@@ -80,10 +80,10 @@ class VerifyMessage:
             warnings.warn("VerifyMessage dropped without being used, did you forget an `assert`?", RuntimeWarning)
 
     def __repr__(self) -> str:
-        if self._used is not _undefined:
-            return f"<VerifyMessage expected=[{self._expectation()}] found={_msg_to_str(self._used)}>"
+        if self._used is not undefined:
+            return f"<VerifyMessage expected=[{self._expectation()}] found=[{self._diff_msg()}]>"
         else:
-            return f"<VerifyMessage expects={self._expectation()}>"
+            return f"<VerifyMessage expected=[{self._expectation()}]>"
 
     def __bool__(self) -> bool:
         self._used = None
@@ -109,19 +109,20 @@ class VerifyMessage:
             return "no messages"
         else:
             contains = "contains"
-            content = f"content=\"{self._content}\"" if self._content is not _undefined else ""
-            embed = f"embed={str(self._embed.to_dict())}" if self._embed is not _undefined else ""
-            attachment = f"attachment={self._attachment}" if self._attachment is not _undefined else ""
+            content = opt_undef_or("content", self._content, lambda x: f'"{x}"')
+            embed = opt_undef_or("embed", self._embed, lambda x: str(x.to_dict()))
+            attachment = opt_undef_or("attachment", self._attachment, lambda x: str(x))
             event = " ".join(filter(lambda x: x, [contains, content, embed, attachment]))
             return f"{event}"
 
     def _diff_msg(self) -> str:
-        if self._nothing:
+        if isinstance(self._used, int):
             return f"{self._used} messages"
+        elif isinstance(self._used, discord.Message):
+            return f"{_msg_to_str(self._used)}"
         elif self._used is None:
             return "no message"
-        else:
-            return str(self._used)
+        return ""
 
     def _check_msg(self, msg: discord.Message) -> bool:
         # If any attributes are 'None', check that they don't exist
@@ -132,20 +133,21 @@ class VerifyMessage:
         if self._attachment is None and msg.attachments:
             return False
 
-        # For any attributes that aren't None or _undefined, check that they match
-        if self._content is not None and self._content is not _undefined:
+        # For any attributes that aren't None or undefined, check that they match
+        if self._content is not None and self._content is not undefined:
             if self._contains and self._content not in msg.content:
                 return False
             if not self._contains and self._content != msg.content:
                 return False
-        if self._embed is not None and self._embed is not _undefined:
-            if self._contains and not any(map(lambda e: embed_eq(self._embed, e), msg.embeds)):
+        _embed = self._embed
+        if _embed is not None and _embed is not undefined:
+            if self._contains and not any(map(lambda e: embed_eq(_embed, e), msg.embeds)):
                 return False
-            if not self._contains and (len(msg.embeds) != 1 or not embed_eq(self._embed, msg.embeds[0])):
+            if not self._contains and (len(msg.embeds) != 1 or not embed_eq(_embed, msg.embeds[0])):
                 return False
         # TODO: Support contains for attachments, 'contains' should mean 'any number of which one matches',
         #       while 'exact' should be 'only one which must match'
-        if self._attachment is not None and self._attachment is not _undefined:
+        if self._attachment is not None and self._attachment is not undefined:
             import urllib.request as request
             with open(self._attachment, "rb") as file:
                 expected = file.read()
@@ -182,7 +184,7 @@ class VerifyMessage:
 
         :return: Self for chaining
         """
-        if self._content is not _undefined or self._embed is not _undefined or self._attachment is not _undefined:
+        if self._content is not undefined or self._embed is not undefined or self._attachment is not undefined:
             raise ValueError("Verify nothing conflicts with verifying some content, embed, or attachment")
         self._nothing = True
         return self
@@ -232,13 +234,18 @@ class VerifyActivity:
         ``assert not dpytest.verify().activity().name("Foobar")``
     """
 
+    _activity: discord.activity.ActivityTypes | None | Undef
+    _name: str | Undef
+    _url: str | Undef
+    _type: discord.ActivityType | Undef
+
     def __init__(self) -> None:
         self._used = False
 
-        self._activity = _undefined
-        self._name = _undefined
-        self._url = _undefined
-        self._type = _undefined
+        self._activity = undefined
+        self._name = undefined
+        self._url = undefined
+        self._type = undefined
 
     def __del__(self) -> None:
         if not self._used:
@@ -250,26 +257,38 @@ class VerifyActivity:
 
         bot_act = get_config().guilds[0].me.activity
 
-        if self._activity is not _undefined:
+        if self._activity is not undefined:
             return activity_eq(self._activity, bot_act)
 
-        if self._name is not _undefined and self._name != bot_act.name:
-            return False
-        if self._url is not _undefined and self._url != bot_act.url:
-            return False
-        if self._type is not _undefined and self._type != bot_act.type:
-            return False
+        if bot_act is None:
+            return (self._name not in [undefined, None]
+                    and self._url not in [undefined, None]
+                    and self._type not in [undefined, None])
+
+        if isinstance(bot_act, discord.Game):
+            pass
+        elif isinstance(bot_act, discord.CustomActivity):
+            pass
+        elif isinstance(bot_act, discord.Spotify):
+            pass
+        else:
+            if self._name is not undefined and self._name != bot_act.name:
+                return False
+            if self._url is not undefined and self._url != bot_act.url:
+                return False
+            if self._type is not undefined and self._type != bot_act.type:
+                return False
 
         return True
 
-    def matches(self, activity) -> 'VerifyActivity':
+    def matches(self, activity: discord.activity.ActivityTypes) -> 'VerifyActivity':
         """
             Ensure that the bot activity exactly matches the passed activity. Most restrictive possible check.
 
         :param activity: Activity to compare against
         :return: Self for chaining
         """
-        if self._name is not _undefined or self._url is not _undefined or self._type is not _undefined:
+        if self._name is not undefined or self._url is not undefined or self._type is not undefined:
             raise ValueError("Verify exact match conflicts with verifying attributes")
         self._activity = activity
         return self
@@ -281,7 +300,7 @@ class VerifyActivity:
         :param name: Name to match against
         :return: Self for chaining
         """
-        if self._activity is not _undefined:
+        if self._activity is not undefined:
             raise ValueError("Verify name conflicts with verifying exact match")
         self._name = name
         return self
@@ -293,7 +312,7 @@ class VerifyActivity:
         :param url: Url to match against
         :return: Self for chaining
         """
-        if self._activity is not _undefined:
+        if self._activity is not undefined:
             raise ValueError("Verify url conflicts with verifying exact match")
         self._url = url
         return self
@@ -305,7 +324,7 @@ class VerifyActivity:
         :param type: Type to match against
         :return: Self for chaining
         """
-        if self._activity is not _undefined:
+        if self._activity is not undefined:
             raise ValueError("Verify type conflicts with verifying exact match")
         self._type = type
         return self

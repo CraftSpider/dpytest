@@ -16,9 +16,13 @@ class FakeWebSocket(gateway.DiscordWebSocket):
         it simply triggers calls to the ``dpytest`` backend, as well as triggering runner callbacks.
     """
 
+    cur_event: str | None
+    event_args: tuple[typing.Any, ...]
+    event_kwargs: dict[str, typing.Any]
+
     def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
         super().__init__(*args, **kwargs)
-        self.cur_event = ""
+        self.cur_event = None
         self.event_args = ()
         self.event_kwargs = {}
 

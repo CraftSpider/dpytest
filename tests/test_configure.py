@@ -89,7 +89,7 @@ async def test_configure_members(bot):
 
 @pytest.mark.asyncio
 @pytest.mark.cogs("cogs.echo")
-async def test_configure_all(bot):
+async def test_configure_all(bot) -> None:
     dpytest.configure(bot,
                       guilds=["CoolGuild", "LameGuild"],
                       text_channels=["Fruits", "Videogames"], voice_channels=["Apples", "Bananas"],
@@ -99,5 +99,5 @@ async def test_configure_all(bot):
     jack: discord.Member = discord.utils.get(guild.members, name="Jack")
     mess = await dpytest.message("!echo Hello, my name is Jack", channel=channel, member=jack)
     assert mess.author.name == "Jack"
-    assert mess.channel.name == "Videogames"
+    assert mess.channel.name == "Videogames"  # type: ignore[union-attr]
     assert dpytest.verify().message().content("Hello, my name is Jack")

@@ -10,7 +10,7 @@ from . import _types
 
 log = logging.getLogger("discord.ext.tests")
 
-_callbacks = {}
+_callbacks: dict[str, _types.Callback] = {}
 
 
 async def dispatch_event(event: str, *args: typing.Any, **kwargs: typing.Any) -> None:

@@ -12,7 +12,7 @@ async def test_create_voice_channel(bot):
     self = guild  # noqa: F841
     name = "voice_channel_1"
     channel = await http.create_channel(guild, channel_type=discord.ChannelType.voice.value)
-    assert channel['type'] == discord.ChannelType.voice
+    assert channel['type'] == discord.ChannelType.voice.value
     assert channel['name'] == name
 
 

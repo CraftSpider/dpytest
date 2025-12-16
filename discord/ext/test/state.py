@@ -20,13 +20,14 @@ class FakeState(dstate.ConnectionState):
     """
 
     http: 'back.FakeHttp'  # String because of circular import
+    user: discord.ClientUser
 
-    def __init__(self, client: discord.Client, http: dhttp.HTTPClient, user: discord.ClientUser = None,
-                 loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(self, client: discord.Client, http: dhttp.HTTPClient, user: discord.ClientUser | None = None,
+                 loop: asyncio.AbstractEventLoop | None = None) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()
         super().__init__(dispatch=client.dispatch,
-                         handlers=None, hooks=None,
+                         handlers={}, hooks={},
                          syncer=None, http=http,
                          loop=loop, intents=client.intents,
                          member_cache_flags=client._connection.member_cache_flags)
@@ -61,10 +62,10 @@ class FakeState(dstate.ConnectionState):
         self._do_dispatch = True
 
     # TODO: Respect limit parameters
-    async def query_members(self, guild: discord.Guild, query: str, limit: int, user_ids: int,
-                            cache: bool, presences: bool) -> None:
-        guild: discord.Guild = discord.utils.get(self.guilds, id=guild.id)
-        return guild.members
+    async def query_members(self, guild: discord.Guild, query: str | None, limit: int, user_ids: list[int] | None,
+                            cache: bool, presences: bool) -> list[discord.Member]:
+        guild = discord.utils.get(self.guilds, id=guild.id)  # type: ignore[assignment]
+        return list(guild.members)
 
     async def chunk_guild(self, guild: discord.Guild, *, wait: bool = True, cache: bool | None = None):
         pass

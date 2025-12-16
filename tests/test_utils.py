@@ -75,7 +75,7 @@ async def test_embed_eq_attr_fields(bot) -> None:
 
 
 @pytest.mark.asyncio
-async def test_embed_eq_attr_equal(bot):
+async def test_embed_eq_attr_equal(bot) -> None:
     embed_1: Embed = Embed(title="Foo", description="This is a Foo.", url="http://www.foo.foo")
     embed_1.set_footer(text="This is the footer for Foo.")
     embed_1.set_image(url="http://image.foo")
