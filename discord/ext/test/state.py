@@ -95,8 +95,8 @@ class FakeState(dstate.ConnectionState):
         guild = self._get_guild(guild_id)
         if guild is not None:
             # the factory can't be a DMChannel or GroupChannel here
-            channel = factory(guild=guild, state=self, data=data)  # type: ignore
-            guild._add_channel(channel)  # type: ignore
+            channel = factory(guild=guild, state=self, data=data)
+            guild._add_channel(channel)
             self.dispatch('guild_channel_create', channel)
         else:
             return

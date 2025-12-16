@@ -808,9 +808,9 @@ def make_guild_dict(
         'region': region,
         'afk_channel_id': afk_channel_id,
         'afk_timeout': afk_timeout,
-        'verification_level': verification_level,  # type: ignore[typeddict-item]
-        'default_message_notifications': default_message_notifications,  # type: ignore[typeddict-item]
-        'explicit_content_filter': explicit_content_filter,  # type: ignore[typeddict-item]
+        'verification_level': verification_level,
+        'default_message_notifications': default_message_notifications,
+        'explicit_content_filter': explicit_content_filter,
         'roles': roles,
         'emojis': emojis,
         'members': [],
