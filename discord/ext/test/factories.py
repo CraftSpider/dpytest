@@ -31,15 +31,7 @@ def make_id() -> int:
 @typing.overload
 def _fill_optional(
         data: _types.user.User,
-        obj: discord.User | dict[str, typing.Any],
-        items: typing.Iterable[str]
-) -> None: ...
-
-
-@typing.overload
-def _fill_optional(
-        data: _types.user.User,
-        obj: discord.ClientUser | dict[str, typing.Any],
+        obj: discord.user.BaseUser | dict[str, object],
         items: typing.Iterable[str]
 ) -> None: ...
 
@@ -47,7 +39,7 @@ def _fill_optional(
 @typing.overload
 def _fill_optional(
         data: _types.member.Member | _types.member.MemberWithUser,
-        obj: discord.Member | dict[str, typing.Any],
+        obj: discord.Member | dict[str, object],
         items: typing.Iterable[str]
 ) -> None: ...
 
@@ -55,7 +47,7 @@ def _fill_optional(
 @typing.overload
 def _fill_optional(
         data: _types.guild.Guild,
-        obj: discord.Guild | dict[str, typing.Any],
+        obj: discord.Guild | dict[str, object],
         items: typing.Iterable[str]
 ) -> None: ...
 
@@ -63,7 +55,7 @@ def _fill_optional(
 @typing.overload
 def _fill_optional(
         data: _types.channel.PartialChannel,
-        obj: _types.AnyChannel | dict[str, typing.Any],
+        obj: _types.AnyChannel | dict[str, object],
         items: typing.Iterable[str]
 ) -> None: ...
 
@@ -71,7 +63,7 @@ def _fill_optional(
 @typing.overload
 def _fill_optional(
         data: _types.message.Message,
-        obj: discord.Message | dict[str, typing.Any],
+        obj: discord.Message | dict[str, object],
         items: typing.Iterable[str]
 ) -> None: ...
 
@@ -79,7 +71,7 @@ def _fill_optional(
 @typing.overload
 def _fill_optional(
         data: _types.emoji.Emoji,
-        obj: discord.Emoji | dict[str, typing.Any],
+        obj: discord.Emoji | dict[str, object],
         items: typing.Iterable[str]
 ) -> None: ...
 
@@ -87,14 +79,14 @@ def _fill_optional(
 @typing.overload
 def _fill_optional(
         data: _types.sticker.GuildSticker,
-        obj: discord.GuildSticker | dict[str, typing.Any],
+        obj: discord.GuildSticker | dict[str, object],
         items: typing.Iterable[str]
 ) -> None: ...
 
 
 def _fill_optional(  # type: ignore[misc]
-        data: dict[str, typing.Any],
-        obj: typing.Any,
+        data: dict[str, object],
+        obj: object | dict[str, object],
         items: typing.Iterable[str]
 ) -> None:
     if isinstance(obj, dict):
@@ -167,84 +159,14 @@ def user_with_member(user: discord.User | discord.Member) -> _types.member.UserW
     return out
 
 
-# @typing.overload
-# def dict_from_object(obj: discord.User) -> _types.member.UserWithMember: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.Member) -> _types.member.MemberWithUser: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.Role) -> _types.role.Role: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.TextChannel) -> _types.channel.TextChannel: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.DMChannel) -> _types.channel.DMChannel: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.CategoryChannel) -> _types.channel.CategoryChannel: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.VoiceChannel) -> _types.channel.VoiceChannel: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.Message) -> _types.message.Message: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.Attachment) -> _types.message.Attachment: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.Emoji) -> _types.emoji.Emoji: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.Sticker) -> _types.sticker.Sticker: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.StageInstance) -> _types.channel.StageInstance: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent: ...
-#
-#
-# @typing.overload
-# def dict_from_object(obj: discord.Guild) -> _types.guild.Guild: ...
-
-
 @functools.singledispatch
-def dict_from_object(obj: typing.Any) -> typing.Any:
+def dict_from_object(obj: object) -> typing.Any:
     raise TypeError(f"Unrecognized discord model type {type(obj)}")
 
 
-@dict_from_object.register(discord.ClientUser)
-def _from_client_user(user: discord.ClientUser) -> _types.member.UserWithMember:
+@dict_from_object.register(discord.user.BaseUser)
+def _from_base_user(user: discord.user.BaseUser) -> _types.member.UserWithMember:
     out: _types.member.UserWithMember = {
-        'id': user.id,
-        'global_name': user.global_name,
-        'username': user.name,
-        'discriminator': user.discriminator,
-        'avatar': user.avatar.url if user.avatar else None,
-    }
-    items = ("bot", "mfa_enabled", "locale", "verified", "email", "premium_type")
-    _fill_optional(out, user, items)
-    return out
-
-
-@dict_from_object.register(discord.User)
-def _from_user(user: discord.User) -> _types.user.User:
-    out: _types.user.User = {
         'id': user.id,
         'global_name': user.global_name,
         'username': user.name,

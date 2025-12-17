@@ -10,7 +10,7 @@ from . import _types
 
 log = logging.getLogger("discord.ext.tests")
 
-_callbacks: dict[str, _types.Callback] = {}
+_callbacks: dict[str, _types.Callback[...]] = {}
 
 
 async def dispatch_event(event: str, *args: typing.Any, **kwargs: typing.Any) -> None:
@@ -30,7 +30,7 @@ async def dispatch_event(event: str, *args: typing.Any, **kwargs: typing.Any) ->
             log.error(f"Error in handler for event {event}: {e}")
 
 
-def set_callback(cb: _types.Callback, event: str) -> None:
+def set_callback(cb: _types.Callback[...], event: str) -> None:
     """
         Set the callback to use for a specific event
 
@@ -40,7 +40,7 @@ def set_callback(cb: _types.Callback, event: str) -> None:
     _callbacks[event] = cb
 
 
-def get_callback(event: str) -> _types.Callback:
+def get_callback(event: str) -> _types.Callback[...]:
     """
         Get the current callback for an event, or raise an exception if one isn't set
 
@@ -52,7 +52,7 @@ def get_callback(event: str) -> _types.Callback:
     return _callbacks[event]
 
 
-def remove_callback(event: str) -> _types.Callback | None:
+def remove_callback(event: str) -> _types.Callback[...] | None:
     """
         Remove the callback set for an event, returning it, or None if one isn't set
 

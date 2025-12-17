@@ -32,7 +32,7 @@ else:
 T = TypeVar('T')
 P = ParamSpec('P')
 
-Callback = Callable[..., Coroutine[None, None, None]]
+Callback = Callable[P, Coroutine[None, None, None]]
 AnyChannel = (discord.abc.GuildChannel | discord.TextChannel | discord.VoiceChannel | discord.StageChannel | discord.DMChannel | discord.Thread | discord.GroupChannel)
 
 
