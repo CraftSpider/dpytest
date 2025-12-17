@@ -944,9 +944,9 @@ def edit_message(
     return data
 
 
-MEMBER_MENTION: Pattern = re.compile(r"<@!?([0-9]{17,21})>", re.MULTILINE)
-ROLE_MENTION: Pattern = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
-CHANNEL_MENTION: Pattern = re.compile(r"<#([0-9]{17,21})>", re.MULTILINE)
+MEMBER_MENTION: Pattern[str] = re.compile(r"<@!?([0-9]{17,21})>", re.MULTILINE)
+ROLE_MENTION: Pattern[str] = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
+CHANNEL_MENTION: Pattern[str] = re.compile(r"<#([0-9]{17,21})>", re.MULTILINE)
 
 
 def find_member_mentions(content: str | None, guild: discord.Guild | None) -> list[discord.Member | discord.User]:

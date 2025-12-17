@@ -41,8 +41,8 @@ class RunnerConfig(typing.NamedTuple):
 
 log = logging.getLogger("discord.ext.tests")
 _cur_config: RunnerConfig | None = None
-sent_queue: PeekableQueue = PeekableQueue()
-error_queue: PeekableQueue = PeekableQueue()
+sent_queue: PeekableQueue[discord.Message] = PeekableQueue()
+error_queue: PeekableQueue[tuple[commands.Context[commands.Bot | commands.AutoShardedBot], CommandError]] = PeekableQueue()
 
 
 T = TypeVar('T')
@@ -72,7 +72,7 @@ def require_config(func: typing.Callable[P, T]) -> typing.Callable[P, T]:
     return wrapper
 
 
-def _task_coro_name(task: asyncio.Task) -> str | None:
+def _task_coro_name(task: asyncio.Task[typing.Any]) -> str | None:
     """
         Uses getattr() to avoid AttributeErrors when the coroutine doesn't have a __name__
     """
@@ -398,7 +398,7 @@ def configure(client: discord.Client,
     if hasattr(client, "on_command_error"):
         old_error = client.on_command_error
 
-    on_command_error: _types.FnWithOld
+    on_command_error: _types.FnWithOld[[commands.Context[commands.Bot | commands.AutoShardedBot], CommandError], None]
 
     async def on_command_error(ctx: commands.Context[BotT], error: CommandError) -> None:  # type: ignore[no-redef]
         try:
