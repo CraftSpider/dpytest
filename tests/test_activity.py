@@ -4,7 +4,7 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_verify_activity_matches(bot):
+async def test_verify_activity_matches(bot: discord.Client) -> None:
     fake_act = discord.Activity(name="Streaming",
                                 url="http://mystreamingfeed.xyz",
                                 type=discord.ActivityType.streaming)
@@ -17,6 +17,6 @@ async def test_verify_activity_matches(bot):
 
 
 @pytest.mark.asyncio
-async def test_verify_no_activity(bot):
+async def test_verify_no_activity(bot: discord.Client) -> None:
     await bot.change_presence(activity=None)
     assert dpytest.verify().activity().matches(None)

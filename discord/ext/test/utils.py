@@ -4,6 +4,8 @@
 """
 
 import asyncio
+from typing import TypeVar
+
 import discord
 
 
@@ -65,20 +67,22 @@ def activity_eq(act1: discord.activity.ActivityTypes | None, act2: discord.activ
     return False
 
 
-def embed_proxy_eq(embed_proxy1, embed_proxy2):
+def embed_proxy_eq(embed_proxy1: discord.embeds.EmbedProxy, embed_proxy2: discord.embeds.EmbedProxy) -> bool:
     return embed_proxy1.__repr__ == embed_proxy2.__repr__
 
 
-class PeekableQueue(asyncio.Queue):
+T = TypeVar('T')
+
+class PeekableQueue(asyncio.Queue[T]):
     """
         An extension of an asyncio queue with a peek message, so other code doesn't need to rely on unstable
         internal artifacts
     """
 
-    def peek(self):
+    def peek(self) -> T:
         """
             Peek the current last value in the queue, or raise an exception if there are no values
 
         :return: Last value in the queue, assuming there are any
         """
-        return self._queue[-1]
+        return self._queue[-1]  # type: ignore[attr-defined]

@@ -4,13 +4,22 @@
 """
 
 import asyncio
+import typing
+from asyncio import Future
+from typing import TypeVar, ParamSpec, Any, Literal
+
 import discord
 import discord.http as dhttp
 import discord.state as dstate
 
+from . import _types
 from . import factories as facts
 from . import backend as back
 from .voice import FakeVoiceChannel
+
+
+P = ParamSpec('P')
+T = TypeVar('T')
 
 
 class FakeState(dstate.ConnectionState):
@@ -42,9 +51,9 @@ class FakeState(dstate.ConnectionState):
 
         real_disp = self.dispatch
 
-        def dispatch(*args, **kwargs):
+        def dispatch(*args: Any, **kwargs: Any) -> T | None:
             if not self._do_dispatch:
-                return
+                return None
             return real_disp(*args, **kwargs)
 
         self.dispatch = dispatch
@@ -67,16 +76,24 @@ class FakeState(dstate.ConnectionState):
         guild = discord.utils.get(self.guilds, id=guild.id)  # type: ignore[assignment]
         return list(guild.members)
 
-    async def chunk_guild(self, guild: discord.Guild, *, wait: bool = True, cache: bool | None = None):
-        pass
+    @typing.overload
+    async def chunk_guild(self, guild: discord.Guild, *, wait: Literal[True] = ..., cache: bool | None = ...) -> list[discord.Member]: ...
 
-    def _guild_needs_chunking(self, guild: discord.Guild):
+    @typing.overload
+    async def chunk_guild(
+            self, guild: discord.Guild, *, wait: Literal[False] = ..., cache: bool | None = ...
+    ) -> asyncio.Future[list[discord.Member]]: ...
+
+    async def chunk_guild(self, guild: discord.Guild, *, wait: bool = True, cache: bool | None = None) -> list[discord.Member] | Future[list[discord.Member]]:
+        return []
+
+    def _guild_needs_chunking(self, guild: discord.Guild) -> bool:
         """
         Prevents chunking which can throw asyncio wait_for errors with tests under 60 seconds
         """
         return False
 
-    def parse_channel_create(self, data) -> None:
+    def parse_channel_create(self, data: _types.gateway._ChannelEvent | _types.channel.Channel) -> None:
         """
         Need to make sure that FakeVoiceChannels are created when this is called to create VoiceChannels. Otherwise,
         guilds would not be set up correctly.
@@ -95,7 +112,7 @@ class FakeState(dstate.ConnectionState):
         guild = self._get_guild(guild_id)
         if guild is not None:
             # the factory can't be a DMChannel or GroupChannel here
-            channel = factory(guild=guild, state=self, data=data)
+            channel = factory(guild=guild, state=self, data=data)  # type: ignore[arg-type]
             guild._add_channel(channel)
             self.dispatch('guild_channel_create', channel)
         else:

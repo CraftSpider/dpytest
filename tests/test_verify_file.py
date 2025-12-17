@@ -5,7 +5,7 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_verify_file_text(bot):
+async def test_verify_file_text(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -16,7 +16,7 @@ async def test_verify_file_text(bot):
 
 
 @pytest.mark.asyncio
-async def test_verify_file_jpg(bot):
+async def test_verify_file_jpg(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -27,7 +27,7 @@ async def test_verify_file_jpg(bot):
 
 
 @pytest.mark.asyncio
-async def test_verify_file_KO(bot):
+async def test_verify_file_KO(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 

@@ -18,6 +18,11 @@ import pathlib
 
 from itertools import count
 
+from discord.ext import commands
+from discord.ext.commands import CommandError
+from discord.ext.commands._types import BotT
+from typing_extensions import ParamSpec, TypeVar
+
 from . import backend as back, callbacks, _types
 from .utils import PeekableQueue
 
@@ -40,7 +45,11 @@ sent_queue: PeekableQueue = PeekableQueue()
 error_queue: PeekableQueue = PeekableQueue()
 
 
-def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[..., _types.T]:
+T = TypeVar('T')
+P = ParamSpec('P')
+
+
+def require_config(func: typing.Callable[P, T]) -> typing.Callable[P, T]:
     """
         Decorator to enforce that configuration is completed before the decorated function is
         called.
@@ -49,9 +58,9 @@ def require_config(func: typing.Callable[..., _types.T]) -> typing.Callable[...,
     :return: Function with added check for configuration being setup
     """
 
-    wrapper: _types.Wrapper
+    wrapper: _types.Wrapper[P, T]
 
-    def wrapper(*args, **kwargs):  # type: ignore[no-redef]
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:  # type: ignore[no-redef]
         if _cur_config is None:
             log.error("Attempted to make call before runner configured")
             raise RuntimeError(f"Configure runner before calling {func.__name__}")
@@ -151,7 +160,7 @@ async def _message_callback(message: discord.Message) -> None:
     await sent_queue.put(message)
 
 
-async def _edit_member_callback(fields: typing.Any, member: discord.Member, reason: str | None):
+async def _edit_member_callback(fields: typing.Any, member: discord.Member, reason: str | None) -> None:
     """
         Internal callback. Updates a guild's voice states to reflect the given Member connecting to the given channel.
         Other updates to members are handled in http.edit_member().
@@ -256,7 +265,7 @@ async def set_permission_overrides(
 
 
 @require_config
-async def add_role(member: discord.Member, role: discord.Role) -> None:
+async def add_role(member: discord.Member | int, role: discord.Role) -> None:
     """
         Add a role to a member, as if added by another user.
 
@@ -273,7 +282,7 @@ async def add_role(member: discord.Member, role: discord.Role) -> None:
 
 
 @require_config
-async def remove_role(member: discord.Member, role: discord.Role) -> None:
+async def remove_role(member: discord.Member | int, role: discord.Role) -> None:
     """
         Remove a role from a member, as if removed by another user.
 
@@ -304,7 +313,7 @@ async def add_reaction(user: discord.user.BaseUser | discord.abc.User,
 
 
 @require_config
-async def remove_reaction(user: discord.user.BaseUser,
+async def remove_reaction(user: discord.user.BaseUser | discord.Member,
                           message: discord.Message, emoji: str) -> None:
     """
         Remove a reaction from a message, as if done by another user
@@ -391,7 +400,7 @@ def configure(client: discord.Client,
 
     on_command_error: _types.FnWithOld
 
-    async def on_command_error(ctx, error):  # type: ignore[no-redef]
+    async def on_command_error(ctx: commands.Context[BotT], error: CommandError) -> None:  # type: ignore[no-redef]
         try:
             if old_error:
                 await old_error(ctx, error)

@@ -4,7 +4,7 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_message_equals(bot):
+async def test_message_equals(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -13,7 +13,7 @@ async def test_message_equals(bot):
 
 
 @pytest.mark.asyncio
-async def test_message_not_equals(bot):
+async def test_message_not_equals(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -22,7 +22,7 @@ async def test_message_not_equals(bot):
 
 
 @pytest.mark.asyncio
-async def test_message_contains_true(bot):
+async def test_message_contains_true(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -31,7 +31,7 @@ async def test_message_contains_true(bot):
 
 
 @pytest.mark.asyncio
-async def test_message_contains_false(bot):
+async def test_message_contains_false(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -40,12 +40,12 @@ async def test_message_contains_false(bot):
 
 
 @pytest.mark.asyncio
-async def test_message_assert_nothing(bot):
+async def test_message_assert_nothing(bot: discord.Client) -> None:
     assert dpytest.verify().message().nothing()
 
 
 @pytest.mark.asyncio
-async def test_message_peek(bot):
+async def test_message_peek(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 

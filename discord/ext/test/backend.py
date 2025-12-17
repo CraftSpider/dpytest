@@ -24,6 +24,7 @@ from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overlo
 
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 from ._types import Undef, undefined
+from discord.types.snowflake import Snowflake
 
 
 class BackendState(NamedTuple):
@@ -99,7 +100,7 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def create_channel(
             self,
-            guild_id: _types.gateway.Snowflake,
+            guild_id: Snowflake,
             channel_type: _types.channel.ChannelType,
             *,
             reason: str | None = None,
@@ -126,7 +127,7 @@ class FakeHttp(dhttp.HTTPClient):
             )
         return facts.dict_from_object(channel)
 
-    async def delete_channel(self, channel_id: _types.gateway.Snowflake, *, reason: str | None = None) -> None:
+    async def delete_channel(self, channel_id: Snowflake, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         channel = locs["self"]
         if channel.type.value == discord.ChannelType.text.value:
@@ -138,7 +139,7 @@ class FakeHttp(dhttp.HTTPClient):
         if channel.type.value == discord.ChannelType.voice.value:
             delete_channel(channel)
 
-    async def get_channel(self, channel_id: _types.gateway.Snowflake) -> _types.channel.GuildChannel:
+    async def get_channel(self, channel_id: Snowflake) -> _types.channel.GuildChannel:
         await callbacks.dispatch_event("get_channel", channel_id)
 
         find = None
@@ -150,7 +151,7 @@ class FakeHttp(dhttp.HTTPClient):
             raise discord.errors.NotFound(FakeRequest(404, "Not Found"), "Unknown Channel")
         return find
 
-    async def start_private_message(self, user_id: _types.gateway.Snowflake) -> _types.channel.DMChannel:
+    async def start_private_message(self, user_id: Snowflake) -> _types.channel.DMChannel:
         locs = _get_higher_locs(1)
         user = locs["self"]
 
@@ -160,7 +161,7 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def send_message(
             self,
-            channel_id: _types.gateway.Snowflake,
+            channel_id: Snowflake,
             *,
             params: dhttp.MultipartParameters
     ) -> _types.message.Message:
@@ -215,13 +216,13 @@ class FakeHttp(dhttp.HTTPClient):
 
         return facts.dict_from_object(message)
 
-    async def send_typing(self, channel_id: _types.gateway.Snowflake) -> None:
+    async def send_typing(self, channel_id: Snowflake) -> None:
         locs = _get_higher_locs(1)
         channel = locs.get("channel", None)
 
         await callbacks.dispatch_event("send_typing", channel)
 
-    async def delete_message(self, channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake, *,
+    async def delete_message(self, channel_id: Snowflake, message_id: Snowflake, *,
                              reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         message = locs["self"]
@@ -230,7 +231,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         delete_message(message)
 
-    async def edit_message(self, channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake,
+    async def edit_message(self, channel_id: Snowflake, message_id: Snowflake,
                            **fields: dhttp.MultipartParameters) -> _types.message.Message:  # noqa: E501
         locs = _get_higher_locs(1)
         message = locs["self"]
@@ -239,7 +240,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         return edit_message(message, **fields)
 
-    async def add_reaction(self, channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake,
+    async def add_reaction(self, channel_id: Snowflake, message_id: Snowflake,
                            emoji: str) -> None:
         locs = _get_higher_locs(1)
         message = locs["self"]
@@ -253,9 +254,9 @@ class FakeHttp(dhttp.HTTPClient):
 
         add_reaction(message, user, emoji)
 
-    async def remove_reaction(self, channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake,
+    async def remove_reaction(self, channel_id: Snowflake, message_id: Snowflake,
                               emoji: str,
-                              member_id: _types.gateway.Snowflake) -> None:
+                              member_id: Snowflake) -> None:
         locs = _get_higher_locs(1)
         message = locs["self"]
         member = locs["member"]
@@ -264,7 +265,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         remove_reaction(message, member, emoji)
 
-    async def remove_own_reaction(self, channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake,
+    async def remove_own_reaction(self, channel_id: Snowflake, message_id: Snowflake,
                                   emoji: str) -> None:
         locs = _get_higher_locs(1)
         message = locs["self"]
@@ -274,13 +275,13 @@ class FakeHttp(dhttp.HTTPClient):
 
         remove_reaction(message, self.state.user, emoji)
 
-    async def clear_reactions(self, channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake) -> None:
+    async def clear_reactions(self, channel_id: Snowflake, message_id: Snowflake) -> None:
         locs = _get_higher_locs(1)
         message = locs["self"]
         clear_reactions(message)
 
-    async def get_message(self, channel_id: _types.gateway.Snowflake,
-                          message_id: _types.gateway.Snowflake) -> _types.message.Message:
+    async def get_message(self, channel_id: Snowflake,
+                          message_id: Snowflake) -> _types.message.Message:
         locs = _get_higher_locs(1)
         channel = locs["self"]
 
@@ -294,11 +295,11 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def logs_from(
             self,
-            channel_id: _types.gateway.Snowflake,
+            channel_id: Snowflake,
             limit: int,
-            before: _types.gateway.Snowflake | None = None,
-            after: _types.gateway.Snowflake | None = None,
-            around: _types.gateway.Snowflake | None = None
+            before: Snowflake | None = None,
+            after: Snowflake | None = None,
+            around: Snowflake | None = None
     ) -> list[_types.message.Message]:
         locs = _get_higher_locs(1)
         channel = locs["self"]
@@ -319,7 +320,7 @@ class FakeHttp(dhttp.HTTPClient):
                 start = next(i for i, v in enumerate(messages) if v["id"] == before)
             return messages[start - limit:start]
 
-    async def kick(self, user_id: _types.gateway.Snowflake, guild_id: _types.gateway.Snowflake,
+    async def kick(self, user_id: Snowflake, guild_id: Snowflake,
                    reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         guild = locs["self"]
@@ -329,7 +330,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         delete_member(member)
 
-    async def ban(self, user_id: _types.gateway.Snowflake, guild_id: _types.gateway.Snowflake,
+    async def ban(self, user_id: Snowflake, guild_id: Snowflake,
                   delete_message_days: int = 1,
                   reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
@@ -340,14 +341,14 @@ class FakeHttp(dhttp.HTTPClient):
 
         delete_member(member)
 
-    async def unban(self, user_id: _types.gateway.Snowflake, guild_id: _types.gateway.Snowflake, *,
+    async def unban(self, user_id: Snowflake, guild_id: Snowflake, *,
                     reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         guild = locs["self"]
         member = locs["user"]
         await callbacks.dispatch_event("unban", guild, member, reason=reason)
 
-    async def change_my_nickname(self, guild_id: _types.gateway.Snowflake, nickname: str, *,
+    async def change_my_nickname(self, guild_id: Snowflake, nickname: str, *,
                                  reason: str | None = None) -> _types.member.Nickname:
         locs = _get_higher_locs(1)
         me = locs["self"]
@@ -358,7 +359,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         return {"nick": nickname}
 
-    async def edit_member(self, guild_id: _types.gateway.Snowflake, user_id: _types.gateway.Snowflake, *,
+    async def edit_member(self, guild_id: Snowflake, user_id: Snowflake, *,
                           reason: str | None = None,
                           **fields: Any) -> _types.member.MemberWithUser:
         locs = _get_higher_locs(1)
@@ -368,15 +369,15 @@ class FakeHttp(dhttp.HTTPClient):
         member = update_member(member, nick=fields.get('nick'), roles=fields.get('roles'))
         return facts.dict_from_object(member)
 
-    async def get_member(self, guild_id: _types.gateway.Snowflake,
-                         member_id: _types.gateway.Snowflake) -> _types.member.MemberWithUser:
+    async def get_member(self, guild_id: Snowflake,
+                         member_id: Snowflake) -> _types.member.MemberWithUser:
         locs = _get_higher_locs(1)
         guild = locs["self"]
         member = discord.utils.get(guild.members, id=member_id)
 
         return facts.dict_from_object(member)
 
-    async def edit_role(self, guild_id: _types.gateway.Snowflake, role_id: _types.gateway.Snowflake, *,
+    async def edit_role(self, guild_id: Snowflake, role_id: Snowflake, *,
                         reason: str | None = None,
                         **fields: Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
@@ -388,7 +389,7 @@ class FakeHttp(dhttp.HTTPClient):
         update_role(role, **fields)
         return facts.dict_from_object(role)
 
-    async def delete_role(self, guild_id: _types.gateway.Snowflake, role_id: _types.gateway.Snowflake, *,
+    async def delete_role(self, guild_id: Snowflake, role_id: Snowflake, *,
                           reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         role = locs["self"]
@@ -398,7 +399,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         delete_role(role)
 
-    async def create_role(self, guild_id: _types.gateway.Snowflake, *, reason: str | None = None,
+    async def create_role(self, guild_id: Snowflake, *, reason: str | None = None,
                           **fields: Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
         guild = locs["self"]
@@ -408,7 +409,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         return facts.dict_from_object(role)
 
-    async def move_role_position(self, guild_id: _types.gateway.Snowflake,
+    async def move_role_position(self, guild_id: Snowflake,
                                  positions: list[_types.guild.RolePositionUpdate], *,
                                  reason: str | None = None) -> list[_types.role.Role]:
         locs = _get_higher_locs(1)
@@ -421,8 +422,8 @@ class FakeHttp(dhttp.HTTPClient):
             guild._roles[pair["id"]].position = pair["position"]
         return list(guild._roles.values())
 
-    async def add_role(self, guild_id: _types.gateway.Snowflake, user_id: _types.gateway.Snowflake,
-                       role_id: _types.gateway.Snowflake, *, reason: str | None = None) -> None:
+    async def add_role(self, guild_id: Snowflake, user_id: Snowflake,
+                       role_id: Snowflake, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         member = locs["self"]
         role = locs["role"]
@@ -432,8 +433,8 @@ class FakeHttp(dhttp.HTTPClient):
         roles = [role] + [x for x in member.roles if x.id != member.guild.id]
         update_member(member, roles=roles)
 
-    async def remove_role(self, guild_id: _types.gateway.Snowflake, user_id: _types.gateway.Snowflake,
-                          role_id: _types.gateway.Snowflake, *,
+    async def remove_role(self, guild_id: Snowflake, user_id: Snowflake,
+                          role_id: Snowflake, *,
                           reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         member = locs["self"]
@@ -466,8 +467,8 @@ class FakeHttp(dhttp.HTTPClient):
 
         return data
 
-    async def delete_channel_permissions(self, channel_id: _types.gateway.Snowflake,
-                                         target_id: _types.gateway.Snowflake, *,
+    async def delete_channel_permissions(self, channel_id: Snowflake,
+                                         target_id: Snowflake, *,
                                          reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         channel: discord.TextChannel = locs["self"]
@@ -485,8 +486,8 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def edit_channel_permissions(
             self,
-            channel_id: _types.gateway.Snowflake,
-            target_id: _types.gateway.Snowflake,
+            channel_id: Snowflake,
+            target_id: Snowflake,
             allow_value: str,
             deny_value: str,
             perm_type: Literal[0, 1],
@@ -515,7 +516,7 @@ class FakeHttp(dhttp.HTTPClient):
         with open(path, 'rb') as fd:
             return fd.read()
 
-    async def get_user(self, user_id: _types.gateway.Snowflake) -> _types.user.User:
+    async def get_user(self, user_id: Snowflake) -> _types.user.User:
         # return self.request(Route('GET', '/users/{user_id}', user_id=user_id))
         locs = _get_higher_locs(1)
         client = locs["self"]
@@ -523,20 +524,20 @@ class FakeHttp(dhttp.HTTPClient):
         member = discord.utils.get(guild.members, id=user_id)
         return facts.dict_from_object(member._user)
 
-    async def pin_message(self, channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake,
+    async def pin_message(self, channel_id: Snowflake, message_id: Snowflake,
                           reason: str | None = None) -> None:
         # return self.request(Route('PUT', '/channels/{channel_id}/pins/{message_id}',
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         pin_message(channel_id, message_id)
 
-    async def unpin_message(self, channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake,
+    async def unpin_message(self, channel_id: Snowflake, message_id: Snowflake,
                             reason: str | None = None) -> None:
         # return self.request(Route('DELETE', '/channels/{channel_id}/pins/{message_id}',
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         unpin_message(channel_id, message_id)
 
-    async def get_guilds(self, limit: int, before: _types.gateway.Snowflake | None = None,
-                         after: _types.gateway.Snowflake | None = None,
+    async def get_guilds(self, limit: int, before: Snowflake | None = None,
+                         after: Snowflake | None = None,
                          with_counts: bool = True) -> list[_types.guild.Guild]:
         # self.request(Route('GET', '/users/@me/guilds')
         await callbacks.dispatch_event("get_guilds", limit, before=before, after=after, with_counts=with_counts)
@@ -556,7 +557,7 @@ class FakeHttp(dhttp.HTTPClient):
                 start = next(i for i, v in enumerate(guilds) if v.id == before)
             return guilds_new[start - limit: start]
 
-    async def get_guild(self, guild_id: _types.gateway.Snowflake, *, with_counts: bool = True) -> _types.guild.Guild:
+    async def get_guild(self, guild_id: Snowflake, *, with_counts: bool = True) -> _types.guild.Guild:
         # return self.request(Route('GET', '/guilds/{guild_id}', guild_id=guild_id))
         # TODO: Respect with_counts
         locs = _get_higher_locs(1)
@@ -851,7 +852,7 @@ def make_member(user: discord.user.BaseUser, guild: discord.Guild,
                 roles: list[discord.Role] | None = None) -> discord.Member:
     if roles is None:
         roles = []
-    role_ids: list[_types.gateway.Snowflake] = list(map(lambda x: x.id, roles))
+    role_ids: list[Snowflake] = list(map(lambda x: x.id, roles))
 
     data: _types.gateway.GuildMemberAddEvent = {
         'guild_id': guild.id,
@@ -955,7 +956,7 @@ def find_member_mentions(content: str | None, guild: discord.Guild | None) -> li
     return [discord.utils.get(guild.members, id=match) for match in matches]  # type: ignore[misc]
 
 
-def find_role_mentions(content: str | None, guild: discord.Guild | None) -> list[_types.gateway.Snowflake]:
+def find_role_mentions(content: str | None, guild: discord.Guild | None) -> list[Snowflake]:
     if guild is None or content is None:
         return []
     matches = re.findall(ROLE_MENTION, content)
@@ -1062,7 +1063,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
             react["me"] = True
 
 
-def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji: str) -> None:
+def remove_reaction(message: discord.Message, user: discord.utils.Snowflake, emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
         partial: _types.message.PartialEmoji = {
@@ -1111,7 +1112,7 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
             message_data["reactions"].remove(react)
 
 
-def clear_reactions(message: discord.Message):
+def clear_reactions(message: discord.Message) -> None:
     data: _types.gateway.MessageReactionRemoveAllEvent = {
         "message_id": message.id,
         "channel_id": message.channel.id
@@ -1128,7 +1129,7 @@ def clear_reactions(message: discord.Message):
         message_data["reactions"] = []
 
 
-def pin_message(channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake):
+def pin_message(channel_id: Snowflake, message_id: Snowflake) -> None:
     data: _types.gateway.ChannelPinsUpdateEvent = {
         "channel_id": channel_id,
         "last_pin_timestamp": datetime.datetime.now().isoformat(),
@@ -1137,7 +1138,7 @@ def pin_message(channel_id: _types.gateway.Snowflake, message_id: _types.gateway
     state.parse_channel_pins_update(data)
 
 
-def unpin_message(channel_id: _types.gateway.Snowflake, message_id: _types.gateway.Snowflake):
+def unpin_message(channel_id: Snowflake, message_id: Snowflake) -> None:
     data: _types.gateway.ChannelPinsUpdateEvent = {
         "channel_id": channel_id,
         "last_pin_timestamp": None,

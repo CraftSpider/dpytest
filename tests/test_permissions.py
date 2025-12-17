@@ -7,7 +7,7 @@ from discord import PermissionOverwrite
 # TODO : fix this
 @pytest.mark.skip(reason="test is currently broken, probably set_permission_overrides doing something wrong.")
 @pytest.mark.asyncio
-async def test_permission_setting(bot):
+async def test_permission_setting(bot: discord.Client) -> None:
     """tests, that the framework sets overrides correctly"""
     g = bot.guilds[0]
     c = g.text_channels[0]
@@ -42,7 +42,7 @@ async def test_permission_setting(bot):
 @pytest.mark.skip(reason="test is currently broken, probably set_permission_overrides doing something wrong.")
 @pytest.mark.asyncio
 @pytest.mark.cogs("cogs.echo")
-async def test_bot_send_not_allowed(bot):
+async def test_bot_send_not_allowed(bot: discord.Client) -> None:
     """tests, that a bot gets an Exception, if not allowed to send a message"""
     g = bot.guilds[0]
     c = g.text_channels[0]

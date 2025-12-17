@@ -740,7 +740,7 @@ def _mention_from_channel(channel: _types.AnyChannel) -> _types.message.ChannelM
     if hasattr(channel, "guild"):
         out["guild_id"] = channel.guild.id if channel.guild else 0
     if hasattr(channel, "name"):
-        out["name"] = channel.name
+        out["name"] = channel.name or "<unknown name>"
 
     return out
 

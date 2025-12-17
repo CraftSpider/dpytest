@@ -8,12 +8,32 @@ from mypy_extensions import VarArg, KwArg
 import discord
 import typing
 
+if typing.TYPE_CHECKING:
+    from discord.types import (
+        role, gateway, appinfo, user, guild, emoji, channel, message, sticker,  # noqa: F401
+        scheduled_event, member  # noqa: F401
+    )
+
+    AnyChannelJson = channel.VoiceChannel | channel.TextChannel | channel.DMChannel | channel.CategoryChannel
+else:
+    class OpenNamespace:
+        def __getattr__(self, item: str) -> Self:
+            return self
+
+        def __subclasscheck__(self, subclass: type) -> Literal[True]:
+            return True
+
+        def __or__(self, other: T) -> T:
+            return other
+
+    def __getattr__(name: str) -> OpenNamespace:
+        return OpenNamespace()
+
 T = TypeVar('T')
 P = ParamSpec('P')
 
 Callback = Callable[..., Coroutine[None, None, None]]
-AnyChannel = (discord.TextChannel | discord.CategoryChannel | discord.abc.GuildChannel
-              | discord.DMChannel | discord.Thread)
+AnyChannel = (discord.abc.GuildChannel | discord.TextChannel | discord.VoiceChannel | discord.StageChannel | discord.DMChannel | discord.Thread | discord.GroupChannel)
 
 
 class Wrapper(Protocol[P, T]):
@@ -35,24 +55,3 @@ class Undef(Enum):
 
 
 undefined: Literal[Undef.undefined] = Undef.undefined
-
-if typing.TYPE_CHECKING:
-    from discord.types import (
-        role, gateway, appinfo, user, guild, emoji, channel, message, sticker,  # noqa: F401
-        scheduled_event, member  # noqa: F401
-    )
-
-    AnyChannelJson = channel.VoiceChannel | channel.TextChannel | channel.DMChannel | channel.CategoryChannel
-else:
-    class OpenNamespace:
-        def __getattr__(self, item: str) -> Self:
-            return self
-
-        def __subclasscheck__(self, subclass: type) -> Literal[True]:
-            return True
-
-        def __or__(self, other: T) -> T:
-            return other
-
-    def __getattr__(name: str) -> OpenNamespace:
-        return OpenNamespace()

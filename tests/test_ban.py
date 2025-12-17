@@ -4,7 +4,7 @@ import discord
 
 
 @pytest.mark.asyncio
-async def test_ban_user(bot: discord.Client):
+async def test_ban_user(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     member = guild.members[0]
     await guild.ban(member)
@@ -13,7 +13,7 @@ async def test_ban_user(bot: discord.Client):
 
 
 @pytest.mark.asyncio
-async def test_unban_user(bot: discord.Client):
+async def test_unban_user(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     member = guild.members[0]
     await guild.ban(member)

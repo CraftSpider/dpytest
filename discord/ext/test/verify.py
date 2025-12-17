@@ -235,9 +235,9 @@ class VerifyActivity:
     """
 
     _activity: discord.activity.ActivityTypes | None | Undef
-    _name: str | Undef
-    _url: str | Undef
-    _type: discord.ActivityType | Undef
+    _name: str | None | Undef
+    _url: str | None | Undef
+    _type: discord.ActivityType | None | Undef
 
     def __init__(self) -> None:
         self._used = False
@@ -281,7 +281,7 @@ class VerifyActivity:
 
         return True
 
-    def matches(self, activity: discord.activity.ActivityTypes) -> 'VerifyActivity':
+    def matches(self, activity: discord.activity.ActivityTypes | None) -> 'VerifyActivity':
         """
             Ensure that the bot activity exactly matches the passed activity. Most restrictive possible check.
 
@@ -293,7 +293,7 @@ class VerifyActivity:
         self._activity = activity
         return self
 
-    def name(self, name: str) -> 'VerifyActivity':
+    def name(self, name: str | None) -> 'VerifyActivity':
         """
             Check that the activity name matches the input
 
@@ -305,7 +305,7 @@ class VerifyActivity:
         self._name = name
         return self
 
-    def url(self, url: str) -> 'VerifyActivity':
+    def url(self, url: str | None) -> 'VerifyActivity':
         """
             Check the the activity url matches the input
 
@@ -317,7 +317,7 @@ class VerifyActivity:
         self._url = url
         return self
 
-    def type(self, type: discord.ActivityType) -> 'VerifyActivity':
+    def type(self, type: discord.ActivityType | None) -> 'VerifyActivity':
         """
             Check the activity type matches the input
 
@@ -336,7 +336,7 @@ class Verify:
         intermediate step for the return of verify().
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def message(self) -> VerifyMessage:

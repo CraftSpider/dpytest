@@ -4,7 +4,7 @@ import discord.ext.test as dpytest  # noqa: F401
 
 
 @pytest.mark.asyncio
-async def test_configure_guilds(bot):
+async def test_configure_guilds(bot: discord.Client) -> None:
     dpytest.configure(bot, guilds=2)
     assert len(bot.guilds) == 2
     assert bot.guilds[0].name == "Test Guild 0"
@@ -23,12 +23,12 @@ async def test_configure_guilds(bot):
 
 
 @pytest.mark.asyncio
-async def test_configure_text_channels(bot):
+async def test_configure_text_channels(bot: discord.Client) -> None:
     dpytest.configure(bot, text_channels=3)
     guild = bot.guilds[0]
     assert len(guild.text_channels) == 3
-    for num, channel in enumerate(guild.text_channels):
-        assert channel.name == f"TextChannel_{num}"
+    for num, chan in enumerate(guild.text_channels):
+        assert chan.name == f"TextChannel_{num}"
 
     dpytest.configure(bot, text_channels=["Fruits", "Videogames", "Coding", "Fun"])
     guild = bot.guilds[0]
@@ -40,18 +40,19 @@ async def test_configure_text_channels(bot):
 
     # we can even use discord.utils.get
     channel = discord.utils.get(guild.text_channels, name='Videogames')
+    assert channel is not None
     assert channel.name == "Videogames"
     await channel.send("Test Message")
     assert dpytest.verify().message().content("Test Message")
 
 
 @pytest.mark.asyncio
-async def test_configure_voice_channels(bot):
+async def test_configure_voice_channels(bot: discord.Client) -> None:
     dpytest.configure(bot, voice_channels=3)
     guild = bot.guilds[0]
     assert len(guild.voice_channels) == 3
-    for num, channel in enumerate(guild.voice_channels):
-        assert channel.name == f"VoiceChannel_{num}"
+    for num, chan in enumerate(guild.voice_channels):
+        assert chan.name == f"VoiceChannel_{num}"
 
     dpytest.configure(bot, voice_channels=["Fruits", "Videogames", "Coding", "Fun"])
     guild = bot.guilds[0]
@@ -63,11 +64,12 @@ async def test_configure_voice_channels(bot):
 
     # we can even use discord.utils.get
     channel = discord.utils.get(guild.voice_channels, name='Videogames')
+    assert channel is not None
     assert channel.name == "Videogames"
 
 
 @pytest.mark.asyncio
-async def test_configure_members(bot):
+async def test_configure_members(bot: discord.Client) -> None:
     dpytest.configure(bot, members=3)
     guild = bot.guilds[0]
     assert len(guild.members) == 3 + 1  # because the bot is a member too
@@ -84,19 +86,22 @@ async def test_configure_members(bot):
 
     # we can even use discord.utils.get
     william_member = discord.utils.get(guild.members, name='William')
+    assert  william_member is not None
     assert william_member.name == "William"
 
 
 @pytest.mark.asyncio
 @pytest.mark.cogs("cogs.echo")
-async def test_configure_all(bot) -> None:
+async def test_configure_all(bot: discord.Client) -> None:
     dpytest.configure(bot,
                       guilds=["CoolGuild", "LameGuild"],
                       text_channels=["Fruits", "Videogames"], voice_channels=["Apples", "Bananas"],
                       members=["Joe", "Jack", "William", "Averell"])
     guild = bot.guilds[1]
-    channel: discord.TextChannel = discord.utils.get(guild.text_channels, name='Videogames')
-    jack: discord.Member = discord.utils.get(guild.members, name="Jack")
+    channel = discord.utils.get(guild.text_channels, name='Videogames')
+    assert channel is not None
+    jack = discord.utils.get(guild.members, name="Jack")
+    assert jack is not None
     mess = await dpytest.message("!echo Hello, my name is Jack", channel=channel, member=jack)
     assert mess.author.name == "Jack"
     assert mess.channel.name == "Videogames"  # type: ignore[union-attr]

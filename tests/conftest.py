@@ -1,13 +1,16 @@
 from pathlib import Path
+from typing import Coroutine, AsyncGenerator
+
 import pytest_asyncio
 import discord
 import discord.ext.commands as commands
 import discord.ext.test as dpytest
+from pytest import FixtureRequest, Session
 from discord.client import _LoopSentinel
 
 
 @pytest_asyncio.fixture
-async def bot(request) -> commands.Bot:
+async def bot(request: FixtureRequest) -> commands.Bot:
     intents = discord.Intents.default()
     intents.members = True
     intents.message_content = True
@@ -32,12 +35,12 @@ async def bot(request) -> commands.Bot:
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def cleanup():
+async def cleanup() -> AsyncGenerator[None, None]:
     yield
     await dpytest.empty_queue()
 
 
-def pytest_sessionfinish(session, exitstatus):
+def pytest_sessionfinish() -> None:
     """ Code to execute after all tests. """
 
     # dat files are created when using attachements

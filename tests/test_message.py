@@ -4,12 +4,12 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_messasge(bot) -> None:
+async def test_messasge(bot: discord.Client) -> None:
     """Test make_message_dict from factory.
     """
     guild = bot.guilds[0]
     author: discord.Member = guild.members[0]
-    channel = guild.channels[0]
+    channel: discord.TextChannel = guild.channels[0]  # type: ignore[assignment]
     attach: discord.Attachment = discord.Attachment(
         state=dpytest.back.get_state(),
         data=dpytest.back.facts.make_attachment_dict(

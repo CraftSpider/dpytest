@@ -1,10 +1,11 @@
+import discord
 import pytest
 import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
 @pytest.mark.cogs("cogs.greeting")
-async def test_member_join(bot):
+async def test_member_join(bot: discord.Client) -> None:
     """Dont use this in your code, it's just dummy test.
     Use verify_message() instead of 'get_message' and 'message.content'
     """

@@ -4,20 +4,20 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_create_voice_channel(bot):
+async def test_create_voice_channel(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     http = bot.http
 
     # create_channel checks the value of variables in the parent call context, so we need to set these for it to work
     self = guild  # noqa: F841
     name = "voice_channel_1"
-    channel = await http.create_channel(guild, channel_type=discord.ChannelType.voice.value)
+    channel = await http.create_channel(guild.id, channel_type=discord.ChannelType.voice.value)
     assert channel['type'] == discord.ChannelType.voice.value
     assert channel['name'] == name
 
 
 @pytest.mark.asyncio
-async def test_make_voice_channel(bot):
+async def test_make_voice_channel(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     bitrate = 100
     user_limit = 5

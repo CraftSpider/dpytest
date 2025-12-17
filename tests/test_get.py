@@ -4,7 +4,7 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_get_message(bot):
+async def test_get_message(bot: discord.Client) -> None:
     """Dont use this in your code, it's just dummy test.
     Use verify_message() instead of 'get_message' and 'message.content'
     """
@@ -17,7 +17,7 @@ async def test_get_message(bot):
 
 
 @pytest.mark.asyncio
-async def test_get_message_peek(bot):
+async def test_get_message_peek(bot: discord.Client) -> None:
     """Dont use this in your code, it's just dummy test.
     Use verify_message() instead of 'get_message' and 'message.content'
     """
@@ -30,7 +30,7 @@ async def test_get_message_peek(bot):
 
 
 @pytest.mark.asyncio
-async def test_get_embed(bot):
+async def test_get_embed(bot: discord.Client) -> None:
     """Dont use this in your code, it's just dummy test.
     Use verify_embed() instead of 'get_embed'
     """
@@ -46,7 +46,7 @@ async def test_get_embed(bot):
 
 
 @pytest.mark.asyncio
-async def test_get_embed_peek(bot):
+async def test_get_embed_peek(bot: discord.Client) -> None:
     """Dont use this in your code, it's just dummy test.
     Use verify_embed() instead of 'get_embed'
     """
