@@ -3,7 +3,8 @@
     hooking of its methods to update the backend and provide callbacks.
 """
 
-import typing
+from typing import Any
+
 import discord
 import discord.gateway as gateway
 
@@ -18,10 +19,10 @@ class FakeWebSocket(gateway.DiscordWebSocket):
     """
 
     cur_event: CallbackEvent | None
-    event_args: tuple[typing.Any, ...]
-    event_kwargs: dict[str, typing.Any]
+    event_args: tuple[Any, ...]
+    event_kwargs: dict[str, Any]
 
-    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.cur_event = None
         self.event_args = ()

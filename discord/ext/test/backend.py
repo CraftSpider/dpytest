@@ -20,7 +20,7 @@ import urllib.parse
 import urllib.request
 
 from requests import Response
-from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload
+from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable
 
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 from ._types import Undef, undefined
@@ -85,18 +85,26 @@ class FakeHttp(dhttp.HTTPClient):
 
         super().__init__(connector=None, loop=loop)
 
-    async def request(self, *args: Any, **kwargs: Any) -> NoReturn:
+    async def request(
+            self,
+            route: discord.http.Route,
+            *,
+            files: Sequence[discord.File] | None = None,
+            form: Iterable[dict[str, Any]] | None = None,
+            **kwargs: Any,
+    ) -> NoReturn:
         """
             Overloaded to raise a NotImplemented error informing the user that the requested operation
             isn't yet supported by ``dpytest``. To fix this, the method call that triggered this error should be
             overloaded below to instead trigger a callback and call the appropriate backend function.
 
-        :param args: Arguments provided to the request
-        :param kwargs: Keyword arguments provided to the request
+        :param route: The route to request
+        :param files: Sequence of files in the request
+        :param form: Form input data
+        :param kwargs: Any other request arguments
         """
-        route: discord.http.Route = args[0]
         raise NotImplementedError(
-            f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
+            f"Operation occurred that isn't captured by the tests framework. This is dpytest's fault, please report"
             f"an issue on github. Debug Info: {route.method} {route.url} with {kwargs}"
         )
 
@@ -141,7 +149,7 @@ class FakeHttp(dhttp.HTTPClient):
         if channel.type.value == discord.ChannelType.voice.value:
             delete_channel(channel)
 
-    async def get_channel(self, channel_id: Snowflake) -> _types.channel.GuildChannel:
+    async def get_channel(self, channel_id: Snowflake) -> _types.channel.Channel:
         await callbacks.dispatch_event(CallbackEvent.get_channel, channel_id)
 
         find = None
@@ -571,6 +579,8 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         client: discord.Client = locs["self"]
         guild = discord.utils.get(client.guilds, id=guild_id)
+        if guild is None:
+            raise RuntimeError(f"Couldn't find guild with ID {guild_id} in test client")
         return facts.dict_from_object(guild)
 
 
@@ -720,7 +730,7 @@ def update_role(
     :param name: New name for the role
     :return: Role that was updated
     """
-    data = {
+    data: _types.gateway._GuildRoleEvent = {
         "guild_id": role.guild.id,
         "role": facts.dict_from_object(role),
     }
@@ -731,8 +741,7 @@ def update_role(
     if colors is not None:
         data["role"]["colors"] = colors
     if permissions is not None:
-        data["role"]["permissions"] = int(permissions)
-        data["role"]["permissions_new"] = int(permissions)
+        data["role"]["permissions"] = str(permissions)
 
     if hoist is not None:
         data["role"]["hoist"] = hoist
@@ -835,7 +844,7 @@ def update_text_channel(
         if existing:
             ovr.remove(existing[0])
         if override:
-            ovr = ovr + [facts.dict_from_overwrite(target, override)]
+            ovr = ovr + [facts.dict_from_object(override, target=target)]
         c_dict["permission_overwrites"] = ovr
 
     state = get_state()
@@ -882,7 +891,7 @@ def update_member(member: discord.Member, nick: str | None = None,
         data["roles"] = list(map(lambda x: x.id, roles))
 
     state = get_state()
-    state.parse_guild_member_update(data)
+    state.parse_guild_member_update(data)  # type: ignore[arg-type]
 
     return member
 
@@ -890,7 +899,7 @@ def update_member(member: discord.Member, nick: str | None = None,
 def delete_member(member: discord.Member) -> None:
     out = facts.dict_from_object(member)
     state = get_state()
-    state.parse_guild_member_remove(out)
+    state.parse_guild_member_remove(out)  # type: ignore[arg-type]
 
 
 def make_message(
@@ -940,7 +949,7 @@ def edit_message(
     #     return self.request(r, files=params.files, form=params.multipart)
     # else:
     #     return self.request(r, json=params.payload)
-    data.update(payload)
+    data.update(payload)  # type: ignore[typeddict-item]
 
     config = get_config()
     i = 0
@@ -961,7 +970,7 @@ def find_member_mentions(content: str | None, guild: discord.Guild | None) -> li
     if guild is None or content is None:
         return []  # TODO: Check for dm user mentions
     matches = re.findall(MEMBER_MENTION, content)
-    return [discord.utils.get(guild.members, id=match) for match in matches]  # type: ignore[misc]
+    return [discord.utils.get(guild.members, id=int(match)) for match in matches]  # type: ignore[misc]
 
 
 def find_role_mentions(content: str | None, guild: discord.Guild | None) -> list[Snowflake]:
@@ -977,7 +986,7 @@ def find_channel_mentions(content: str | None,
     if guild is None or content is None:
         return []
     matches = re.findall(CHANNEL_MENTION, content)
-    return [discord.utils.get(guild.channels, mention=match) for match in matches]  # type: ignore[misc]
+    return [discord.utils.get(guild.channels, id=int(match)) for match in matches]  # type: ignore[misc]
 
 
 def delete_message(message: discord.Message) -> None:
@@ -1170,7 +1179,7 @@ def configure(client: discord.Client | None, *, use_dummy: bool = False) -> None
     :param client: Client to use, or None
     :param use_dummy: Whether to use a dummy if client param is None, or error
     """
-    global _cur_config, _messages
+    global _cur_config
 
     if client is None and use_dummy:
         log.info("None passed to backend configuration, dummy client will be used")

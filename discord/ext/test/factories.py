@@ -3,10 +3,15 @@
     for the rest of the library, which often needs to convert between objects and JSON at various stages.
 """
 import functools
-import typing
 import datetime as dt
+from typing import Any, Literal, overload, Iterable, Protocol, NoReturn, Callable, ParamSpec, TypeVar
+
 import discord
 from . import _types
+
+
+P = ParamSpec('P')
+T = TypeVar('T')
 
 generated_ids: int = 0
 
@@ -28,66 +33,66 @@ def make_id() -> int:
     return int(discord_epoch + worker + process + generated, 2)
 
 
-@typing.overload
+@overload
 def _fill_optional(
         data: _types.user.User,
         obj: discord.user.BaseUser | dict[str, object],
-        items: typing.Iterable[str]
+        items: Iterable[str]
 ) -> None: ...
 
 
-@typing.overload
+@overload
 def _fill_optional(
         data: _types.member.Member | _types.member.MemberWithUser,
         obj: discord.Member | dict[str, object],
-        items: typing.Iterable[str]
+        items: Iterable[str]
 ) -> None: ...
 
 
-@typing.overload
+@overload
 def _fill_optional(
         data: _types.guild.Guild,
         obj: discord.Guild | dict[str, object],
-        items: typing.Iterable[str]
+        items: Iterable[str]
 ) -> None: ...
 
 
-@typing.overload
+@overload
 def _fill_optional(
         data: _types.channel.PartialChannel,
         obj: _types.AnyChannel | dict[str, object],
-        items: typing.Iterable[str]
+        items: Iterable[str]
 ) -> None: ...
 
 
-@typing.overload
+@overload
 def _fill_optional(
         data: _types.message.Message,
         obj: discord.Message | dict[str, object],
-        items: typing.Iterable[str]
+        items: Iterable[str]
 ) -> None: ...
 
 
-@typing.overload
+@overload
 def _fill_optional(
         data: _types.emoji.Emoji,
         obj: discord.Emoji | dict[str, object],
-        items: typing.Iterable[str]
+        items: Iterable[str]
 ) -> None: ...
 
 
-@typing.overload
+@overload
 def _fill_optional(
         data: _types.sticker.GuildSticker,
         obj: discord.GuildSticker | dict[str, object],
-        items: typing.Iterable[str]
+        items: Iterable[str]
 ) -> None: ...
 
 
 def _fill_optional(  # type: ignore[misc]
         data: dict[str, object],
         obj: object | dict[str, object],
-        items: typing.Iterable[str]
+        items: Iterable[str]
 ) -> None:
     if isinstance(obj, dict):
         for item in items:
@@ -104,7 +109,7 @@ def _fill_optional(  # type: ignore[misc]
 
 
 def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num: int = -1, flags: int = 0,
-                   **kwargs: typing.Any) -> _types.user.User:
+                   **kwargs: Any) -> _types.user.User:
     if isinstance(discrim, int):
         assert 0 < discrim < 10000
         discrim = f"{discrim:04}"
@@ -120,7 +125,7 @@ def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num
         'avatar': avatar,
         'flags': flags,
     }
-    items: typing.Final = ("bot", "mfa_enabled", "locale", "verified", "email", "premium_type")
+    items = ("bot", "mfa_enabled", "locale", "verified", "email", "premium_type")
     _fill_optional(out, kwargs, items)
     return out
 
@@ -132,7 +137,7 @@ def make_member_dict(
         deaf: bool = False,
         mute: bool = False,
         flags: int = 0,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> _types.member.MemberWithUser:
     out: _types.member.MemberWithUser = {
         'user': dict_from_object(user),
@@ -149,7 +154,7 @@ def make_member_dict(
 
 def user_with_member(user: discord.User | discord.Member) -> _types.member.UserWithMember:
     if isinstance(user, discord.Member):
-        member: _types.member.Member | None = dict_from_object(user)
+        member: _types.member.MemberWithUser | None = dict_from_object(user)
         user = user._user
     else:
         member = None
@@ -159,8 +164,62 @@ def user_with_member(user: discord.User | discord.Member) -> _types.member.UserW
     return out
 
 
-@functools.singledispatch
-def dict_from_object(obj: object) -> typing.Any:
+class DictFromObject(Protocol):
+    @overload
+    def __call__(self, obj: discord.user.BaseUser) -> _types.member.UserWithMember: ...
+    @overload
+    def __call__(self, obj: discord.Member) -> _types.member.MemberWithUser: ...
+    @overload
+    def __call__(self, obj: discord.Role) -> _types.role.Role: ...
+
+    @overload
+    def __call__(self, obj: discord.TextChannel) -> _types.channel.TextChannel: ...
+    @overload
+    def __call__(self, obj: discord.DMChannel) -> _types.channel.DMChannel: ...
+    @overload
+    def __call__(self, obj: discord.CategoryChannel) -> _types.channel.CategoryChannel: ...
+    @overload
+    def __call__(self, obj: discord.VoiceChannel) -> _types.channel.VoiceChannel: ...
+    @overload
+    def __call__(self, obj: _types.AnyChannel) -> _types.channel.Channel: ...
+
+    @overload
+    def __call__(self, obj: discord.Message) -> _types.message.Message: ...
+    @overload
+    def __call__(self, obj: discord.Attachment) -> _types.message.Attachment: ...
+    @overload
+    def __call__(self, obj: discord.Emoji) -> _types.emoji.Emoji: ...
+
+    @overload
+    def __call__(self, obj: discord.GuildSticker) -> _types.sticker.GuildSticker: ...
+    @overload
+    def __call__(self, obj: discord.Sticker) -> _types.sticker.Sticker: ...
+
+    @overload
+    def __call__(self, obj: discord.StageInstance) -> _types.guild.StageInstance: ...
+    @overload
+    def __call__(self, obj: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent: ...
+    @overload
+    def __call__(self, obj: discord.Guild) -> _types.guild.Guild: ...
+
+    @overload
+    def __call__(
+            self,
+            obj: discord.PermissionOverwrite,
+            *,
+            target: discord.Member | discord.Role | discord.Object,
+    ) -> _types.channel.PermissionOverwrite: ...
+
+    def __call__(self, obj: object, **_kwargs: Any) -> NoReturn: ...
+
+    def register(self, ty: type) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
+
+
+dict_from_object: DictFromObject
+
+
+@functools.singledispatch  # type: ignore[no-redef]
+def dict_from_object(obj: object, **_kwargs: Any) -> Any:
     raise TypeError(f"Unrecognized discord model type {type(obj)}")
 
 
@@ -224,7 +283,7 @@ def _from_text_channel(channel: discord.TextChannel) -> _types.channel.TextChann
         'position': channel.position,
         'id': channel.id,
         'guild_id': channel.guild.id,
-        'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+        'permission_overwrites': [dict_from_object(v, target=k) for k, v in channel.overwrites.items()],
         'type': channel.type.value,
         'parent_id': channel.category_id,
         'nsfw': channel.nsfw,
@@ -250,7 +309,7 @@ def _from_category_channel(channel: discord.CategoryChannel) -> _types.channel.C
         'position': channel.position,
         'id': channel.id,
         'guild_id': channel.guild.id,
-        'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+        'permission_overwrites': [dict_from_object(v, target=k) for k, v in channel.overwrites.items()],
         'type': channel.type.value,
         'nsfw': channel.nsfw,
         'parent_id': channel.category_id,
@@ -264,7 +323,7 @@ def _from_voice_channel(channel: discord.VoiceChannel) -> _types.channel.VoiceCh
         'position': channel.position,
         'id': channel.id,
         'guild_id': channel.guild.id,
-        'permission_overwrites': [dict_from_overwrite(k, v) for k, v in channel.overwrites.items()],
+        'permission_overwrites': [dict_from_object(v, target=k) for k, v in channel.overwrites.items()],
         'type': channel.type.value,
         'nsfw': channel.nsfw,
         'parent_id': channel.category_id,
@@ -276,7 +335,7 @@ def _from_voice_channel(channel: discord.VoiceChannel) -> _types.channel.VoiceCh
 @dict_from_object.register(discord.Message)
 def _from_message(message: discord.Message) -> _types.message.Message:
     if isinstance(message.author, discord.Member):
-        member: _types.member.Member | None = dict_from_object(message.author)
+        member: _types.member.MemberWithUser | None = dict_from_object(message.author)
         user = message.author._user
     else:
         member = None
@@ -299,7 +358,7 @@ def _from_message(message: discord.Message) -> _types.message.Message:
         'type': message.type.value,  # type: ignore[typeddict-item]
     }
     if member:
-        out['member'] = member
+        out['member'] = {**member}
 
     items = ('content', 'pinned', 'activity',
              'mention_everyone', 'tts', 'type', 'nonce')
@@ -469,6 +528,22 @@ def _from_guild(guild: discord.Guild) -> _types.guild.Guild:
     }
 
 
+@dict_from_object.register(discord.PermissionOverwrite)
+def _from_overwrite(
+        overwrite: discord.PermissionOverwrite,
+        *,
+        target: discord.Member | discord.Role | discord.Object,
+) -> _types.channel.PermissionOverwrite:
+    allow, deny = overwrite.pair()
+    ovr: _types.channel.PermissionOverwrite = {
+        'id': target.id,
+        'allow': str(allow.value),
+        'deny': str(deny.value),
+        'type': 0 if isinstance(target, discord.Role) else 1
+    }
+    return ovr
+
+
 # discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
 def make_role_dict(
         name: str,
@@ -509,42 +584,42 @@ def make_role_dict(
     }
 
 
-@typing.overload
+@overload
 def make_channel_dict(
-        ctype: typing.Literal[0],
+        ctype: Literal[0],
         id_num: int = ...,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> _types.channel.TextChannel: ...
 
 
-@typing.overload
+@overload
 def make_channel_dict(
-        ctype: typing.Literal[1],
+        ctype: Literal[1],
         id_num: int = ...,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> _types.channel.DMChannel: ...
 
 
-@typing.overload
+@overload
 def make_channel_dict(
-        ctype: typing.Literal[2],
+        ctype: Literal[2],
         id_num: int = ...,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> _types.channel.VoiceChannel: ...
 
 
-@typing.overload
+@overload
 def make_channel_dict(
-        ctype: typing.Literal[4],
+        ctype: Literal[4],
         id_num: int = ...,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> _types.channel.CategoryChannel: ...
 
 
 def make_channel_dict(
-        ctype: typing.Literal[0, 1, 2, 3, 4],
+        ctype: Literal[0, 1, 2, 3, 4],
         id_num: int = -1,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> _types.channel.Channel:
     if id_num < 0:
         id_num = make_id()
@@ -560,32 +635,20 @@ def make_channel_dict(
     return out  # type: ignore[return-value]
 
 
-def make_text_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -> _types.channel.TextChannel:
+def make_text_channel_dict(name: str, id_num: int = -1, **kwargs: Any) -> _types.channel.TextChannel:
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
 
-def make_category_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -> _types.channel.CategoryChannel:
+def make_category_channel_dict(name: str, id_num: int = -1, **kwargs: Any) -> _types.channel.CategoryChannel:
     return make_channel_dict(discord.ChannelType.category.value, id_num, name=name, **kwargs)
 
 
-def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: typing.Any) -> _types.channel.DMChannel:
+def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: Any) -> _types.channel.DMChannel:
     return make_channel_dict(discord.ChannelType.private.value, id_num, recipients=[dict_from_object(user)], **kwargs)
 
 
-def make_voice_channel_dict(name: str, id_num: int = -1, **kwargs: typing.Any) -> _types.channel.VoiceChannel:
+def make_voice_channel_dict(name: str, id_num: int = -1, **kwargs: Any) -> _types.channel.VoiceChannel:
     return make_channel_dict(discord.ChannelType.voice.value, id_num, name=name, **kwargs)
-
-
-def dict_from_overwrite(target: discord.Member | discord.Role | discord.Object,
-                        overwrite: discord.PermissionOverwrite) -> _types.channel.PermissionOverwrite:
-    allow, deny = overwrite.pair()
-    ovr: _types.channel.PermissionOverwrite = {
-        'id': target.id,
-        'allow': str(allow.value),
-        'deny': str(deny.value),
-        'type': 0 if isinstance(target, discord.Role) else 1
-    }
-    return ovr
 
 
 # TODO: Convert reactions, activity, and application to a dict.
@@ -605,7 +668,7 @@ def make_message_dict(
         embeds: list[discord.Embed] | None = None,
         pinned: bool = False,
         type: int = 0,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> _types.message.Message:
     if mentions is None:
         mentions = []
@@ -706,14 +769,14 @@ def make_guild_dict(
         region: str = "en_north",
         afk_channel_id: int | None = None,
         afk_timeout: int = 600,
-        verification_level: typing.Literal[0, 1, 2, 3, 4] = 0,
-        default_message_notifications: typing.Literal[0, 1] = 0,
-        explicit_content_filter: typing.Literal[0, 1, 2] = 0,
+        verification_level: Literal[0, 1, 2, 3, 4] = 0,
+        default_message_notifications: Literal[0, 1] = 0,
+        explicit_content_filter: Literal[0, 1, 2] = 0,
         features: list[_types.guild.GuildFeature] | None = None,
-        mfa_level: typing.Literal[0, 1] = 0,
+        mfa_level: Literal[0, 1] = 0,
         application_id: int | None = None,
         system_channel_id: int | None = None,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> _types.guild.Guild:
     if id_num < 0:
         id_num = make_id()

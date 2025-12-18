@@ -12,8 +12,9 @@
 import sys
 import asyncio
 import logging
+from typing import NamedTuple, Callable, Any
+
 import discord
-import typing
 import pathlib
 
 from itertools import count
@@ -28,7 +29,7 @@ from .callbacks import CallbackEvent
 from .utils import PeekableQueue
 
 
-class RunnerConfig(typing.NamedTuple):
+class RunnerConfig(NamedTuple):
     """
         Exposed discord test configuration
         Contains the current client, and lists of faked objects
@@ -52,7 +53,7 @@ T = TypeVar('T')
 P = ParamSpec('P')
 
 
-def require_config(func: typing.Callable[P, T]) -> typing.Callable[P, T]:
+def require_config(func: Callable[P, T]) -> Callable[P, T]:
     """
         Decorator to enforce that configuration is completed before the decorated function is
         called.
@@ -75,7 +76,7 @@ def require_config(func: typing.Callable[P, T]) -> typing.Callable[P, T]:
     return wrapper
 
 
-def _task_coro_name(task: asyncio.Task[typing.Any]) -> str | None:
+def _task_coro_name(task: asyncio.Task[Any]) -> str | None:
     """
         Uses getattr() to avoid AttributeErrors when the coroutine doesn't have a __name__
     """
@@ -163,7 +164,7 @@ async def _message_callback(message: discord.Message) -> None:
     await sent_queue.put(message)
 
 
-async def _edit_member_callback(fields: typing.Any, member: discord.Member, reason: str | None) -> None:
+async def _edit_member_callback(fields: Any, member: discord.Member, reason: str | None) -> None:
     """
         Internal callback. Updates a guild's voice states to reflect the given Member connecting to the given channel.
         Other updates to members are handled in http.edit_member().
@@ -237,7 +238,7 @@ async def set_permission_overrides(
         target: discord.Member | discord.Role | int,
         channel: discord.abc.GuildChannel | int,
         overrides: discord.PermissionOverwrite | None = None,
-        **kwargs: typing.Any,
+        **kwargs: Any,
 ) -> None:
     """
         Set the permission override for a channel, as if set by another user.
@@ -258,7 +259,7 @@ async def set_permission_overrides(
     if isinstance(channel, int):
         channel = get_config().channels[channel]
 
-    if not isinstance(channel, discord.abc.TextChannel):
+    if not isinstance(channel, discord.TextChannel):
         raise TypeError(f"channel '{channel}' must be a discord.TextChannel, not '{type(channel)}''")
     if not isinstance(target, (discord.abc.User, discord.Role)):
         raise TypeError(f"target '{target}' must be an abc.User or Role, not '{type(target)}''")

@@ -2,11 +2,10 @@
     Internal module for type-hinting aliases. Ensures single common definitions.
 """
 from enum import Enum
-from typing import Callable, Coroutine, Literal, Self, TypeVar, Any, ParamSpec, Protocol
-from mypy_extensions import VarArg, KwArg
+import typing
+from typing import Callable, Literal, Self, TypeVar, ParamSpec, Protocol
 
 import discord
-import typing
 
 T = TypeVar('T')
 P = ParamSpec('P')

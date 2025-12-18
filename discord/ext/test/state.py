@@ -4,9 +4,8 @@
 """
 
 import asyncio
-import typing
 from asyncio import Future
-from typing import TypeVar, ParamSpec, Any, Literal
+from typing import TypeVar, ParamSpec, Any, Literal, overload
 
 import discord
 import discord.http as dhttp
@@ -76,7 +75,7 @@ class FakeState(dstate.ConnectionState):
         guild = discord.utils.get(self.guilds, id=guild.id)  # type: ignore[assignment]
         return list(guild.members)
 
-    @typing.overload
+    @overload
     async def chunk_guild(
             self,
             guild: discord.Guild,
@@ -85,7 +84,7 @@ class FakeState(dstate.ConnectionState):
             cache: bool | None = ...,
     ) -> list[discord.Member]: ...
 
-    @typing.overload
+    @overload
     async def chunk_guild(
             self, guild: discord.Guild, *, wait: Literal[False] = ..., cache: bool | None = ...
     ) -> asyncio.Future[list[discord.Member]]: ...

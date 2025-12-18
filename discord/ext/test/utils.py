@@ -26,7 +26,7 @@ def activity_eq(act1: discord.activity.ActivityTypes | None, act2: discord.activ
         return act1 == act2
 
     match (act1, act2):
-        case (discord.Activity, discord.Activity):
+        case (discord.Activity(), discord.Activity()):
             return all([
                 act1.name == act2.name,
                 act1.url == act2.url,
@@ -34,18 +34,18 @@ def activity_eq(act1: discord.activity.ActivityTypes | None, act2: discord.activ
                 act1.details == act2.details,
                 act1.emoji == act2.emoji,
             ])
-        case (discord.Game, discord.Game):
+        case (discord.Game(), discord.Game()):
             return all([
                 act1.name == act2.name,
                 act1.platform == act2.platform,
                 act1.assets == act2.assets,
             ])
-        case (discord.CustomActivity, discord.CustomActivity):
+        case (discord.CustomActivity(), discord.CustomActivity()):
             return all([
                 act1.name == act2.name,
                 act1.emoji == act2.emoji,
             ])
-        case (discord.Streaming, discord.Streaming):
+        case (discord.Streaming(), discord.Streaming()):
             return all([
                 act1.platform == act2.platform,
                 act1.name == act2.name,
@@ -54,7 +54,7 @@ def activity_eq(act1: discord.activity.ActivityTypes | None, act2: discord.activ
                 act1.url == act2.url,
                 act1.assets == act2.assets,
             ])
-        case (discord.Spotify, discord.Spotify):
+        case (discord.Spotify(), discord.Spotify()):
             return all([
                 act1.title == act2.title,
                 act1.artist == act2.artist,

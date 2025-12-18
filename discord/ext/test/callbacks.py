@@ -5,7 +5,6 @@
 """
 
 import logging
-import typing
 import discord
 from enum import Enum
 from typing import Callable, overload, Literal, Any, Awaitable
@@ -51,7 +50,7 @@ class CallbackEvent(Enum):
 _callbacks: dict[CallbackEvent, Callback] = {}
 
 
-async def dispatch_event(event: CallbackEvent, *args: typing.Any, **kwargs: typing.Any) -> None:
+async def dispatch_event(event: CallbackEvent, *args: Any, **kwargs: Any) -> None:
     """
         Dispatch an event to a set handler, if one exists. Will ignore handler errors,
         just print a log
