@@ -22,3 +22,11 @@ async def test_member_join(bot: discord.Client) -> None:
     await dpytest.run_all_events()  # requires for the cov Greeting listner to be executed  # noqa: E501
 
     assert dpytest.verify().message().content(f"Welcome {new_member.mention}.")
+
+
+@pytest.mark.asyncio
+async def test_fetch_members(bot: discord.Client) -> None:
+    guild = bot.guilds[0]
+
+    async for member in guild.fetch_members():
+        assert member.guild.id == guild.id

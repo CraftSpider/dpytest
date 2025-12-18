@@ -19,6 +19,7 @@ import pathlib
 import urllib.parse
 import urllib.request
 
+from discord.types import member
 from requests import Response
 from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable
 
@@ -378,6 +379,13 @@ class FakeHttp(dhttp.HTTPClient):
         await callbacks.dispatch_event(CallbackEvent.edit_member, fields, member, reason=reason)
         member = update_member(member, nick=fields.get('nick'), roles=fields.get('roles'))
         return facts.dict_from_object(member)
+
+    async def get_members(
+        self, guild_id: Snowflake, limit: int, after: Snowflake | None
+    ) -> list[member.MemberWithUser]:
+        locs = _get_higher_locs(1)
+        guild = locs["self"]
+        return list(map(facts.dict_from_object, guild.members))
 
     async def get_member(self, guild_id: Snowflake,
                          member_id: Snowflake) -> _types.member.MemberWithUser:
