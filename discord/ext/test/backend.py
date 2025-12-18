@@ -26,6 +26,8 @@ from . import factories as facts, state as dstate, callbacks, websocket, _types
 from ._types import Undef, undefined
 from discord.types.snowflake import Snowflake
 
+from .callbacks import CallbackEvent
+
 
 class BackendState(NamedTuple):
     """
@@ -140,7 +142,7 @@ class FakeHttp(dhttp.HTTPClient):
             delete_channel(channel)
 
     async def get_channel(self, channel_id: Snowflake) -> _types.channel.GuildChannel:
-        await callbacks.dispatch_event("get_channel", channel_id)
+        await callbacks.dispatch_event(CallbackEvent.get_channel, channel_id)
 
         find = None
         for guild in get_state().guilds:
@@ -155,7 +157,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         user = locs["self"]
 
-        await callbacks.dispatch_event("start_private_message", user)
+        await callbacks.dispatch_event(CallbackEvent.start_private_message, user)
 
         return facts.make_dm_channel_dict(user)
 
@@ -212,7 +214,7 @@ class FakeHttp(dhttp.HTTPClient):
                                attachments=attachments,
                                nonce=nonce
                                )
-        await callbacks.dispatch_event("send_message", message)
+        await callbacks.dispatch_event(CallbackEvent.send_message, message)
 
         return facts.dict_from_object(message)
 
@@ -220,14 +222,14 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         channel = locs.get("channel", None)
 
-        await callbacks.dispatch_event("send_typing", channel)
+        await callbacks.dispatch_event(CallbackEvent.send_typing, channel)
 
     async def delete_message(self, channel_id: Snowflake, message_id: Snowflake, *,
                              reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
         message = locs["self"]
 
-        await callbacks.dispatch_event("delete_message", message.channel, message, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.delete_message, message.channel, message, reason=reason)
 
         delete_message(message)
 
@@ -236,7 +238,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         message = locs["self"]
 
-        await callbacks.dispatch_event("edit_message", message.channel, message, fields)
+        await callbacks.dispatch_event(CallbackEvent.edit_message, message.channel, message, fields)
 
         return edit_message(message, **fields)
 
@@ -250,7 +252,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         emoji = emoji  # TODO: Turn this back into class?
 
-        await callbacks.dispatch_event("add_reaction", message, emoji)
+        await callbacks.dispatch_event(CallbackEvent.add_reaction, message, emoji)
 
         add_reaction(message, user, emoji)
 
@@ -261,7 +263,7 @@ class FakeHttp(dhttp.HTTPClient):
         message = locs["self"]
         member = locs["member"]
 
-        await callbacks.dispatch_event("remove_reaction", message, emoji, member)
+        await callbacks.dispatch_event(CallbackEvent.remove_reaction, message, emoji, member)
 
         remove_reaction(message, member, emoji)
 
@@ -271,7 +273,7 @@ class FakeHttp(dhttp.HTTPClient):
         message = locs["self"]
         member = locs["member"]
 
-        await callbacks.dispatch_event("remove_own_reaction", message, emoji, member)
+        await callbacks.dispatch_event(CallbackEvent.remove_own_reaction, message, emoji, member)
 
         remove_reaction(message, self.state.user, emoji)
 
@@ -285,7 +287,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         channel = locs["self"]
 
-        await callbacks.dispatch_event("get_message", channel, message_id)
+        await callbacks.dispatch_event(CallbackEvent.get_message, channel, message_id)
 
         messages = get_config().messages[int(channel_id)]
         find = next(filter(lambda m: m["id"] == message_id, messages), None)
@@ -304,7 +306,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         channel = locs["self"]
 
-        await callbacks.dispatch_event("logs_from", channel, limit, before=None, after=None, around=None)
+        await callbacks.dispatch_event(CallbackEvent.logs_from, channel, limit, before=None, after=None, around=None)
 
         messages = get_config().messages[int(channel_id)]
         if after is not None:
@@ -326,7 +328,7 @@ class FakeHttp(dhttp.HTTPClient):
         guild = locs["self"]
         member = locs["user"]
 
-        await callbacks.dispatch_event("kick", guild, member, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.kick, guild, member, reason=reason)
 
         delete_member(member)
 
@@ -337,7 +339,7 @@ class FakeHttp(dhttp.HTTPClient):
         guild = locs["self"]
         member = locs["user"]
 
-        await callbacks.dispatch_event("ban", guild, member, delete_message_days, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.ban, guild, member, delete_message_days, reason=reason)
 
         delete_member(member)
 
@@ -346,7 +348,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         guild = locs["self"]
         member = locs["user"]
-        await callbacks.dispatch_event("unban", guild, member, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.unban, guild, member, reason=reason)
 
     async def change_my_nickname(self, guild_id: Snowflake, nickname: str, *,
                                  reason: str | None = None) -> _types.member.Nickname:
@@ -355,7 +357,7 @@ class FakeHttp(dhttp.HTTPClient):
 
         me.nick = nickname
 
-        await callbacks.dispatch_event("change_nickname", nickname, me, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.change_nickname, nickname, me, reason=reason)
 
         return {"nick": nickname}
 
@@ -365,7 +367,7 @@ class FakeHttp(dhttp.HTTPClient):
         locs = _get_higher_locs(1)
         member = locs["self"]
 
-        await callbacks.dispatch_event("edit_member", fields, member, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.edit_member, fields, member, reason=reason)
         member = update_member(member, nick=fields.get('nick'), roles=fields.get('roles'))
         return facts.dict_from_object(member)
 
@@ -384,7 +386,7 @@ class FakeHttp(dhttp.HTTPClient):
         role = locs["self"]
         guild = role.guild
 
-        await callbacks.dispatch_event("edit_role", guild, role, fields, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.edit_role, guild, role, fields, reason=reason)
 
         update_role(role, **fields)
         return facts.dict_from_object(role)
@@ -395,7 +397,7 @@ class FakeHttp(dhttp.HTTPClient):
         role = locs["self"]
         guild = role.guild
 
-        await callbacks.dispatch_event("delete_role", guild, role, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.delete_role, guild, role, reason=reason)
 
         delete_role(role)
 
@@ -405,7 +407,7 @@ class FakeHttp(dhttp.HTTPClient):
         guild = locs["self"]
         role = make_role(guild=guild, **fields)
 
-        await callbacks.dispatch_event("create_role", guild, role, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.create_role, guild, role, reason=reason)
 
         return facts.dict_from_object(role)
 
@@ -416,7 +418,7 @@ class FakeHttp(dhttp.HTTPClient):
         role = locs["self"]
         guild = role.guild
 
-        await callbacks.dispatch_event("move_role", guild, role, positions, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.move_role, guild, role, positions, reason=reason)
 
         for pair in positions:
             guild._roles[pair["id"]].position = pair["position"]
@@ -428,7 +430,7 @@ class FakeHttp(dhttp.HTTPClient):
         member = locs["self"]
         role = locs["role"]
 
-        await callbacks.dispatch_event("add_role", member, role, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.add_role, member, role, reason=reason)
 
         roles = [role] + [x for x in member.roles if x.id != member.guild.id]
         update_member(member, roles=roles)
@@ -440,7 +442,7 @@ class FakeHttp(dhttp.HTTPClient):
         member = locs["self"]
         role = locs["role"]
 
-        await callbacks.dispatch_event("remove_role", member, role, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.remove_role, member, role, reason=reason)
 
         roles = [x for x in member.roles if x != role and x.id != member.guild.id]
         update_member(member, roles=roles)
@@ -463,7 +465,7 @@ class FakeHttp(dhttp.HTTPClient):
         }
 
         appinfo = discord.AppInfo(self.state, data)
-        await callbacks.dispatch_event("app_info", appinfo)
+        await callbacks.dispatch_event(CallbackEvent.app_info, appinfo)
 
         return data
 
@@ -540,7 +542,13 @@ class FakeHttp(dhttp.HTTPClient):
                          after: Snowflake | None = None,
                          with_counts: bool = True) -> list[_types.guild.Guild]:
         # self.request(Route('GET', '/users/@me/guilds')
-        await callbacks.dispatch_event("get_guilds", limit, before=before, after=after, with_counts=with_counts)
+        await callbacks.dispatch_event(
+            CallbackEvent.get_guilds,
+            limit,
+            before=before,
+            after=after,
+            with_counts=with_counts,
+        )
         guilds = get_state().guilds  # List[]
 
         guilds_new = [facts.dict_from_object(guild) for guild in guilds]

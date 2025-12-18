@@ -8,6 +8,7 @@ import discord
 import discord.gateway as gateway
 
 from . import callbacks
+from .callbacks import CallbackEvent
 
 
 class FakeWebSocket(gateway.DiscordWebSocket):
@@ -16,7 +17,7 @@ class FakeWebSocket(gateway.DiscordWebSocket):
         it simply triggers calls to the ``dpytest`` backend, as well as triggering runner callbacks.
     """
 
-    cur_event: str | None
+    cur_event: CallbackEvent | None
     event_args: tuple[typing.Any, ...]
     event_kwargs: dict[str, typing.Any]
 
@@ -42,6 +43,6 @@ class FakeWebSocket(gateway.DiscordWebSocket):
             status: str | None = None,
             since: float = 0.0
     ) -> None:
-        self.cur_event = "presence"
+        self.cur_event = CallbackEvent.presence
         self.event_args = (activity, status, since)
         await super().change_presence(activity=activity, status=status, since=since)

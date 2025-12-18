@@ -73,6 +73,7 @@ def embed_proxy_eq(embed_proxy1: discord.embeds.EmbedProxy, embed_proxy2: discor
 
 T = TypeVar('T')
 
+
 class PeekableQueue(asyncio.Queue[T]):
     """
         An extension of an asyncio queue with a peek message, so other code doesn't need to rely on unstable

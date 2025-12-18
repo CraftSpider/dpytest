@@ -24,6 +24,7 @@ from discord.ext.commands._types import BotT
 from typing_extensions import ParamSpec, TypeVar
 
 from . import backend as back, callbacks, _types
+from .callbacks import CallbackEvent
 from .utils import PeekableQueue
 
 
@@ -42,7 +43,9 @@ class RunnerConfig(typing.NamedTuple):
 log = logging.getLogger("discord.ext.tests")
 _cur_config: RunnerConfig | None = None
 sent_queue: PeekableQueue[discord.Message] = PeekableQueue()
-error_queue: PeekableQueue[tuple[commands.Context[commands.Bot | commands.AutoShardedBot], CommandError]] = PeekableQueue()
+error_queue: PeekableQueue[tuple[
+    commands.Context[commands.Bot | commands.AutoShardedBot], CommandError
+]] = PeekableQueue()
 
 
 T = TypeVar('T')
@@ -412,8 +415,8 @@ def configure(client: discord.Client,
     client.on_command_error = on_command_error  # type: ignore[attr-defined]
 
     # Configure global callbacks
-    callbacks.set_callback(_message_callback, "send_message")
-    callbacks.set_callback(_edit_member_callback, "edit_member")
+    callbacks.set_callback(_message_callback, CallbackEvent.send_message)
+    callbacks.set_callback(_edit_member_callback, CallbackEvent.edit_member)
 
     back.get_state().stop_dispatch()
 

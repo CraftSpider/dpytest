@@ -77,14 +77,25 @@ class FakeState(dstate.ConnectionState):
         return list(guild.members)
 
     @typing.overload
-    async def chunk_guild(self, guild: discord.Guild, *, wait: Literal[True] = ..., cache: bool | None = ...) -> list[discord.Member]: ...
+    async def chunk_guild(
+            self,
+            guild: discord.Guild,
+            *,
+            wait: Literal[True] = ...,
+            cache: bool | None = ...,
+    ) -> list[discord.Member]: ...
 
     @typing.overload
     async def chunk_guild(
             self, guild: discord.Guild, *, wait: Literal[False] = ..., cache: bool | None = ...
     ) -> asyncio.Future[list[discord.Member]]: ...
 
-    async def chunk_guild(self, guild: discord.Guild, *, wait: bool = True, cache: bool | None = None) -> list[discord.Member] | Future[list[discord.Member]]:
+    async def chunk_guild(
+            self,
+            guild: discord.Guild,
+            *, wait: bool = True,
+            cache: bool | None = None,
+    ) -> list[discord.Member] | Future[list[discord.Member]]:
         return []
 
     def _guild_needs_chunking(self, guild: discord.Guild) -> bool:
