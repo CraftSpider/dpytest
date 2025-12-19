@@ -51,6 +51,14 @@ def _fill_optional(
 
 @overload
 def _fill_optional(
+        data: _types.gateway.GuildMemberUpdateEvent,
+        obj: discord.Member | dict[str, object],
+        items: Iterable[str]
+) -> None: ...
+
+
+@overload
+def _fill_optional(
         data: _types.guild.Guild,
         obj: discord.Guild | dict[str, object],
         items: Iterable[str]
@@ -95,17 +103,36 @@ def _fill_optional(  # type: ignore[misc]
         items: Iterable[str]
 ) -> None:
     if isinstance(obj, dict):
-        for item in items:
-            result = obj.pop(item, None)
-            if result is None:
-                continue
-            data[item] = result
-        if len(obj) > 0:
-            print("Warning: Invalid attributes passed")
+        _fill_optional_dict(data, obj, items)
     else:
-        for item in items:
-            if hasattr(obj, item):
-                data[item] = getattr(obj, item)
+        _fill_optional_value(data, obj, items)
+
+
+def _fill_optional_dict(
+        data: dict[str, object],
+        obj: dict[str, object],
+        items: Iterable[str],
+) -> None:
+    for item in items:
+        result = obj.pop(item, None)
+        if result is None:
+            continue
+        data[item] = result
+    if len(obj) > 0:
+        print("Warning: Invalid attributes passed")
+
+
+def _fill_optional_value(
+        data: dict[str, object],
+        obj: object,
+        items: Iterable[str],
+) -> None:
+    for item in items:
+        if item == "permissions":
+            print()
+        if (val := getattr(obj, item, None)) is None and (val := getattr(obj, f"_{item}", None)) is None:
+            continue
+        data[item] = val
 
 
 def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num: int = -1, flags: int = 0,
@@ -125,7 +152,7 @@ def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num
         'avatar': avatar,
         'flags': flags,
     }
-    items = ("bot", "mfa_enabled", "locale", "verified", "email", "premium_type")
+    items = ("bot", "system", "mfa_enabled", "locale", "verified", "email", "premium_type", "public_flags")
     _fill_optional(out, kwargs, items)
     return out
 
@@ -147,7 +174,7 @@ def make_member_dict(
         'mute': mute,
         'flags': flags,
     }
-    items = ("nick",)
+    items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until", "avatar_decoration_data")
     _fill_optional(out, kwargs, items)
     return out
 
@@ -168,7 +195,11 @@ class DictFromObject(Protocol):
     @overload
     def __call__(self, obj: discord.user.BaseUser) -> _types.member.UserWithMember: ...
     @overload
-    def __call__(self, obj: discord.Member) -> _types.member.MemberWithUser: ...
+    def __call__(self, obj: discord.Member, *, guild: Literal[False] = ...) -> _types.member.MemberWithUser: ...
+    @overload
+    def __call__(self, obj: discord.Member, *, guild: Literal[True] = ...) -> _types.gateway.GuildMemberUpdateEvent: ...
+    @overload
+    def __call__(self, obj: discord.Member, *, guild: bool = ...) -> _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent: ...
     @overload
     def __call__(self, obj: discord.Role) -> _types.role.Role: ...
 
@@ -238,21 +269,36 @@ def _from_base_user(user: discord.user.BaseUser) -> _types.member.UserWithMember
 
 
 @dict_from_object.register(discord.Member)
-def _from_member(member: discord.Member) -> _types.member.MemberWithUser:
+def _from_member(member: discord.Member, *, guild: bool = False) -> _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent:
     # discord code adds default role to every member later on in Member constructor
     roles_no_default = list(filter(lambda r: not r == member.guild.default_role, member.roles))
-    out: _types.member.MemberWithUser = {
-        'guild_id': member.guild.id,  # type: ignore[typeddict-unknown-key]
-        'user': dict_from_object(member._user),
-        'roles': list(map(lambda role: int(role.id), roles_no_default)),
-        'joined_at': str(int(member.joined_at.timestamp())) if member.joined_at else None,
-        'flags': member.flags.value,
-        'deaf': member.voice.deaf if member.voice else False,
-        'mute': member.voice.mute if member.voice else False,
-    }
-    items = ("nick",)
-    _fill_optional(out, member, items)
-    return out
+    items: tuple[str, ...]
+    if guild:
+        out: _types.gateway.GuildMemberUpdateEvent = {
+            'guild_id': member.guild.id,
+            'user': dict_from_object(member._user),
+            'avatar': member.avatar.url if member.avatar else "",
+            'roles': list(map(lambda role: int(role.id), roles_no_default)),
+            'joined_at': str(int(member.joined_at.timestamp())) if member.joined_at else None,
+            'flags': member.flags.value,
+            'deaf': member.voice.deaf if member.voice else False,
+            'mute': member.voice.mute if member.voice else False,
+        }
+        items = ("nick", "premium_since", "pending", "permissions", "communication_disabled_until", "avatar_decoration_data")
+        _fill_optional(out, member, items)
+        return out
+    else:
+        mem_user: _types.member.MemberWithUser = {
+            'user': dict_from_object(member._user),
+            'roles': list(map(lambda role: int(role.id), roles_no_default)),
+            'joined_at': str(int(member.joined_at.timestamp())) if member.joined_at else None,
+            'flags': member.flags.value,
+            'deaf': member.voice.deaf if member.voice else False,
+            'mute': member.voice.mute if member.voice else False,
+        }
+        items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until", "avatar_decoration_data")
+        _fill_optional(mem_user, member, items)
+        return mem_user
 
 
 @dict_from_object.register(discord.Role)

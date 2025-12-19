@@ -55,3 +55,17 @@ async def test_remove_role2(bot: discord.Client) -> None:
     # then remove_role
     await dpytest.remove_role(0, staff_role)
     assert staff_role not in guild.members[0].roles
+
+
+@pytest.mark.asyncio
+async def test_member_add_roles(bot: discord.Client) -> None:
+    guild = bot.guilds[0]
+    member = guild.members[0]
+
+    staff_role = await guild.create_role(name="Staff")
+    user_role = await guild.create_role(name="User")
+
+    await member.add_roles(*[staff_role, user_role])
+
+    assert staff_role in member.roles
+    assert user_role in member.roles

@@ -130,7 +130,6 @@ class FakeHttp(dhttp.HTTPClient):
             channel = make_category_channel(name, guild, permission_overwrites=perms)
         elif channel_type == discord.ChannelType.voice.value:
             channel = make_voice_channel(name, guild, permission_overwrites=perms)
-
         else:
             raise NotImplementedError(
                 "Operation occurred that isn't captured by the tests framework. This is dpytest's fault, please report"
@@ -892,22 +891,22 @@ def make_member(user: discord.user.BaseUser, guild: discord.Guild,
 
 def update_member(member: discord.Member, nick: str | None = None,
                   roles: list[discord.Role] | None = None) -> discord.Member:
-    data = facts.dict_from_object(member)
+    data = facts.dict_from_object(member, guild=True)
     if nick is not None:
         data["nick"] = nick
     if roles is not None:
         data["roles"] = list(map(lambda x: x.id, roles))
 
     state = get_state()
-    state.parse_guild_member_update(data)  # type: ignore[arg-type]
+    state.parse_guild_member_update(data)
 
     return member
 
 
 def delete_member(member: discord.Member) -> None:
-    out = facts.dict_from_object(member)
+    out = facts.dict_from_object(member, guild=True)
     state = get_state()
-    state.parse_guild_member_remove(out)  # type: ignore[arg-type]
+    state.parse_guild_member_remove(out)
 
 
 def make_message(
