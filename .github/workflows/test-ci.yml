@@ -92,5 +92,5 @@ jobs:
       - name: Install self (dpytest)
         run: python -m pip install .
       - name: Run mypy
-        run: mypy
+        run: mypy --install-types --non-interactive
 
