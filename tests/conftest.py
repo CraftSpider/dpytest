@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Coroutine, AsyncGenerator
+from typing import AsyncGenerator
 
 import pytest_asyncio
 import discord
 import discord.ext.commands as commands
 import discord.ext.test as dpytest
-from pytest import FixtureRequest, Session
+from pytest import FixtureRequest
 from discord.client import _LoopSentinel
 
 

@@ -1,4 +1,3 @@
-from datetime import timedelta
 import discord
 import pytest
 import discord.ext.test as dpytest
@@ -38,4 +37,3 @@ async def test_message_poll(bot: discord.Client) -> None:
     message = dpytest.get_message()
     assert message.content == "Poll test"
     assert message.poll is not None
-

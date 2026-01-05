@@ -86,7 +86,7 @@ async def test_configure_members(bot: discord.Client) -> None:
 
     # we can even use discord.utils.get
     william_member = discord.utils.get(guild.members, name='William')
-    assert  william_member is not None
+    assert william_member is not None
     assert william_member.name == "William"
 
 
