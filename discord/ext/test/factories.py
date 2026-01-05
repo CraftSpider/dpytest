@@ -97,6 +97,14 @@ def _fill_optional(
 ) -> None: ...
 
 
+@overload
+def _fill_optional(
+        data: _types.poll.PollMedia,
+        obj: discord.PollMedia | dict[str, object],
+        items: Iterable[str]
+) -> None: ...
+
+
 def _fill_optional(  # type: ignore[misc]
         data: dict[str, object],
         obj: object | dict[str, object],
@@ -128,11 +136,12 @@ def _fill_optional_value(
         items: Iterable[str],
 ) -> None:
     for item in items:
-        if item == "permissions":
-            print()
         if (val := getattr(obj, item, None)) is None and (val := getattr(obj, f"_{item}", None)) is None:
             continue
-        data[item] = val
+        if isinstance(val, discord.Poll):
+            data[item] = dict_from_object(val)
+        else:
+            data[item] = val
 
 
 def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num: int = -1, flags: int = 0,
@@ -174,7 +183,8 @@ def make_member_dict(
         'mute': mute,
         'flags': flags,
     }
-    items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until", "avatar_decoration_data")
+    items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until",
+             "avatar_decoration_data")
     _fill_optional(out, kwargs, items)
     return out
 
@@ -198,8 +208,15 @@ class DictFromObject(Protocol):
     def __call__(self, obj: discord.Member, *, guild: Literal[False] = ...) -> _types.member.MemberWithUser: ...
     @overload
     def __call__(self, obj: discord.Member, *, guild: Literal[True] = ...) -> _types.gateway.GuildMemberUpdateEvent: ...
+
     @overload
-    def __call__(self, obj: discord.Member, *, guild: bool = ...) -> _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent: ...
+    def __call__(
+            self,
+            obj: discord.Member,
+            *,
+            guild: bool = ...,
+    ) -> _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent: ...
+
     @overload
     def __call__(self, obj: discord.Role) -> _types.role.Role: ...
 
@@ -241,6 +258,25 @@ class DictFromObject(Protocol):
             target: discord.Member | discord.Role | discord.Object,
     ) -> _types.channel.PermissionOverwrite: ...
 
+    @overload
+    def __call__(self, obj: discord.Poll) -> _types.poll.Poll: ...
+
+    @overload
+    def __call__(self, obj: discord.PollAnswer, *, count: Literal[True] = ...) -> _types.poll.PollAnswerCount: ...
+    @overload
+    def __call__(self, obj: discord.PollAnswer, *, count: Literal[False] = ...) -> _types.poll.PollAnswerWithID: ...
+
+    @overload
+    def __call__(
+            self,
+            obj: discord.PollAnswer,
+            *,
+            count: bool = False,
+    ) -> _types.poll.PollAnswerWithID | _types.poll.PollAnswerCount: ...
+
+    @overload
+    def __call__(self, obj: discord.PollMedia) -> _types.poll.PollMedia: ...
+
     def __call__(self, obj: object, **_kwargs: Any) -> NoReturn: ...
 
     def register(self, ty: type) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
@@ -269,7 +305,11 @@ def _from_base_user(user: discord.user.BaseUser) -> _types.member.UserWithMember
 
 
 @dict_from_object.register(discord.Member)
-def _from_member(member: discord.Member, *, guild: bool = False) -> _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent:
+def _from_member(
+        member: discord.Member,
+        *,
+        guild: bool = False,
+) -> _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent:
     # discord code adds default role to every member later on in Member constructor
     roles_no_default = list(filter(lambda r: not r == member.guild.default_role, member.roles))
     items: tuple[str, ...]
@@ -284,7 +324,8 @@ def _from_member(member: discord.Member, *, guild: bool = False) -> _types.membe
             'deaf': member.voice.deaf if member.voice else False,
             'mute': member.voice.mute if member.voice else False,
         }
-        items = ("nick", "premium_since", "pending", "permissions", "communication_disabled_until", "avatar_decoration_data")
+        items = ("nick", "premium_since", "pending", "permissions", "communication_disabled_until",
+                 "avatar_decoration_data")
         _fill_optional(out, member, items)
         return out
     else:
@@ -296,7 +337,8 @@ def _from_member(member: discord.Member, *, guild: bool = False) -> _types.membe
             'deaf': member.voice.deaf if member.voice else False,
             'mute': member.voice.mute if member.voice else False,
         }
-        items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until", "avatar_decoration_data")
+        items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until",
+                 "avatar_decoration_data")
         _fill_optional(mem_user, member, items)
         return mem_user
 
@@ -407,7 +449,7 @@ def _from_message(message: discord.Message) -> _types.message.Message:
         out['member'] = {**member}
 
     items = ('content', 'pinned', 'activity',
-             'mention_everyone', 'tts', 'type', 'nonce')
+             'mention_everyone', 'tts', 'type', 'nonce', 'poll')
     _fill_optional(out, message, items)
     return out
 
@@ -590,6 +632,51 @@ def _from_overwrite(
     return ovr
 
 
+@dict_from_object.register(discord.Poll)
+def _from_poll(poll: discord.Poll) -> _types.poll.Poll:
+    out: _types.poll.Poll = {
+        'allow_multiselect': poll.multiple,
+        'answers': [dict_from_object(answer, count=False) for answer in poll.answers],
+        'expiry': (poll.expires_at or (dt.datetime.now(tz=dt.timezone.utc) + poll.duration)).isoformat(),
+        'layout_type': poll.layout_type,  # type: ignore[typeddict-item]
+        'question': dict_from_object(poll._question_media),
+        'results': {
+            'is_finalized': poll.is_finalized(),
+            'answer_counts': [dict_from_object(answer, count=True) for answer in poll.answers],
+        },
+    }
+    return out
+
+
+@dict_from_object.register(discord.PollAnswer)
+def _from_poll_answer(
+        answer: discord.PollAnswer,
+        *,
+        count: bool = False,
+) -> _types.poll.PollAnswerWithID | _types.poll.PollAnswerCount:
+    if count:
+        return {
+            'id': answer.id,
+            'count': answer.vote_count,
+            'me_voted': answer.self_voted,
+        }
+    else:
+        return {
+            'answer_id': answer.id,
+            'poll_media': dict_from_object(answer.media),
+        }
+
+
+@dict_from_object.register(discord.PollMedia)
+def _from_poll_media(media: discord.PollMedia) -> _types.poll.PollMedia:
+    out: _types.poll.PollMedia = {
+        'text': media.text,
+    }
+    items = ("emoji",)
+    _fill_optional(out, media, items)
+    return out
+
+
 # discord.py 1.7 bump requires the 'permissions_new', but if we keep 'permissions' then we seem to work on pre 1.7
 def make_role_dict(
         name: str,
@@ -756,7 +843,7 @@ def make_message_dict(
         'pinned': pinned,
         'type': type,  # type: ignore[typeddict-item]
     }
-    items = ('guild_id', 'member', 'reactions', 'nonce', 'webhook_id', 'activity', 'application')
+    items = ('guild_id', 'member', 'reactions', 'nonce', 'webhook_id', 'activity', 'application', 'poll')
     _fill_optional(out, kwargs, items)
     return out
 

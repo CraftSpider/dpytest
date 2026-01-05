@@ -1,3 +1,4 @@
+from datetime import timedelta
 import discord
 import pytest
 import discord.ext.test as dpytest
@@ -27,3 +28,14 @@ async def test_messasge(bot: discord.Client) -> None:
         message: discord.Message = discord.Message(state=dpytest.back.get_state(), channel=channel, data=message_dict)  # noqa: E501,F841 (variable never used)
     except Exception as err:
         pytest.fail(str(err))
+
+
+@pytest.mark.asyncio
+@pytest.mark.cogs("cogs.poll")
+async def test_message_poll(bot: discord.Client) -> None:
+    """Test that messages with polls round-trip"""
+    await dpytest.message("!pollme")
+    message = dpytest.get_message()
+    assert message.content == "Poll test"
+    assert message.poll is not None
+

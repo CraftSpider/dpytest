@@ -177,6 +177,7 @@ class FakeHttp(dhttp.HTTPClient):
     ) -> _types.message.Message:
         locs = _get_higher_locs(1)
         channel = locs["channel"]
+        poll = locs["poll"]
 
         payload = params.payload
 
@@ -220,6 +221,7 @@ class FakeHttp(dhttp.HTTPClient):
                                tts=tts,
                                embeds=embeds,
                                attachments=attachments,
+                               poll=poll,
                                nonce=nonce
                                )
         await callbacks.dispatch_event(CallbackEvent.send_message, message)
@@ -916,6 +918,7 @@ def make_message(
         tts: bool = False,
         embeds: list[discord.Embed] | None = None,
         attachments: list[discord.Attachment] | None = None,
+        poll: discord.Poll | None = None,
         nonce: int | None = None,
         id_num: int = -1,
 ) -> discord.Message:
@@ -932,7 +935,8 @@ def make_message(
 
     data = facts.make_message_dict(
         channel, author, id_num, content=content, mentions=mentions, tts=tts, embeds=embeds, attachments=attachments,
-        mention_roles=role_mentions, mention_channels=channel_mentions, guild_id=guild_id, **kwargs
+        poll=facts.dict_from_object(poll) if poll else None, mention_roles=role_mentions,
+        mention_channels=channel_mentions, guild_id=guild_id, **kwargs
     )
 
     state = get_state()
