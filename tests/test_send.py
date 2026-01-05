@@ -4,7 +4,7 @@ import discord.ext.test as dpytest  # noqa: F401
 
 
 @pytest.mark.asyncio
-async def test_message(bot):
+async def test_message(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -12,7 +12,7 @@ async def test_message(bot):
 
 
 @pytest.mark.asyncio
-async def test_embed(bot):
+async def test_embed(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 

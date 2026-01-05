@@ -1,10 +1,11 @@
 import pytest
+import discord
 import discord.ext.test as dpytest  # noqa: F401
 from discord.utils import get
 
 
 @pytest.mark.asyncio
-async def test_get_channel(bot):
+async def test_get_channel(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel_0 = guild.channels[0]
 
@@ -14,11 +15,11 @@ async def test_get_channel(bot):
 
 
 @pytest.mark.asyncio
-async def test_get_channel_history(bot):
+async def test_get_channel_history(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel_0 = guild.channels[0]
 
-    channel_get = get(guild.channels, name=channel_0.name)
+    channel_get: discord.TextChannel | None = get(guild.channels, name=channel_0.name)  # type: ignore[assignment]
 
     assert channel_0 == channel_get
 

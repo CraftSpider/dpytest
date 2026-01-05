@@ -1,10 +1,11 @@
 
 import pytest
+import discord
 import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_user_mention(bot):
+async def test_user_mention(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     mes = await dpytest.message(f"<@{guild.me.id}>")
 
@@ -17,7 +18,7 @@ async def test_user_mention(bot):
 
 
 @pytest.mark.asyncio
-async def test_role_mention(bot):
+async def test_role_mention(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     role = await guild.create_role(name="Test Role")
     mes = await dpytest.message(f"<@&{role.id}>")
@@ -31,7 +32,7 @@ async def test_role_mention(bot):
 
 
 @pytest.mark.asyncio
-async def test_channel_mention(bot):
+async def test_channel_mention(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.channels[0]
     mes = await dpytest.message(f"<#{channel.id}>")
@@ -45,7 +46,8 @@ async def test_channel_mention(bot):
 
 
 @pytest.mark.asyncio
-async def test_bot_mention(bot):
+async def test_bot_mention(bot: discord.Client) -> None:
+    assert bot.user
     mes = await dpytest.message(f"<@{bot.user.id}>")
 
     assert len(mes.mentions) == 1

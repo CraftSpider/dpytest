@@ -4,12 +4,12 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_messasge(bot):
+async def test_messasge(bot: discord.Client) -> None:
     """Test make_message_dict from factory.
     """
     guild = bot.guilds[0]
     author: discord.Member = guild.members[0]
-    channel = guild.channels[0]
+    channel: discord.TextChannel = guild.channels[0]  # type: ignore[assignment]
     attach: discord.Attachment = discord.Attachment(
         state=dpytest.back.get_state(),
         data=dpytest.back.facts.make_attachment_dict(
@@ -27,3 +27,13 @@ async def test_messasge(bot):
         message: discord.Message = discord.Message(state=dpytest.back.get_state(), channel=channel, data=message_dict)  # noqa: E501,F841 (variable never used)
     except Exception as err:
         pytest.fail(str(err))
+
+
+@pytest.mark.asyncio
+@pytest.mark.cogs("cogs.poll")
+async def test_message_poll(bot: discord.Client) -> None:
+    """Test that messages with polls round-trip"""
+    await dpytest.message("!pollme")
+    message = dpytest.get_message()
+    assert message.content == "Poll test"
+    assert message.poll is not None

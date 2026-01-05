@@ -4,7 +4,7 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_embed(bot):
+async def test_embed(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -19,7 +19,7 @@ async def test_embed(bot):
 
 
 @pytest.mark.asyncio
-async def test_embed_KO(bot):
+async def test_embed_KO(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 
@@ -34,12 +34,12 @@ async def test_embed_KO(bot):
 
 
 @pytest.mark.asyncio
-async def test_embed_assert_nothing(bot):
+async def test_embed_assert_nothing(bot: discord.Client) -> None:
     assert dpytest.verify().message().nothing()
 
 
 @pytest.mark.asyncio
-async def test_embed_peek(bot):
+async def test_embed_peek(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     channel = guild.text_channels[0]
 

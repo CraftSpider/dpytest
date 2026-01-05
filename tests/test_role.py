@@ -4,7 +4,7 @@ import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_add_role(bot):
+async def test_add_role(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     staff_role = await guild.create_role(name="Staff")  # Role object
     member1 = guild.members[0]  # Member
@@ -14,7 +14,7 @@ async def test_add_role(bot):
 
 
 @pytest.mark.asyncio
-async def test_edit_role(bot):
+async def test_edit_role(bot: discord.Client) -> None:
     await test_add_role(bot=bot)
     await bot.guilds[0].create_role(name="TestRole")  # Role object
     assert len(bot.guilds[0].roles) == 3
@@ -29,7 +29,7 @@ async def test_edit_role(bot):
 
 
 @pytest.mark.asyncio
-async def test_remove_role(bot):
+async def test_remove_role(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     staff_role = await guild.create_role(name="Staff")  # Role object
     member1 = guild.members[0]  # Member
@@ -44,7 +44,7 @@ async def test_remove_role(bot):
 
 
 @pytest.mark.asyncio
-async def test_remove_role2(bot):
+async def test_remove_role2(bot: discord.Client) -> None:
     guild = bot.guilds[0]
     staff_role = await guild.create_role(name="Staff")  # Role object
 
@@ -55,3 +55,17 @@ async def test_remove_role2(bot):
     # then remove_role
     await dpytest.remove_role(0, staff_role)
     assert staff_role not in guild.members[0].roles
+
+
+@pytest.mark.asyncio
+async def test_member_add_roles(bot: discord.Client) -> None:
+    guild = bot.guilds[0]
+    member = guild.members[0]
+
+    staff_role = await guild.create_role(name="Staff")
+    user_role = await guild.create_role(name="User")
+
+    await member.add_roles(*[staff_role, user_role])
+
+    assert staff_role in member.roles
+    assert user_role in member.roles

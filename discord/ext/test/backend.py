@@ -11,7 +11,6 @@ import asyncio
 import sys
 import logging
 import re
-import typing
 import datetime
 
 import discord
@@ -20,13 +19,18 @@ import pathlib
 import urllib.parse
 import urllib.request
 
-from discord.abc import Snowflake
+from discord.types import member
 from requests import Response
+from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable
 
 from . import factories as facts, state as dstate, callbacks, websocket, _types
+from ._types import Undef, undefined
+from discord.types.snowflake import Snowflake
+
+from .callbacks import CallbackEvent
 
 
-class BackendState(typing.NamedTuple):
+class BackendState(NamedTuple):
     """
         The dpytest backend, with all the state it needs to hold to be able to pretend to be
         discord. Generally only used internally, but exposed through :py:func:`get_state`
@@ -37,10 +41,9 @@ class BackendState(typing.NamedTuple):
 
 log = logging.getLogger("discord.ext.tests")
 _cur_config: BackendState | None = None
-_undefined = object()  # default value for when NoneType has special meaning
 
 
-def _get_higher_locs(num: int) -> dict[str, typing.Any]:
+def _get_higher_locs(num: int) -> dict[str, Any]:
     """
         Get the local variables from higher in the call-stack. Should only be used in FakeHttp for
         retrieving information not passed to it by its caller.
@@ -72,53 +75,61 @@ class FakeHttp(dhttp.HTTPClient):
         a runner callback and calls the ``dpytest`` backend to update any necessary state and trigger any necessary
         fake messages to the client.
     """
-    fileno: typing.ClassVar[int] = 0
+    fileno: ClassVar[int] = 0
     state: dstate.FakeState
 
-    def __init__(self, loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
         if loop is None:
             loop = asyncio.get_event_loop()
 
-        self.state = None
+        self.state = None  # type: ignore[assignment]
 
         super().__init__(connector=None, loop=loop)
 
-    async def request(self, *args: typing.Any, **kwargs: typing.Any) -> typing.NoReturn:
+    async def request(
+            self,
+            route: discord.http.Route,
+            *,
+            files: Sequence[discord.File] | None = None,
+            form: Iterable[dict[str, Any]] | None = None,
+            **kwargs: Any,
+    ) -> NoReturn:
         """
             Overloaded to raise a NotImplemented error informing the user that the requested operation
             isn't yet supported by ``dpytest``. To fix this, the method call that triggered this error should be
             overloaded below to instead trigger a callback and call the appropriate backend function.
 
-        :param args: Arguments provided to the request
-        :param kwargs: Keyword arguments provided to the request
+        :param route: The route to request
+        :param files: Sequence of files in the request
+        :param form: Form input data
+        :param kwargs: Any other request arguments
         """
-        route: discord.http.Route = args[0]
         raise NotImplementedError(
-            f"Operation occured that isn't captured by the tests framework. This is dpytest's fault, please report"
+            f"Operation occurred that isn't captured by the tests framework. This is dpytest's fault, please report"
             f"an issue on github. Debug Info: {route.method} {route.url} with {kwargs}"
         )
 
     async def create_channel(
             self,
-            guild_id: int,
-            channel_type: discord.ChannelType,
+            guild_id: Snowflake,
+            channel_type: _types.channel.ChannelType,
             *,
             reason: str | None = None,
-            **options: typing.Any
-    ) -> _types.channel.PartialChannel:
+            **options: Any
+    ) -> _types.channel.GuildChannel:
         locs = _get_higher_locs(1)
-        guild = locs.get("self", None)
-        name = locs.get("name", None)
+        guild = locs["self"]
+        name = locs["name"]
         perms = options.get("permission_overwrites", None)
         parent_id = options.get("parent_id", None)
 
+        channel: discord.abc.GuildChannel
         if channel_type == discord.ChannelType.text.value:
             channel = make_text_channel(name, guild, permission_overwrites=perms, parent_id=parent_id)
         elif channel_type == discord.ChannelType.category.value:
             channel = make_category_channel(name, guild, permission_overwrites=perms)
         elif channel_type == discord.ChannelType.voice.value:
             channel = make_voice_channel(name, guild, permission_overwrites=perms)
-
         else:
             raise NotImplementedError(
                 "Operation occurred that isn't captured by the tests framework. This is dpytest's fault, please report"
@@ -126,9 +137,9 @@ class FakeHttp(dhttp.HTTPClient):
             )
         return facts.dict_from_object(channel)
 
-    async def delete_channel(self, channel_id: int, *, reason: str = None) -> None:
+    async def delete_channel(self, channel_id: Snowflake, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        channel = locs.get("self", None)
+        channel = locs["self"]
         if channel.type.value == discord.ChannelType.text.value:
             delete_channel(channel)
         if channel.type.value == discord.ChannelType.category.value:
@@ -138,11 +149,11 @@ class FakeHttp(dhttp.HTTPClient):
         if channel.type.value == discord.ChannelType.voice.value:
             delete_channel(channel)
 
-    async def get_channel(self, channel_id: int) -> _types.channel.PartialChannel:
-        await callbacks.dispatch_event("get_channel", channel_id)
+    async def get_channel(self, channel_id: Snowflake) -> _types.channel.Channel:
+        await callbacks.dispatch_event(CallbackEvent.get_channel, channel_id)
 
         find = None
-        for guild in _cur_config.state.guilds:
+        for guild in get_state().guilds:
             for channel in guild.channels:
                 if channel.id == channel_id:
                     find = facts.dict_from_object(channel)
@@ -150,50 +161,52 @@ class FakeHttp(dhttp.HTTPClient):
             raise discord.errors.NotFound(FakeRequest(404, "Not Found"), "Unknown Channel")
         return find
 
-    async def start_private_message(self, user_id: int) -> _types.channel.DMChannel:
+    async def start_private_message(self, user_id: Snowflake) -> _types.channel.DMChannel:
         locs = _get_higher_locs(1)
-        user = locs.get("self", None)
+        user = locs["self"]
 
-        await callbacks.dispatch_event("start_private_message", user)
+        await callbacks.dispatch_event(CallbackEvent.start_private_message, user)
 
         return facts.make_dm_channel_dict(user)
 
     async def send_message(
             self,
-            channel_id: int,
+            channel_id: Snowflake,
             *,
             params: dhttp.MultipartParameters
     ) -> _types.message.Message:
         locs = _get_higher_locs(1)
-        channel = locs.get("channel", None)
+        channel = locs["channel"]
+        poll = locs["poll"]
 
         payload = params.payload
 
         embeds = []
         attachments = []
-        content = None
+        content = ""
         tts = False
         nonce = None
 
         # EMBEDS
         if payload:
-            content = params.payload.get("content")
-            tts = params.payload.get("tts")
-            nonce = params.payload.get("nonce")
+            content = payload.get("content") or ""
+            tts = payload.get("tts") or False
+            nonce = payload.get("nonce")
             if payload.get("embeds"):
-                embeds = [discord.Embed.from_dict(e) for e in params.payload.get("embeds")]
+                embeds = [discord.Embed.from_dict(e) for e in payload.get("embeds", [])]
 
         # ATTACHMENTS
         if params.files:
+            paths = []
             for file in params.files:
-                path = pathlib.Path(f"./dpytest_{self.fileno}.dat")
-                self.fileno += 1
+                path = pathlib.Path(f"./dpytest_{FakeHttp.fileno}.dat")
+                FakeHttp.fileno += 1
                 if file.fp.seekable():
                     file.fp.seek(0)
                 with open(path, "wb") as nfile:
                     nfile.write(file.fp.read())
-                attachments.append((path, file.filename))
-            attachments = list(map(lambda x: make_attachment(*x), attachments))
+                paths.append((path, file.filename))
+            attachments = list(map(lambda x: make_attachment(*x), paths))
 
         user = self.state.user
         if channel.guild:
@@ -208,78 +221,85 @@ class FakeHttp(dhttp.HTTPClient):
                                tts=tts,
                                embeds=embeds,
                                attachments=attachments,
+                               poll=poll,
                                nonce=nonce
                                )
-        await callbacks.dispatch_event("send_message", message)
+        await callbacks.dispatch_event(CallbackEvent.send_message, message)
 
         return facts.dict_from_object(message)
 
-    async def send_typing(self, channel_id: int) -> None:
+    async def send_typing(self, channel_id: Snowflake) -> None:
         locs = _get_higher_locs(1)
         channel = locs.get("channel", None)
 
-        await callbacks.dispatch_event("send_typing", channel)
+        await callbacks.dispatch_event(CallbackEvent.send_typing, channel)
 
-    async def delete_message(self, channel_id: int, message_id: int, *, reason: str | None = None) -> None:
+    async def delete_message(self, channel_id: Snowflake, message_id: Snowflake, *,
+                             reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        message = locs.get("self", None)
+        message = locs["self"]
 
-        await callbacks.dispatch_event("delete_message", message.channel, message, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.delete_message, message.channel, message, reason=reason)
 
         delete_message(message)
 
-    async def edit_message(self, channel_id: int, message_id: int,
+    async def edit_message(self, channel_id: Snowflake, message_id: Snowflake,
                            **fields: dhttp.MultipartParameters) -> _types.message.Message:  # noqa: E501
         locs = _get_higher_locs(1)
-        message = locs.get("self", None)
+        message = locs["self"]
 
-        await callbacks.dispatch_event("edit_message", message.channel, message, fields)
+        await callbacks.dispatch_event(CallbackEvent.edit_message, message.channel, message, fields)
 
         return edit_message(message, **fields)
 
-    async def add_reaction(self, channel_id: int, message_id: int, emoji: str) -> None:
+    async def add_reaction(self, channel_id: Snowflake, message_id: Snowflake,
+                           emoji: str) -> None:
         locs = _get_higher_locs(1)
-        message = locs.get("self")
+        message = locs["self"]
         # normally only the connected user can add a reaction, but for testing purposes we want to be able to force
         # the call from a specific user.
         user = locs.get("member", self.state.user)
 
         emoji = emoji  # TODO: Turn this back into class?
 
-        await callbacks.dispatch_event("add_reaction", message, emoji)
+        await callbacks.dispatch_event(CallbackEvent.add_reaction, message, emoji)
 
         add_reaction(message, user, emoji)
 
-    async def remove_reaction(self, channel_id: int, message_id: int, emoji: str, member_id: int) -> None:
+    async def remove_reaction(self, channel_id: Snowflake, message_id: Snowflake,
+                              emoji: str,
+                              member_id: Snowflake) -> None:
         locs = _get_higher_locs(1)
-        message = locs.get("self")
-        member = locs.get("member")
+        message = locs["self"]
+        member = locs["member"]
 
-        await callbacks.dispatch_event("remove_reaction", message, emoji, member)
+        await callbacks.dispatch_event(CallbackEvent.remove_reaction, message, emoji, member)
 
         remove_reaction(message, member, emoji)
 
-    async def remove_own_reaction(self, channel_id: int, message_id: int, emoji: str) -> None:
+    async def remove_own_reaction(self, channel_id: Snowflake, message_id: Snowflake,
+                                  emoji: str) -> None:
         locs = _get_higher_locs(1)
-        message = locs.get("self")
-        member = locs.get("member")
+        message = locs["self"]
+        member = locs["member"]
 
-        await callbacks.dispatch_event("remove_own_reaction", message, emoji, member)
+        await callbacks.dispatch_event(CallbackEvent.remove_own_reaction, message, emoji, member)
 
         remove_reaction(message, self.state.user, emoji)
 
-    async def clear_reactions(self, channel_id: int, message_id: int) -> None:
+    async def clear_reactions(self, channel_id: Snowflake, message_id: Snowflake) -> None:
         locs = _get_higher_locs(1)
-        message = locs.get("self")
+        message = locs["self"]
         clear_reactions(message)
 
-    async def get_message(self, channel_id: int, message_id: int) -> _types.message.Message:
+    async def get_message(self, channel_id: Snowflake,
+                          message_id: Snowflake) -> _types.message.Message:
         locs = _get_higher_locs(1)
-        channel = locs.get("self")
+        channel = locs["self"]
 
-        await callbacks.dispatch_event("get_message", channel, message_id)
+        await callbacks.dispatch_event(CallbackEvent.get_message, channel, message_id)
 
-        messages = _cur_config.messages[channel_id]
+        messages = get_config().messages[int(channel_id)]
         find = next(filter(lambda m: m["id"] == message_id, messages), None)
         if find is None:
             raise discord.errors.NotFound(FakeRequest(404, "Not Found"), "Unknown Message")
@@ -287,18 +307,18 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def logs_from(
             self,
-            channel_id: int,
+            channel_id: Snowflake,
             limit: int,
-            before: int | None = None,
-            after: int | None = None,
-            around: int | None = None
+            before: Snowflake | None = None,
+            after: Snowflake | None = None,
+            around: Snowflake | None = None
     ) -> list[_types.message.Message]:
         locs = _get_higher_locs(1)
-        channel = locs.get("self", None)
+        channel = locs["self"]
 
-        await callbacks.dispatch_event("logs_from", channel, limit, before=None, after=None, around=None)
+        await callbacks.dispatch_event(CallbackEvent.logs_from, channel, limit, before=None, after=None, around=None)
 
-        messages = _cur_config.messages[channel_id]
+        messages = get_config().messages[int(channel_id)]
         if after is not None:
             start = next(i for i, v in enumerate(messages) if v["id"] == after)
             return messages[start:start + limit]
@@ -312,117 +332,134 @@ class FakeHttp(dhttp.HTTPClient):
                 start = next(i for i, v in enumerate(messages) if v["id"] == before)
             return messages[start - limit:start]
 
-    async def kick(self, user_id: int, guild_id: int, reason: str | None = None) -> None:
+    async def kick(self, user_id: Snowflake, guild_id: Snowflake,
+                   reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        guild = locs.get("self", None)
-        member = locs.get("user", None)
+        guild = locs["self"]
+        member = locs["user"]
 
-        await callbacks.dispatch_event("kick", guild, member, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.kick, guild, member, reason=reason)
 
         delete_member(member)
 
-    async def ban(self, user_id: int, guild_id: int, delete_message_days: int = 1,
+    async def ban(self, user_id: Snowflake, guild_id: Snowflake,
+                  delete_message_days: int = 1,
                   reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        guild = locs.get("self", None)
-        member = locs.get("user", None)
+        guild = locs["self"]
+        member = locs["user"]
 
-        await callbacks.dispatch_event("ban", guild, member, delete_message_days, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.ban, guild, member, delete_message_days, reason=reason)
 
         delete_member(member)
 
-    async def unban(self, user_id: Snowflake, guild_id: Snowflake, *, reason: str | None = None) -> None:
+    async def unban(self, user_id: Snowflake, guild_id: Snowflake, *,
+                    reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        guild = locs.get("self", None)
-        member = locs.get("user", None)
-        await callbacks.dispatch_event("unban", guild, member, reason=reason)
+        guild = locs["self"]
+        member = locs["user"]
+        await callbacks.dispatch_event(CallbackEvent.unban, guild, member, reason=reason)
 
-    async def change_my_nickname(self, guild_id: int, nickname: str, *,
+    async def change_my_nickname(self, guild_id: Snowflake, nickname: str, *,
                                  reason: str | None = None) -> _types.member.Nickname:
         locs = _get_higher_locs(1)
-        me = locs.get("self", None)
+        me = locs["self"]
 
         me.nick = nickname
 
-        await callbacks.dispatch_event("change_nickname", nickname, me, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.change_nickname, nickname, me, reason=reason)
 
         return {"nick": nickname}
 
-    async def edit_member(self, guild_id: int, user_id: int, *, reason: str | None = None,
-                          **fields: typing.Any) -> _types.guild.Member:
+    async def edit_member(self, guild_id: Snowflake, user_id: Snowflake, *,
+                          reason: str | None = None,
+                          **fields: Any) -> _types.member.MemberWithUser:
         locs = _get_higher_locs(1)
-        member = locs.get("self", None)
+        member = locs["self"]
 
-        await callbacks.dispatch_event("edit_member", fields, member, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.edit_member, fields, member, reason=reason)
         member = update_member(member, nick=fields.get('nick'), roles=fields.get('roles'))
         return facts.dict_from_object(member)
 
-    async def get_member(self, guild_id: int, member_id: int) -> _types.guild.Member:
+    async def get_members(
+        self, guild_id: Snowflake, limit: int, after: Snowflake | None
+    ) -> list[member.MemberWithUser]:
         locs = _get_higher_locs(1)
-        guild: discord.Guild = locs.get("self", None)
+        guild = locs["self"]
+        return list(map(facts.dict_from_object, guild.members))
+
+    async def get_member(self, guild_id: Snowflake,
+                         member_id: Snowflake) -> _types.member.MemberWithUser:
+        locs = _get_higher_locs(1)
+        guild = locs["self"]
         member = discord.utils.get(guild.members, id=member_id)
 
         return facts.dict_from_object(member)
 
-    async def edit_role(self, guild_id: int, role_id: int, *, reason: str | None = None,
-                        **fields: typing.Any) -> _types.role.Role:
+    async def edit_role(self, guild_id: Snowflake, role_id: Snowflake, *,
+                        reason: str | None = None,
+                        **fields: Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
-        role = locs.get("self")
+        role = locs["self"]
         guild = role.guild
 
-        await callbacks.dispatch_event("edit_role", guild, role, fields, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.edit_role, guild, role, fields, reason=reason)
 
         update_role(role, **fields)
         return facts.dict_from_object(role)
 
-    async def delete_role(self, guild_id: int, role_id: int, *, reason: str | None = None) -> None:
+    async def delete_role(self, guild_id: Snowflake, role_id: Snowflake, *,
+                          reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        role = locs.get("self")
+        role = locs["self"]
         guild = role.guild
 
-        await callbacks.dispatch_event("delete_role", guild, role, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.delete_role, guild, role, reason=reason)
 
         delete_role(role)
 
-    async def create_role(self, guild_id: int, *, reason: str | None = None,
-                          **fields: typing.Any) -> _types.role.Role:
+    async def create_role(self, guild_id: Snowflake, *, reason: str | None = None,
+                          **fields: Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
-        guild = locs.get("self", None)
+        guild = locs["self"]
         role = make_role(guild=guild, **fields)
 
-        await callbacks.dispatch_event("create_role", guild, role, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.create_role, guild, role, reason=reason)
 
         return facts.dict_from_object(role)
 
-    async def move_role_position(self, guild_id: int, positions: list[_types.guild.RolePositionUpdate], *,
+    async def move_role_position(self, guild_id: Snowflake,
+                                 positions: list[_types.guild.RolePositionUpdate], *,
                                  reason: str | None = None) -> list[_types.role.Role]:
         locs = _get_higher_locs(1)
-        role = locs.get("self", None)
+        role = locs["self"]
         guild = role.guild
 
-        await callbacks.dispatch_event("move_role", guild, role, positions, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.move_role, guild, role, positions, reason=reason)
 
         for pair in positions:
             guild._roles[pair["id"]].position = pair["position"]
         return list(guild._roles.values())
 
-    async def add_role(self, guild_id: int, user_id: int, role_id: int, *, reason: str | None = None) -> None:
+    async def add_role(self, guild_id: Snowflake, user_id: Snowflake,
+                       role_id: Snowflake, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        member = locs.get("self", None)
-        role = locs.get("role", None)
+        member = locs["self"]
+        role = locs["role"]
 
-        await callbacks.dispatch_event("add_role", member, role, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.add_role, member, role, reason=reason)
 
         roles = [role] + [x for x in member.roles if x.id != member.guild.id]
         update_member(member, roles=roles)
 
-    async def remove_role(self, guild_id: int, user_id: int, role_id: int, *,
+    async def remove_role(self, guild_id: Snowflake, user_id: Snowflake,
+                          role_id: Snowflake, *,
                           reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        member = locs.get("self", None)
-        role = locs.get("role", None)
+        member = locs["self"]
+        role = locs["role"]
 
-        await callbacks.dispatch_event("remove_role", member, role, reason=reason)
+        await callbacks.dispatch_event(CallbackEvent.remove_role, member, role, reason=reason)
 
         roles = [x for x in member.roles if x != role and x.id != member.guild.id]
         update_member(member, roles=roles)
@@ -445,18 +482,22 @@ class FakeHttp(dhttp.HTTPClient):
         }
 
         appinfo = discord.AppInfo(self.state, data)
-        await callbacks.dispatch_event("app_info", appinfo)
+        await callbacks.dispatch_event(CallbackEvent.app_info, appinfo)
 
         return data
 
-    async def delete_channel_permissions(self, channel_id: int, target_id: int, *,
+    async def delete_channel_permissions(self, channel_id: Snowflake,
+                                         target_id: Snowflake, *,
                                          reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        channel: discord.TextChannel = locs.get("self", None)
-        target = locs.get("target", None)
+        channel: discord.TextChannel = locs["self"]
+        target = locs["target"]
 
         user = self.state.user
-        perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
+        member = channel.guild.get_member(user.id)
+        if member is None:
+            raise RuntimeError(f"Couldn't find user {user.id} in guild {channel.guild.id}")
+        perm: discord.Permissions = channel.permissions_for(member)
         if not (perm.administrator or perm.manage_permissions):
             raise discord.errors.Forbidden(FakeRequest(403, "missing manage_roles"), "manage_roles")
 
@@ -464,24 +505,28 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def edit_channel_permissions(
             self,
-            channel_id: int,
-            target_id: int,
-            allow_value: int,
-            deny_value: int,
-            perm_type: str,
+            channel_id: Snowflake,
+            target_id: Snowflake,
+            allow_value: str,
+            deny_value: str,
+            perm_type: Literal[0, 1],
             *,
             reason: str | None = None
     ) -> None:
         locs = _get_higher_locs(1)
-        channel: discord.TextChannel = locs.get("self", None)
-        target = locs.get("target", None)
+        channel: discord.TextChannel = locs["self"]
+        target = locs["target"]
 
         user = self.state.user
-        perm: discord.Permissions = channel.permissions_for(channel.guild.get_member(user.id))
+        member = channel.guild.get_member(user.id)
+        if member is None:
+            raise RuntimeError(f"Couldn't find user {user.id} in guild {channel.guild.id}")
+        perm: discord.Permissions = channel.permissions_for(member)
         if not (perm.administrator or perm.manage_permissions):
             raise discord.errors.Forbidden(FakeRequest(403, "missing manage_roles"), "manage_roles")
 
-        ovr = discord.PermissionOverwrite.from_pair(discord.Permissions(allow_value), discord.Permissions(deny_value))
+        ovr = discord.PermissionOverwrite.from_pair(discord.Permissions(int(allow_value)),
+                                                    discord.Permissions(int(deny_value)))
         update_text_channel(channel, target, ovr)
 
     async def get_from_cdn(self, url: str) -> bytes:
@@ -490,50 +535,40 @@ class FakeHttp(dhttp.HTTPClient):
         with open(path, 'rb') as fd:
             return fd.read()
 
-    async def get_user(self, user_id: int) -> _types.user.User:
+    async def get_user(self, user_id: Snowflake) -> _types.user.User:
         # return self.request(Route('GET', '/users/{user_id}', user_id=user_id))
         locs = _get_higher_locs(1)
-        client = locs.get("self", None)
+        client = locs["self"]
         guild = client.guilds[0]
         member = discord.utils.get(guild.members, id=user_id)
         return facts.dict_from_object(member._user)
 
-    async def pin_message(self, channel_id: int, message_id: int, reason: str | None = None) -> None:
+    async def pin_message(self, channel_id: Snowflake, message_id: Snowflake,
+                          reason: str | None = None) -> None:
         # return self.request(Route('PUT', '/channels/{channel_id}/pins/{message_id}',
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         pin_message(channel_id, message_id)
 
-    async def unpin_message(self, channel_id: int, message_id: int, reason: str | None = None) -> None:
+    async def unpin_message(self, channel_id: Snowflake, message_id: Snowflake,
+                            reason: str | None = None) -> None:
         # return self.request(Route('DELETE', '/channels/{channel_id}/pins/{message_id}',
         #                          channel_id=channel_id, message_id=message_id), reason=reason)
         unpin_message(channel_id, message_id)
 
-    async def get_guilds(self, limit: int, before: Snowflake | None = None, after: Snowflake | None = None,
-                         with_counts: bool = True):
+    async def get_guilds(self, limit: int, before: Snowflake | None = None,
+                         after: Snowflake | None = None,
+                         with_counts: bool = True) -> list[_types.guild.Guild]:
         # self.request(Route('GET', '/users/@me/guilds')
-        await callbacks.dispatch_event("get_guilds", limit, before=before, after=after, with_counts=with_counts)
+        await callbacks.dispatch_event(
+            CallbackEvent.get_guilds,
+            limit,
+            before=before,
+            after=after,
+            with_counts=with_counts,
+        )
         guilds = get_state().guilds  # List[]
 
-        guilds_new = [{
-            'id': guild.id,
-            'name': guild.name,
-            'icon': guild.icon,
-            'splash': guild.splash,
-            'owner_id': guild.owner_id,
-            'region': guild.region,
-            'afk_channel_id': guild.afk_channel.id if guild.afk_channel else None,
-            'afk_timeout': guild.afk_timeout,
-            'verification_level': guild.verification_level,
-            'default_message_notifications': guild.default_notifications.value,
-            'explicit_content_filter': guild.explicit_content_filter,
-            'roles': list(map(facts.dict_from_object, guild.roles)),
-            'emojis': list(map(facts.dict_from_object, guild.emojis)),
-            'features': guild.features,
-            'mfa_level': guild.mfa_level,
-            'application_id': None,
-            'system_channel_id': guild.system_channel.id if guild.system_channel else None,
-            'owner': guild.owner_id == get_state().user.id
-        } for guild in guilds]
+        guilds_new = [facts.dict_from_object(guild) for guild in guilds]
 
         if not limit:
             limit = 100
@@ -551,8 +586,10 @@ class FakeHttp(dhttp.HTTPClient):
         # return self.request(Route('GET', '/guilds/{guild_id}', guild_id=guild_id))
         # TODO: Respect with_counts
         locs = _get_higher_locs(1)
-        client: discord.Client = locs.get("self", None)
+        client: discord.Client = locs["self"]
         guild = discord.utils.get(client.guilds, id=guild_id)
+        if guild is None:
+            raise RuntimeError(f"Couldn't find guild with ID {guild_id} in test client")
         return facts.dict_from_object(guild)
 
 
@@ -567,11 +604,17 @@ def get_state() -> dstate.FakeState:
     return _cur_config.state
 
 
+def get_config() -> BackendState:
+    if _cur_config is None:
+        raise ValueError("Dpytest backend not configured")
+    return _cur_config
+
+
 def make_guild(
         name: str,
-        members: list[discord.Member] = None,
-        channels: list[_types.AnyChannel] = None,
-        roles: list[discord.Role] = None,
+        members: list[discord.Member] | None = None,
+        channels: list[_types.AnyChannel] | None = None,
+        roles: list[_types.role.Role] | None = None,
         owner: bool = False,
         id_num: int = -1,
 ) -> discord.Guild:
@@ -600,16 +643,16 @@ def make_guild(
 
     owner_id = state.user.id if owner else 0
 
-    data: _types.gateway.GuildCreateEvent = facts.make_guild_dict(
+    data: _types.gateway.Guild = facts.make_guild_dict(
         name, owner_id, roles, id_num=id_num, member_count=member_count, members=members, channels=channels
     )
 
     state.parse_guild_create(data)
 
-    return state._get_guild(id_num)
+    return state._get_guild(id_num)  # type: ignore[return-value]
 
 
-def update_guild(guild: discord.Guild, roles: list[discord.Role] = None) -> discord.Guild:
+def update_guild(guild: discord.Guild, roles: list[discord.Role] | None = None) -> discord.Guild:
     """
         Update an existing guild with new information, triggers a guild update but not any individual item
         create/edit calls
@@ -661,7 +704,7 @@ def make_role(
     # r_dict["position"] = max(map(lambda x: x.position, guild._roles.values())) + 1
     r_dict["position"] = 1
 
-    data = {
+    data: _types.gateway._GuildRoleEvent = {
         "guild_id": guild.id,
         "role": r_dict
     }
@@ -669,7 +712,7 @@ def make_role(
     state = get_state()
     state.parse_guild_role_create(data)
 
-    return guild.get_role(r_dict["id"])
+    return guild.get_role(int(r_dict["id"]))  # type: ignore[return-value]
 
 
 def update_role(
@@ -696,7 +739,7 @@ def update_role(
     :param name: New name for the role
     :return: Role that was updated
     """
-    data = {
+    data: _types.gateway._GuildRoleEvent = {
         "guild_id": role.guild.id,
         "role": facts.dict_from_object(role),
     }
@@ -707,8 +750,7 @@ def update_role(
     if colors is not None:
         data["role"]["colors"] = colors
     if permissions is not None:
-        data["role"]["permissions"] = int(permissions)
-        data["role"]["permissions_new"] = int(permissions)
+        data["role"]["permissions"] = str(permissions)
 
     if hoist is not None:
         data["role"]["hoist"] = hoist
@@ -750,7 +792,7 @@ def make_text_channel(
     state = get_state()
     state.parse_channel_create(c_dict)
 
-    return guild.get_channel(c_dict["id"])
+    return guild.get_channel(int(c_dict["id"]))  # type: ignore[return-value]
 
 
 def make_category_channel(
@@ -767,7 +809,7 @@ def make_category_channel(
     state = get_state()
     state.parse_channel_create(c_dict)
 
-    return guild.get_channel(c_dict["id"])
+    return guild.get_channel(int(c_dict["id"]))  # type: ignore[return-value]
 
 
 def make_voice_channel(
@@ -789,10 +831,10 @@ def make_voice_channel(
     state = get_state()
     state.parse_channel_create(c_dict)
 
-    return guild.get_channel(c_dict["id"])
+    return guild.get_channel(int(c_dict["id"]))  # type: ignore[return-value]
 
 
-def delete_channel(channel: _types.AnyChannel) -> None:
+def delete_channel(channel: discord.abc.GuildChannel) -> None:
     c_dict = facts.make_text_channel_dict(channel.name, id_num=channel.id, guild_id=channel.guild.id)
 
     state = get_state()
@@ -801,17 +843,17 @@ def delete_channel(channel: _types.AnyChannel) -> None:
 
 def update_text_channel(
         channel: discord.TextChannel,
-        target: discord.User | discord.Role,
-        override: discord.PermissionOverwrite | None = _undefined
+        target: discord.Member | discord.Role | discord.Object,
+        override: discord.PermissionOverwrite | None | Undef = undefined
 ) -> None:
     c_dict = facts.dict_from_object(channel)
-    if override is not _undefined:
+    if override is not undefined:
         ovr = c_dict.get("permission_overwrites", [])
         existing = [o for o in ovr if o.get("id") == target.id]
         if existing:
             ovr.remove(existing[0])
         if override:
-            ovr = ovr + [facts.dict_from_overwrite(target, override)]
+            ovr = ovr + [facts.dict_from_object(override, target=target)]
         c_dict["permission_overwrites"] = ovr
 
     state = get_state()
@@ -831,24 +873,27 @@ def make_user(username: str, discrim: str | int, avatar: str | None = None,
     return user
 
 
-def make_member(user: discord.user.BaseUser | discord.abc.User, guild: discord.Guild,
+def make_member(user: discord.user.BaseUser, guild: discord.Guild,
                 nick: str | None = None,
                 roles: list[discord.Role] | None = None) -> discord.Member:
     if roles is None:
         roles = []
-    roles = list(map(lambda x: x.id, roles))
+    role_ids: list[Snowflake] = list(map(lambda x: x.id, roles))
 
-    data = facts.make_member_dict(guild, user, roles, nick=nick)
+    data: _types.gateway.GuildMemberAddEvent = {
+        'guild_id': guild.id,
+        **facts.make_member_dict(user, role_ids, nick=nick),
+    }
 
     state = get_state()
     state.parse_guild_member_add(data)
 
-    return guild.get_member(user.id)
+    return guild.get_member(user.id)  # type: ignore[return-value]
 
 
 def update_member(member: discord.Member, nick: str | None = None,
                   roles: list[discord.Role] | None = None) -> discord.Member:
-    data = facts.dict_from_object(member)
+    data = facts.dict_from_object(member, guild=True)
     if nick is not None:
         data["nick"] = nick
     if roles is not None:
@@ -861,81 +906,85 @@ def update_member(member: discord.Member, nick: str | None = None,
 
 
 def delete_member(member: discord.Member) -> None:
-    out = facts.dict_from_object(member)
+    out = facts.dict_from_object(member, guild=True)
     state = get_state()
     state.parse_guild_member_remove(out)
 
 
 def make_message(
         content: str,
-        author: discord.user.BaseUser | discord.abc.User,
+        author: discord.user.BaseUser | discord.Member,
         channel: _types.AnyChannel,
         tts: bool = False,
         embeds: list[discord.Embed] | None = None,
         attachments: list[discord.Attachment] | None = None,
+        poll: discord.Poll | None = None,
         nonce: int | None = None,
         id_num: int = -1,
 ) -> discord.Message:
     guild = channel.guild if hasattr(channel, "guild") else None
     guild_id = guild.id if guild else None
 
-    mentions = find_user_mentions(content, guild)
+    mentions = find_member_mentions(content, guild)
     role_mentions = find_role_mentions(content, guild)
     channel_mentions = find_channel_mentions(content, guild)
 
-    kwargs = {}
+    kwargs: dict[str, Any] = {}
     if nonce is not None:
         kwargs["nonce"] = nonce
 
     data = facts.make_message_dict(
         channel, author, id_num, content=content, mentions=mentions, tts=tts, embeds=embeds, attachments=attachments,
-        mention_roles=role_mentions, mention_channels=channel_mentions, guild_id=guild_id, **kwargs
+        poll=facts.dict_from_object(poll) if poll else None, mention_roles=role_mentions,
+        mention_channels=channel_mentions, guild_id=guild_id, **kwargs
     )
 
     state = get_state()
     state.parse_message_create(data)
 
-    if channel.id not in _cur_config.messages:
-        _cur_config.messages[channel.id] = []
-    _cur_config.messages[channel.id].append(data)
+    messages = get_config().messages
+    if channel.id not in messages:
+        messages[channel.id] = []
+    messages[channel.id].append(data)
 
-    return state._get_message(data["id"])
+    return state._get_message(int(data["id"]))  # type: ignore[return-value]
 
 
 def edit_message(
         message: discord.Message, **fields: dhttp.MultipartParameters
 ) -> _types.message.Message:
     data = facts.dict_from_object(message)
-    payload = fields.get("params").payload
+    payload = fields["params"].payload
     # TODO : do something for files and stuff.
     # if params.files:
     #     return self.request(r, files=params.files, form=params.multipart)
     # else:
     #     return self.request(r, json=params.payload)
-    data.update(payload)
+    data.update(payload)  # type: ignore[typeddict-item]
 
+    config = get_config()
     i = 0
-    while i < len(_cur_config.messages[message.channel.id]):
-        if _cur_config.messages[message.channel.id][i].get("id") == data.get("id"):
-            _cur_config.messages[message.channel.id][i] = data
+    while i < len(config.messages[message.channel.id]):
+        if config.messages[message.channel.id][i].get("id") == data.get("id"):
+            config.messages[message.channel.id][i] = data
         i += 1
 
     return data
 
 
-MEMBER_MENTION: typing.Pattern = re.compile(r"<@!?[0-9]{17,21}>", re.MULTILINE)
-ROLE_MENTION: typing.Pattern = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
-CHANNEL_MENTION: typing.Pattern = re.compile(r"<#[0-9]{17,21}>", re.MULTILINE)
+MEMBER_MENTION: Pattern[str] = re.compile(r"<@!?([0-9]{17,21})>", re.MULTILINE)
+ROLE_MENTION: Pattern[str] = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
+CHANNEL_MENTION: Pattern[str] = re.compile(r"<#([0-9]{17,21})>", re.MULTILINE)
 
 
-def find_user_mentions(content: str | None, guild: discord.Guild | None) -> list[discord.Member]:
+def find_member_mentions(content: str | None, guild: discord.Guild | None) -> list[discord.Member | discord.User]:
     if guild is None or content is None:
         return []  # TODO: Check for dm user mentions
     matches = re.findall(MEMBER_MENTION, content)
-    return [discord.utils.get(guild.members, id=int(re.search(r'\d+', match)[0])) for match in matches]  # noqa: E501
+    return [discord.utils.get(guild.members, id=int(match)) for match in matches]  # type: ignore[misc]
 
 
-def find_role_mentions(content: str | None, guild: discord.Guild | None) -> list[int]:
+def find_role_mentions(content: str | None, guild: discord.Guild | None) -> list[Snowflake]:
     if guild is None or content is None:
         return []
     matches = re.findall(ROLE_MENTION, content)
@@ -948,11 +997,11 @@ def find_channel_mentions(content: str | None,
     if guild is None or content is None:
         return []
     matches = re.findall(CHANNEL_MENTION, content)
-    return [discord.utils.get(guild.channels, mention=match) for match in matches]
+    return [discord.utils.get(guild.channels, id=int(match)) for match in matches]  # type: ignore[misc]
 
 
 def delete_message(message: discord.Message) -> None:
-    data = {
+    data: _types.gateway.MessageDeleteEvent = {
         "id": message.id,
         "channel_id": message.channel.id
     }
@@ -962,9 +1011,9 @@ def delete_message(message: discord.Message) -> None:
     state = get_state()
     state.parse_message_delete(data)
 
-    messages = _cur_config.messages[message.channel.id]
+    messages = get_config().messages[message.channel.id]
     index = next(i for i, v in enumerate(messages) if v["id"] == message.id)
-    del _cur_config.messages[message.channel.id][index]
+    del get_config().messages[message.channel.id][index]
 
 
 def make_attachment(filename: pathlib.Path, name: str | None = None, id_num: int = -1) -> discord.Attachment:
@@ -984,12 +1033,12 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
                  emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
-        emoji: _types.message.PartialEmoji = {
+        partial: _types.message.PartialEmoji = {
             "id": temp[0],
             "name": temp[1]
         }
     else:
-        emoji = {
+        partial = {
             "id": None,
             "name": emoji
         }
@@ -998,7 +1047,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
         "message_id": message.id,
         "channel_id": message.channel.id,
         "user_id": user.id,
-        "emoji": emoji,
+        "emoji": partial,
         "burst": False,
         "type": 0,
     }
@@ -1011,7 +1060,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
     state = get_state()
     state.parse_message_reaction_add(data)
 
-    messages = _cur_config.messages[message.channel.id]
+    messages = get_config().messages[message.channel.id]
     message_data = next(filter(lambda x: x["id"] == message.id, messages), None)
     if message_data is not None:
         if "reactions" not in message_data:
@@ -1019,14 +1068,14 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
 
         react: _types.message.Reaction | None = None
         for react in message_data["reactions"]:
-            if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
+            if react["emoji"]["id"] == partial["id"] and react["emoji"]["name"] == partial["name"]:
                 break
 
         if react is None:
-            react: _types.message.Reaction = {
+            react = {
                 "count": 0,
                 "me": False,
-                "emoji": emoji,
+                "emoji": partial,
                 "me_burst": False,
                 "count_details": {
                     "burst": 0,
@@ -1042,15 +1091,15 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
             react["me"] = True
 
 
-def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji: str) -> None:
+def remove_reaction(message: discord.Message, user: discord.abc.Snowflake, emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
-        emoji: _types.message.PartialEmoji = {
+        partial: _types.message.PartialEmoji = {
             "id": temp[0],
             "name": temp[1]
         }
     else:
-        emoji = {
+        partial = {
             "id": None,
             "name": emoji
         }
@@ -1059,7 +1108,7 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
         "message_id": message.id,
         "channel_id": message.channel.id,
         "user_id": user.id,
-        "emoji": emoji,
+        "emoji": partial,
         "burst": False,
         "type": 0,
     }
@@ -1069,7 +1118,7 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
     state = get_state()
     state.parse_message_reaction_remove(data)
 
-    messages = _cur_config.messages[message.channel.id]
+    messages = get_config().messages[message.channel.id]
     message_data = next(filter(lambda x: x["id"] == message.id, messages), None)
     if message_data is not None:
         if "reactions" not in message_data:
@@ -1077,7 +1126,7 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
 
         react: _types.message.Reaction | None = None
         for react in message_data["reactions"]:
-            if react["emoji"]["id"] == emoji["id"] and react["emoji"]["name"] == emoji["name"]:
+            if react["emoji"]["id"] == partial["id"] and react["emoji"]["name"] == partial["name"]:
                 break
         if react is None:
             return
@@ -1091,8 +1140,8 @@ def remove_reaction(message: discord.Message, user: discord.user.BaseUser, emoji
             message_data["reactions"].remove(react)
 
 
-def clear_reactions(message: discord.Message):
-    data = {
+def clear_reactions(message: discord.Message) -> None:
+    data: _types.gateway.MessageReactionRemoveAllEvent = {
         "message_id": message.id,
         "channel_id": message.channel.id
     }
@@ -1102,14 +1151,14 @@ def clear_reactions(message: discord.Message):
     state = get_state()
     state.parse_message_reaction_remove_all(data)
 
-    messages = _cur_config.messages[message.channel.id]
+    messages = get_config().messages[message.channel.id]
     message_data = next(filter(lambda x: x["id"] == message.id, messages), None)
     if message_data is not None:
         message_data["reactions"] = []
 
 
-def pin_message(channel_id: int, message_id: int):
-    data = {
+def pin_message(channel_id: Snowflake, message_id: Snowflake) -> None:
+    data: _types.gateway.ChannelPinsUpdateEvent = {
         "channel_id": channel_id,
         "last_pin_timestamp": datetime.datetime.now().isoformat(),
     }
@@ -1117,8 +1166,8 @@ def pin_message(channel_id: int, message_id: int):
     state.parse_channel_pins_update(data)
 
 
-def unpin_message(channel_id: int, message_id: int):
-    data = {
+def unpin_message(channel_id: Snowflake, message_id: Snowflake) -> None:
+    data: _types.gateway.ChannelPinsUpdateEvent = {
         "channel_id": channel_id,
         "last_pin_timestamp": None,
     }
@@ -1126,11 +1175,11 @@ def unpin_message(channel_id: int, message_id: int):
     state.parse_channel_pins_update(data)
 
 
-@typing.overload
+@overload
 def configure(client: discord.Client) -> None: ...
 
 
-@typing.overload
+@overload
 def configure(client: discord.Client | None, *, use_dummy: bool = ...) -> None: ...
 
 
@@ -1141,11 +1190,11 @@ def configure(client: discord.Client | None, *, use_dummy: bool = False) -> None
     :param client: Client to use, or None
     :param use_dummy: Whether to use a dummy if client param is None, or error
     """
-    global _cur_config, _messages
+    global _cur_config
 
     if client is None and use_dummy:
         log.info("None passed to backend configuration, dummy client will be used")
-        client = discord.Client()
+        client = discord.Client(intents=discord.Intents.all())
 
     if not isinstance(client, discord.Client):
         raise TypeError("Runner client must be an instance of discord.Client")

@@ -5,15 +5,52 @@
 """
 
 import logging
-import typing
+import discord
+from enum import Enum
+from typing import Callable, overload, Literal, Any, Awaitable
+
 from . import _types
+
+GetChannelCallback = Callable[[_types.snowflake.Snowflake], Awaitable[None]]
+SendMessageCallback = Callable[[discord.Message], Awaitable[None]]
+EditMemberCallback = Callable[[dict[str, Any], discord.Member, str | None], Awaitable[None]]
+Callback = GetChannelCallback | SendMessageCallback | EditMemberCallback | Callable[..., Awaitable[None]]
 
 log = logging.getLogger("discord.ext.tests")
 
-_callbacks = {}
+
+class CallbackEvent(Enum):
+    get_channel = "get_channel"
+    presence = "presence"
+    start_private_message = "start_private_message"
+    send_message = "send_message"
+    send_typing = "send_typing"
+    delete_message = "delete_message"
+    edit_message = "edit_message"
+    add_reaction = "add_reaction"
+    remove_reaction = "remove_reaction"
+    remove_own_reaction = "remove_own_reaction"
+    get_message = "get_message"
+    logs_from = "logs_from"
+    kick = "kick"
+    ban = "ban"
+    unban = "unban"
+    change_nickname = "change_nickname"
+    edit_member = "edit_member"
+    create_role = "create_role"
+    edit_role = "edit_role"
+    delete_role = "delete_role"
+    move_role = "move_role"
+    add_role = "add_role"
+    remove_role = "remove_role"
+    app_info = "app_info"
+    get_guilds = "get_guilds"
 
 
-async def dispatch_event(event: str, *args: typing.Any, **kwargs: typing.Any) -> None:
+_callbacks: dict[CallbackEvent, Callback] = {}
+
+
+async def dispatch_event(event: CallbackEvent, *args: Any, **kwargs: Any) -> None:
     """
         Dispatch an event to a set handler, if one exists. Will ignore handler errors,
         just print a log
@@ -30,7 +67,19 @@ async def dispatch_event(event: str, *args: typing.Any, **kwargs: typing.Any) ->
             log.error(f"Error in handler for event {event}: {e}")
 
 
-def set_callback(cb: _types.Callback, event: str) -> None:
+@overload
+def set_callback(cb: GetChannelCallback, event: Literal[CallbackEvent.get_channel]) -> None: ...
+
+
+@overload
+def set_callback(cb: SendMessageCallback, event: Literal[CallbackEvent.send_message]) -> None: ...
+
+
+@overload
+def set_callback(cb: EditMemberCallback, event: Literal[CallbackEvent.edit_member]) -> None: ...
+
+
+def set_callback(cb: Callback, event: CallbackEvent) -> None:
     """
         Set the callback to use for a specific event
 
@@ -40,7 +89,7 @@ def set_callback(cb: _types.Callback, event: str) -> None:
     _callbacks[event] = cb
 
 
-def get_callback(event: str) -> _types.Callback:
+def get_callback(event: CallbackEvent) -> Callback:
     """
         Get the current callback for an event, or raise an exception if one isn't set
 
@@ -52,7 +101,7 @@ def get_callback(event: str) -> _types.Callback:
     return _callbacks[event]
 
 
-def remove_callback(event: str) -> _types.Callback | None:
+def remove_callback(event: CallbackEvent) -> Callback | None:
     """
         Remove the callback set for an event, returning it, or None if one isn't set
 

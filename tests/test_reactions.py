@@ -1,9 +1,10 @@
 import pytest
+import discord
 import discord.ext.test as dpytest
 
 
 @pytest.mark.asyncio
-async def test_add_reaction(bot):
+async def test_add_reaction(bot: discord.Client) -> None:
     g = bot.guilds[0]
     c = g.text_channels[0]
 
@@ -16,7 +17,7 @@ async def test_add_reaction(bot):
 
 
 @pytest.mark.asyncio
-async def test_remove_reaction(bot):
+async def test_remove_reaction(bot: discord.Client) -> None:
     g = bot.guilds[0]
     c = g.text_channels[0]
 
@@ -29,7 +30,7 @@ async def test_remove_reaction(bot):
 
 
 @pytest.mark.asyncio
-async def test_user_add_reaction(bot):
+async def test_user_add_reaction(bot: discord.Client) -> None:
     g = bot.guilds[0]
     c = g.text_channels[0]
     m = g.members[0]
@@ -45,7 +46,7 @@ async def test_user_add_reaction(bot):
 
 
 @pytest.mark.asyncio
-async def test_user_remove_reaction(bot):
+async def test_user_remove_reaction(bot: discord.Client) -> None:
     g = bot.guilds[0]
     c = g.text_channels[0]
     m = g.members[0]

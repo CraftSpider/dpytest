@@ -67,4 +67,30 @@ jobs:
           name: ${{ matrix.python-version }}-cov-lcov
           path: coverage.lcov
           if-no-files-found: warn
+  mypy:
+    runs-on: ubuntu-latest
+    strategy:
+      # don't cancel any remaining jobs when one fails
+      fail-fast: false
+      # how you define a matrix strategy
+      matrix:
+        # use these pythons
+        python-version: [ "3.11", "3.14" ]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            dev-requirements.txt
+            setup.py
+
+      - name: Install dev dependencies
+        run: python -m pip install -r dev-requirements.txt
+      - name: Install self (dpytest)
+        run: python -m pip install .
+      - name: Run mypy
+        run: mypy --install-types --non-interactive
 

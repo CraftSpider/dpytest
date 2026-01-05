@@ -3,11 +3,13 @@
     hooking of its methods to update the backend and provide callbacks.
 """
 
-import typing
+from typing import Any
+
 import discord
 import discord.gateway as gateway
 
 from . import callbacks
+from .callbacks import CallbackEvent
 
 
 class FakeWebSocket(gateway.DiscordWebSocket):
@@ -16,9 +18,13 @@ class FakeWebSocket(gateway.DiscordWebSocket):
         it simply triggers calls to the ``dpytest`` backend, as well as triggering runner callbacks.
     """
 
-    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
+    cur_event: CallbackEvent | None
+    event_args: tuple[Any, ...]
+    event_kwargs: dict[str, Any]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.cur_event = ""
+        self.cur_event = None
         self.event_args = ()
         self.event_kwargs = {}
 
@@ -38,6 +44,6 @@ class FakeWebSocket(gateway.DiscordWebSocket):
             status: str | None = None,
             since: float = 0.0
     ) -> None:
-        self.cur_event = "presence"
+        self.cur_event = CallbackEvent.presence
         self.event_args = (activity, status, since)
         await super().change_presence(activity=activity, status=status, since=since)
