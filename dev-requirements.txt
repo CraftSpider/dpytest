@@ -9,3 +9,4 @@ build
 flake8~=7.0.0
 pynacl
 typing-extensions
+mypy
