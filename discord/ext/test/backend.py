@@ -1091,7 +1091,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
             react["me"] = True
 
 
-def remove_reaction(message: discord.Message, user: discord.utils.Snowflake, emoji: str) -> None:
+def remove_reaction(message: discord.Message, user: discord.abc.Snowflake, emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
         partial: _types.message.PartialEmoji = {
