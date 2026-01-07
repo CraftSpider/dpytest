@@ -2,9 +2,9 @@
     Mock implementation of a ``discord.gateway.DiscordWebSocket``. Overwrites a Client's default websocket, allowing
     hooking of its methods to update the backend and provide callbacks.
 """
+import asyncio
 
-from typing import Any
-
+import aiohttp
 import discord
 import discord.gateway as gateway
 
@@ -19,11 +19,11 @@ class FakeWebSocket(gateway.DiscordWebSocket):
     """
 
     cur_event: CallbackEvent | None
-    event_args: tuple[Any, ...]
-    event_kwargs: dict[str, Any]
+    event_args: tuple[()] | tuple[discord.BaseActivity | None, str | None, float]
+    event_kwargs: dict[str, object]
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, socket: aiohttp.ClientWebSocketResponse | None, *, loop: asyncio.AbstractEventLoop) -> None:
+        super().__init__(socket, loop=loop)  # type: ignore[arg-type]
         self.cur_event = None
         self.event_args = ()
         self.event_kwargs = {}

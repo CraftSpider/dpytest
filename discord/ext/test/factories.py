@@ -4,9 +4,12 @@
 """
 import functools
 import datetime as dt
-from typing import Any, Literal, overload, Iterable, Protocol, NoReturn, Callable, ParamSpec, TypeVar
+from typing import Any, Literal, overload, Iterable, Protocol, NoReturn, Callable, ParamSpec, TypeVar, TypedDict, \
+    Unpack, NotRequired
 
 import discord
+from discord.types.user import PremiumType
+
 from . import _types
 
 
@@ -36,7 +39,7 @@ def make_id() -> int:
 @overload
 def _fill_optional(
         data: _types.user.User,
-        obj: discord.user.BaseUser | dict[str, object],
+        obj: discord.user.BaseUser | UserKwargs,
         items: Iterable[str]
 ) -> None: ...
 
@@ -44,7 +47,7 @@ def _fill_optional(
 @overload
 def _fill_optional(
         data: _types.member.Member | _types.member.MemberWithUser,
-        obj: discord.Member | dict[str, object],
+        obj: discord.Member | MemberKwargs,
         items: Iterable[str]
 ) -> None: ...
 
@@ -60,7 +63,7 @@ def _fill_optional(
 @overload
 def _fill_optional(
         data: _types.guild.Guild,
-        obj: discord.Guild | dict[str, object],
+        obj: discord.Guild | GuildKwargs,
         items: Iterable[str]
 ) -> None: ...
 
@@ -76,7 +79,7 @@ def _fill_optional(
 @overload
 def _fill_optional(
         data: _types.message.Message,
-        obj: discord.Message | dict[str, object],
+        obj: discord.Message | MessageKwargsExtra,
         items: Iterable[str]
 ) -> None: ...
 
@@ -144,8 +147,20 @@ def _fill_optional_value(
             data[item] = val
 
 
-def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num: int = -1, flags: int = 0,
-                   **kwargs: Any) -> _types.user.User:
+class UserKwargs(TypedDict, total=False):
+    bot: bool
+    system: bool
+    mfa_enabled: bool
+    locale: str
+    verified: bool
+    email: str | None
+    flags: int
+    premium_type: PremiumType
+    public_flags: int
+
+
+def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num: int = -1,
+                   **kwargs: Unpack[UserKwargs]) -> _types.user.User:
     if isinstance(discrim, int):
         assert 0 < discrim < 10000
         discrim = f"{discrim:04}"
@@ -159,21 +174,31 @@ def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num
         'username': username,
         'discriminator': discrim,
         'avatar': avatar,
-        'flags': flags,
     }
-    items = ("bot", "system", "mfa_enabled", "locale", "verified", "email", "premium_type", "public_flags")
+    items = ("bot", "system", "mfa_enabled", "locale", "verified", "email", "flags", "premium_type", "public_flags")
     _fill_optional(out, kwargs, items)
     return out
 
 
+class MemberKwargs(TypedDict, total=False):
+    avatar: str
+    nick: str
+    premium_since: str | None
+    pending: bool
+    permissions: str
+    communication_disabled_until: str
+    banner: str | None
+    avatar_decoration_data: _types.member.AvatarDecorationData
+
+
 def make_member_dict(
         user: discord.user.BaseUser,
-        roles: list[_types.gateway.Snowflake],
+        roles: list[_types.snowflake.Snowflake],
         joined: str | None = None,
         deaf: bool = False,
         mute: bool = False,
         flags: int = 0,
-        **kwargs: Any,
+        **kwargs: Unpack[MemberKwargs],
 ) -> _types.member.MemberWithUser:
     out: _types.member.MemberWithUser = {
         'user': dict_from_object(user),
@@ -183,7 +208,7 @@ def make_member_dict(
         'mute': mute,
         'flags': flags,
     }
-    items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until",
+    items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until", "banner",
              "avatar_decoration_data")
     _fill_optional(out, kwargs, items)
     return out
@@ -191,7 +216,7 @@ def make_member_dict(
 
 def user_with_member(user: discord.User | discord.Member) -> _types.member.UserWithMember:
     if isinstance(user, discord.Member):
-        member: _types.member.MemberWithUser | None = dict_from_object(user)
+        member: _types.member.Member | None = dict_from_object(user)
         user = user._user
     else:
         member = None
@@ -204,8 +229,11 @@ def user_with_member(user: discord.User | discord.Member) -> _types.member.UserW
 class DictFromObject(Protocol):
     @overload
     def __call__(self, obj: discord.user.BaseUser) -> _types.member.UserWithMember: ...
+
     @overload
-    def __call__(self, obj: discord.Member, *, guild: Literal[False] = ...) -> _types.member.MemberWithUser: ...
+    def __call__(self, obj: discord.Member, *, user: Literal[False] = ...) -> _types.member.Member: ...
+    @overload
+    def __call__(self, obj: discord.Member, *, user: Literal[True] = ..., guild: Literal[False] = ...) -> _types.member.MemberWithUser: ...
     @overload
     def __call__(self, obj: discord.Member, *, guild: Literal[True] = ...) -> _types.gateway.GuildMemberUpdateEvent: ...
 
@@ -214,6 +242,7 @@ class DictFromObject(Protocol):
             self,
             obj: discord.Member,
             *,
+            user: bool = ...,
             guild: bool = ...,
     ) -> _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent: ...
 
@@ -277,7 +306,7 @@ class DictFromObject(Protocol):
     @overload
     def __call__(self, obj: discord.PollMedia) -> _types.poll.PollMedia: ...
 
-    def __call__(self, obj: object, **_kwargs: Any) -> NoReturn: ...
+    def __call__(self, obj: object, **_kwargs: object) -> NoReturn: ...
 
     def register(self, ty: type) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 
@@ -286,7 +315,7 @@ dict_from_object: DictFromObject
 
 
 @functools.singledispatch  # type: ignore[no-redef]
-def dict_from_object(obj: object, **_kwargs: Any) -> Any:
+def dict_from_object(obj: object, **_kwargs: object) -> object:
     raise TypeError(f"Unrecognized discord model type {type(obj)}")
 
 
@@ -308,8 +337,9 @@ def _from_base_user(user: discord.user.BaseUser) -> _types.member.UserWithMember
 def _from_member(
         member: discord.Member,
         *,
+        user: bool = True,
         guild: bool = False,
-) -> _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent:
+) -> _types.member.Member | _types.member.MemberWithUser | _types.gateway.GuildMemberUpdateEvent:
     # discord code adds default role to every member later on in Member constructor
     roles_no_default = list(filter(lambda r: not r == member.guild.default_role, member.roles))
     items: tuple[str, ...]
@@ -328,7 +358,7 @@ def _from_member(
                  "avatar_decoration_data")
         _fill_optional(out, member, items)
         return out
-    else:
+    elif user:
         mem_user: _types.member.MemberWithUser = {
             'user': dict_from_object(member._user),
             'roles': list(map(lambda role: int(role.id), roles_no_default)),
@@ -341,6 +371,18 @@ def _from_member(
                  "avatar_decoration_data")
         _fill_optional(mem_user, member, items)
         return mem_user
+    else:
+        mem: _types.member.Member = {
+            'roles': list(map(lambda role: int(role.id), roles_no_default)),
+            'joined_at': str(int(member.joined_at.timestamp())) if member.joined_at else None,
+            'flags': member.flags.value,
+            'deaf': member.voice.deaf if member.voice else False,
+            'mute': member.voice.mute if member.voice else False,
+        }
+        items = ("avatar", "nick", "premium_since", "pending", "permissions", "communication_disabled_until",
+                 "avatar_decoration_data")
+        _fill_optional(mem, member, items)
+        return mem
 
 
 @dict_from_object.register(discord.Role)
@@ -423,7 +465,7 @@ def _from_voice_channel(channel: discord.VoiceChannel) -> _types.channel.VoiceCh
 @dict_from_object.register(discord.Message)
 def _from_message(message: discord.Message) -> _types.message.Message:
     if isinstance(message.author, discord.Member):
-        member: _types.member.MemberWithUser | None = dict_from_object(message.author)
+        member: _types.member.Member | None = dict_from_object(message.author)
         user = message.author._user
     else:
         member = None
@@ -717,11 +759,75 @@ def make_role_dict(
     }
 
 
+class TextChannelKwargs(TypedDict):
+    guild_id: _types.snowflake.Snowflake
+    position: int
+    permission_overwrites: list[_types.channel.PermissionOverwrite]
+    nsfw: NotRequired[bool]
+    parent_id: _types.snowflake.Snowflake | None
+    # From _BaseTextChannel
+    topic: NotRequired[str]
+    last_message_id: NotRequired[_types.snowflake.Snowflake | None]
+    last_pin_timestamp: NotRequired[str]
+    rate_limit_per_user: NotRequired[int]
+    default_thread_rate_limit_per_user: NotRequired[int]
+    default_auto_archive_duration: NotRequired[_types.channel.ThreadArchiveDuration]
+
+
+class NameTextChannelKwargs(TextChannelKwargs):
+    name: str
+
+
+class DMChannelKwargs(TypedDict):
+    name: NotRequired[str]
+    last_message_id: NotRequired[_types.snowflake.Snowflake | None]
+
+
+class RecipientDMChannelKwargs(DMChannelKwargs):
+    recipients: list[_types.user.PartialUser]
+
+
+class VoiceChannelKwargs(TypedDict):
+    guild_id: _types.snowflake.Snowflake
+    position: int
+    permission_overwrites: list[_types.channel.PermissionOverwrite]
+    nsfw: NotRequired[bool]
+    parent_id: _types.snowflake.Snowflake | None
+    # From _BaseTextChannel
+    topic: NotRequired[str]
+    last_message_id: NotRequired[_types.snowflake.Snowflake | None]
+    last_pin_timestamp: NotRequired[str]
+    rate_limit_per_user: NotRequired[int]
+    default_thread_rate_limit_per_user: NotRequired[int]
+    default_auto_archive_duration: NotRequired[_types.channel.ThreadArchiveDuration]
+
+    bitrate: int
+    user_limit: int
+    rtc_region: NotRequired[str | None]
+    video_quality_mode: NotRequired[_types.channel.VideoQualityMode]
+
+
+class NameVoiceChannelKwargs(VoiceChannelKwargs):
+    name: str
+
+
+class CategoryChannelKwargs(TypedDict):
+    guild_id: _types.snowflake.Snowflake
+    position: int
+    permission_overwrites: list[_types.channel.PermissionOverwrite]
+    nsfw: NotRequired[bool]
+    parent_id: NotRequired[_types.snowflake.Snowflake | None]
+
+
+class NameCategoryChannelKwargs(CategoryChannelKwargs):
+    name: str
+
+
 @overload
 def make_channel_dict(
         ctype: Literal[0],
         id_num: int = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[NameTextChannelKwargs],
 ) -> _types.channel.TextChannel: ...
 
 
@@ -729,7 +835,7 @@ def make_channel_dict(
 def make_channel_dict(
         ctype: Literal[1],
         id_num: int = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[RecipientDMChannelKwargs],
 ) -> _types.channel.DMChannel: ...
 
 
@@ -737,7 +843,7 @@ def make_channel_dict(
 def make_channel_dict(
         ctype: Literal[2],
         id_num: int = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[NameVoiceChannelKwargs],
 ) -> _types.channel.VoiceChannel: ...
 
 
@@ -745,14 +851,14 @@ def make_channel_dict(
 def make_channel_dict(
         ctype: Literal[4],
         id_num: int = ...,
-        **kwargs: Any,
+        **kwargs: Unpack[NameCategoryChannelKwargs],
 ) -> _types.channel.CategoryChannel: ...
 
 
 def make_channel_dict(
         ctype: Literal[0, 1, 2, 3, 4],
         id_num: int = -1,
-        **kwargs: Any,
+        **kwargs: object,
 ) -> _types.channel.Channel:
     if id_num < 0:
         id_num = make_id()
@@ -768,20 +874,46 @@ def make_channel_dict(
     return out  # type: ignore[return-value]
 
 
-def make_text_channel_dict(name: str, id_num: int = -1, **kwargs: Any) -> _types.channel.TextChannel:
+def make_text_channel_dict(name: str, id_num: int = -1, **kwargs: Unpack[TextChannelKwargs]) -> _types.channel.TextChannel:
     return make_channel_dict(discord.ChannelType.text.value, id_num, name=name, **kwargs)
 
 
-def make_category_channel_dict(name: str, id_num: int = -1, **kwargs: Any) -> _types.channel.CategoryChannel:
+def make_category_channel_dict(name: str, id_num: int = -1, **kwargs: Unpack[CategoryChannelKwargs]) -> _types.channel.CategoryChannel:
     return make_channel_dict(discord.ChannelType.category.value, id_num, name=name, **kwargs)
 
 
-def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: Any) -> _types.channel.DMChannel:
+def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: Unpack[DMChannelKwargs]) -> _types.channel.DMChannel:
     return make_channel_dict(discord.ChannelType.private.value, id_num, recipients=[dict_from_object(user)], **kwargs)
 
 
-def make_voice_channel_dict(name: str, id_num: int = -1, **kwargs: Any) -> _types.channel.VoiceChannel:
+def make_voice_channel_dict(name: str, id_num: int = -1, **kwargs: Unpack[VoiceChannelKwargs]) -> _types.channel.VoiceChannel:
     return make_channel_dict(discord.ChannelType.voice.value, id_num, name=name, **kwargs)
+
+
+class MessageKwargs(TypedDict, total=False):
+    poll: _types.poll.Poll
+    reactions: list[_types.message.Reaction]
+    nonce: int | str
+    webhook_id: _types.snowflake.Snowflake
+    activity: _types.message.MessageActivity
+    application: _types.message.MessageApplication
+    application_id: _types.snowflake.Snowflake
+    message_reference: _types.message.MessageReference
+    flags: int
+    sticker_items: list[_types.sticker.StickerItem]
+    referenced_message: _types.message.Message | None
+    interaction_metadata: _types.message.MessageInteractionMetadata
+    components: list[_types.message.ComponentBase]
+    position: int
+    role_subscription_data: _types.message.RoleSubscriptionData
+    thread: _types.message.Thread
+    call: _types.message.CallMessage
+    purchase_notification: _types.message.PurchaseNotificationResponse
+
+
+class MessageKwargsExtra(MessageKwargs, total=False):
+    guild_id: int
+    member: _types.member.Member
 
 
 # TODO: Convert reactions, activity, and application to a dict.
@@ -795,13 +927,13 @@ def make_message_dict(
         tts: bool = False,
         mention_everyone: bool = False,
         mentions: list[discord.User | discord.Member] | None = None,
-        mention_roles: list[_types.gateway.Snowflake] | None = None,
+        mention_roles: list[_types.snowflake.Snowflake] | None = None,
         mention_channels: list[_types.AnyChannel] | None = None,
         attachments: list[discord.Attachment] | None = None,
         embeds: list[discord.Embed] | None = None,
         pinned: bool = False,
         type: int = 0,
-        **kwargs: Any,
+        **kwargs: Unpack[MessageKwargs],
 ) -> _types.message.Message:
     if mentions is None:
         mentions = []
@@ -812,13 +944,14 @@ def make_message_dict(
     if attachments is None:
         attachments = []
 
+    data: MessageKwargsExtra = {**kwargs}
     if id_num < 0:
         id_num = make_id()
     if isinstance(channel, discord.abc.GuildChannel):
-        kwargs["guild_id"] = channel.guild.id
+        data["guild_id"] = channel.guild.id
     if isinstance(author, discord.Member):
+        data["member"] = dict_from_object(author)
         author = author._user
-        kwargs["member"] = dict_from_object(author)
     if timestamp is None:
         timestamp = str(int(discord.utils.snowflake_time(id_num).timestamp()))
     mentions_json = list(map(user_with_member, mentions)) if mentions else []
@@ -844,7 +977,7 @@ def make_message_dict(
         'type': type,  # type: ignore[typeddict-item]
     }
     items = ('guild_id', 'member', 'reactions', 'nonce', 'webhook_id', 'activity', 'application', 'poll')
-    _fill_optional(out, kwargs, items)
+    _fill_optional(out, data, items)
     return out
 
 
@@ -891,32 +1024,77 @@ def make_attachment_dict(
     }
 
 
+class GuildKwargs(TypedDict, total=False):
+    unavailable: bool
+    icon_hash: str | None
+    owner: bool
+    permissions: str
+    widget_enabled: bool
+    widget_channel_id: _types.snowflake.Snowflake | None
+    joined_at: str | None
+    large: bool
+    member_count: int
+    voice_states: list[_types.guild.GuildVoiceState]
+    members: list[_types.member.Member]
+    channels: list[_types.channel.GuildChannel]
+    presences: list[_types.guild.PartialPresenceUpdate]
+    threads: list[_types.guild.Thread]
+    max_presences: int | None
+    max_members: int
+    premium_subscription_count: int
+    max_video_channel_users: int
+    soundboard_sounds: list[_types.guild.SoundboardSound]
+
+
 def make_guild_dict(
         name: str,
         owner_id: int,
         roles: list[_types.role.Role],
         id_num: int = -1,
-        emojis: list[_types.emoji.Emoji] | None = None,
+        *,
         icon: str | None = None,
         splash: str | None = None,
+        discovery_splash: str | None = None,
+        emojis: list[_types.emoji.Emoji] | None = None,
+        stickers: list[_types.sticker.GuildSticker] | None = None,
+        features: list[_types.guild.GuildFeature] | None = None,
+        description: str | None = None,
+        incidents_data: _types.guild.IncidentData | None = None,
+
         region: str = "en_north",
-        afk_channel_id: int | None = None,
+        afk_channel_id: _types.snowflake.Snowflake| None = None,
         afk_timeout: int = 600,
         verification_level: Literal[0, 1, 2, 3, 4] = 0,
         default_message_notifications: Literal[0, 1] = 0,
         explicit_content_filter: Literal[0, 1, 2] = 0,
-        features: list[_types.guild.GuildFeature] | None = None,
         mfa_level: Literal[0, 1] = 0,
-        application_id: int | None = None,
-        system_channel_id: int | None = None,
-        **kwargs: Any,
+        nsfw_level: Literal[0, 1] = 0,
+        application_id: _types.snowflake.Snowflake | None = None,
+        system_channel_id: _types.snowflake.Snowflake | None = None,
+        rules_channel_id: _types.snowflake.Snowflake | None = None,
+        vanity_url_code: str | None = None,
+        banner: str | None = None,
+        premium_tier: Literal[0, 1, 2, 3] = 0,
+        preferred_locale: str = "en-US",
+        public_updates_channel_id: _types.snowflake.Snowflake | None = None,
+        stage_instances: list[_types.guild.StageInstance] | None = None,
+        guild_scheduled_events: list[_types.guild.GuildScheduledEvent] | None = None,
+        **kwargs: Unpack[GuildKwargs],
 ) -> _types.guild.Guild:
     if id_num < 0:
         id_num = make_id()
+
     if emojis is None:
         emojis = []
+    if stickers is None:
+        stickers = []
     if features is None:
         features = []
+
+    if stage_instances is None:
+        stage_instances = []
+    if guild_scheduled_events is None:
+        guild_scheduled_events = []
     out: _types.guild.Guild = {
         'id': id_num,
         'name': name,
@@ -931,27 +1109,27 @@ def make_guild_dict(
         'explicit_content_filter': explicit_content_filter,
         'roles': roles,
         'emojis': emojis,
-        'members': [],
         'features': features,
         'mfa_level': mfa_level,
         'application_id': application_id,
         'system_channel_id': system_channel_id,
-        'discovery_splash': None,
-        'stickers': [],
-        'banner': None,
-        'description': None,
-        'incidents_data': None,
-        'nsfw_level': 0,
+        'discovery_splash': discovery_splash,
+        'stickers': stickers,
+        'banner': banner,
+        'description': description,
+        'incidents_data': incidents_data,
+        'nsfw_level': nsfw_level,
         'system_channel_flags': 0,
-        'rules_channel_id': None,
-        'vanity_url_code': None,
-        'premium_tier': 0,
-        'preferred_locale': "en-US",
-        'public_updates_channel_id': None,
-        'stage_instances': [],
-        'guild_scheduled_events': [],
+        'rules_channel_id': rules_channel_id,
+        'vanity_url_code': vanity_url_code,
+        'premium_tier': premium_tier,
+        'preferred_locale': preferred_locale,
+        'public_updates_channel_id': public_updates_channel_id,
+        'stage_instances': stage_instances,
+        'guild_scheduled_events': guild_scheduled_events,
     }
-    items = ("owner", "permissions", "embed_enabled", "embed_channel_id", "widget_enabled", "widget_channel_id",
-             "joined_at", "large", "unavailable", "member_count", "voice_states", "members", "channels", "presences")
+    items = ("unavailable", "icon_hash", "owner", "permissions", "widget_enabled", "widget_channel_id", "joined_at",
+             "large", "member_count", "voice_states", "members", "channels", "presences", "threads", "max_presences",
+             "max_members", "premium_subscription_count", "max_video_channel_users", "soundboard_sounds")
     _fill_optional(out, kwargs, items)
     return out

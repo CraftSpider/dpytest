@@ -76,7 +76,7 @@ def require_config(func: Callable[P, T]) -> Callable[P, T]:
     return wrapper
 
 
-def _task_coro_name(task: asyncio.Task[Any]) -> str | None:
+def _task_coro_name(task: asyncio.Task[object]) -> str | None:
     """
         Uses getattr() to avoid AttributeErrors when the coroutine doesn't have a __name__
     """
@@ -164,7 +164,7 @@ async def _message_callback(message: discord.Message) -> None:
     await sent_queue.put(message)
 
 
-async def _edit_member_callback(fields: Any, member: discord.Member, reason: str | None) -> None:
+async def _edit_member_callback(fields: dict[str, object], member: discord.Member, reason: str | None) -> None:
     """
         Internal callback. Updates a guild's voice states to reflect the given Member connecting to the given channel.
         Other updates to members are handled in http.edit_member().

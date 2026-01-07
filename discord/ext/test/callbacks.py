@@ -7,14 +7,16 @@
 import logging
 import discord
 from enum import Enum
-from typing import Callable, overload, Literal, Any, Awaitable
+from typing import Callable, overload, Literal, Awaitable, ParamSpec, TypedDict
 
 from . import _types
 
+P = ParamSpec('P')
+
 GetChannelCallback = Callable[[_types.snowflake.Snowflake], Awaitable[None]]
 SendMessageCallback = Callable[[discord.Message], Awaitable[None]]
-EditMemberCallback = Callable[[dict[str, Any], discord.Member, str | None], Awaitable[None]]
-Callback = GetChannelCallback | SendMessageCallback | EditMemberCallback | Callable[..., Awaitable[None]]
+EditMemberCallback = Callable[[dict[str, object], discord.Member, str | None], Awaitable[None]]
+Callback = GetChannelCallback | SendMessageCallback | EditMemberCallback | Callable[..., Awaitable[None]]  # type: ignore[explicit-any]
 
 log = logging.getLogger("discord.ext.tests")
 
@@ -50,7 +52,7 @@ class CallbackEvent(Enum):
 _callbacks: dict[CallbackEvent, Callback] = {}
 
 
-async def dispatch_event(event: CallbackEvent, *args: Any, **kwargs: Any) -> None:
+async def dispatch_event(event: CallbackEvent, *args: object, **kwargs: object) -> None:
     """
         Dispatch an event to a set handler, if one exists. Will ignore handler errors,
         just print a log
@@ -62,7 +64,7 @@ async def dispatch_event(event: CallbackEvent, *args: Any, **kwargs: Any) -> Non
     cb = _callbacks.get(event)
     if cb is not None:
         try:
-            await cb(*args, **kwargs)
+            await cb(*args, **kwargs)  # type: ignore[arg-type]
         except Exception as e:
             log.error(f"Error in handler for event {event}: {e}")
 

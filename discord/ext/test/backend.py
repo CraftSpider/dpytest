@@ -12,6 +12,8 @@ import sys
 import logging
 import re
 import datetime
+import warnings
+from types import UnionType
 
 import discord
 import discord.http as dhttp
@@ -21,13 +23,20 @@ import urllib.request
 
 from discord.types import member
 from requests import Response
-from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable
+from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable, cast, TypedDict, \
+    Unpack, TypeVar, reveal_type, _SpecialForm
 
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 from ._types import Undef, undefined
 from discord.types.snowflake import Snowflake
 
 from .callbacks import CallbackEvent
+from .factories import MessageKwargs
+
+
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
 
 
 class BackendState(NamedTuple):
@@ -43,7 +52,40 @@ log = logging.getLogger("discord.ext.tests")
 _cur_config: BackendState | None = None
 
 
-def _get_higher_locs(num: int) -> dict[str, Any]:
+class LocDict(dict[str, object]):
+    @overload
+    def get_checked(self, key: str, ty: type[T] | tuple[type[T], type[U]], *, default: _types.Undef = ...) -> T | U: ...
+
+    @overload
+    def get_checked(self, key: str, ty: type[T] | tuple[type[T], type[U], type[V]], *, default: _types.Undef = ...) -> T | U | V: ...
+
+    @overload
+    def get_checked(self, key: str, ty: type[T] | tuple[type[T], ...], *, default: _types.Undef = ...) -> T: ...
+
+    @overload
+    def get_checked(self, key: str, ty: type[T] | tuple[type[T], ...], *, default: U) -> T | U: ...
+
+    def get_checked(self, key: str, ty: type[T] | tuple[type[T], ...], *, default: U | _types.Undef = _types.undefined) -> T | U:
+        """
+            Retrieve a key from this dict, checking its value against the provided type.
+            Missing keys will throw a `KeyError` unless a default argument is provided.
+        :param key:
+        :param ty:
+        :param default:
+        :return:
+        """
+        val = self.get(key, _types.undefined)
+        if val is _types.undefined and default is not _types.undefined:
+            return default
+        elif val is _types.undefined:
+            raise KeyError(f"Key {key} not present in dictionary")
+        if isinstance(val, ty):
+            return cast(T, val)
+        else:
+            raise TypeError(f"Invalid type for {key} - expected {ty} but found {type(val)}")
+
+
+def _get_higher_locs(num: int) -> LocDict:
     """
         Get the local variables from higher in the call-stack. Should only be used in FakeHttp for
         retrieving information not passed to it by its caller.
@@ -54,7 +96,12 @@ def _get_higher_locs(num: int) -> dict[str, Any]:
     frame = sys._getframe(num + 1)
     locs = frame.f_locals
     del frame
-    return locs
+    return LocDict(locs)
+
+
+class CreateChannelKwargs(TypedDict, total=False):
+    permission_overwrites: list[_types.channel.PermissionOverwrite]
+    parent_id: int | None
 
 
 class FakeRequest(Response):
@@ -91,8 +138,8 @@ class FakeHttp(dhttp.HTTPClient):
             route: discord.http.Route,
             *,
             files: Sequence[discord.File] | None = None,
-            form: Iterable[dict[str, Any]] | None = None,
-            **kwargs: Any,
+            form: Iterable[dict[str, object]] | None = None,
+            **kwargs: object,
     ) -> NoReturn:
         """
             Overloaded to raise a NotImplemented error informing the user that the requested operation
@@ -109,19 +156,23 @@ class FakeHttp(dhttp.HTTPClient):
             f"an issue on github. Debug Info: {route.method} {route.url} with {kwargs}"
         )
 
-    async def create_channel(
+    async def create_channel(  # type: ignore[override]
             self,
             guild_id: Snowflake,
             channel_type: _types.channel.ChannelType,
             *,
             reason: str | None = None,
-            **options: Any
+            **options: Unpack[CreateChannelKwargs],
     ) -> _types.channel.GuildChannel:
         locs = _get_higher_locs(1)
-        guild = locs["self"]
-        name = locs["name"]
+        guild = locs.get_checked("self", discord.Guild)
+        name = locs.get_checked("name", str)
+
         perms = options.get("permission_overwrites", None)
         parent_id = options.get("parent_id", None)
+
+        if options:
+            warnings.warn(f"Unrecognized channel keys: {list(options.keys())}")
 
         channel: discord.abc.GuildChannel
         if channel_type == discord.ChannelType.text.value:
@@ -139,10 +190,10 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def delete_channel(self, channel_id: Snowflake, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        channel = locs["self"]
+        channel = locs.get_checked("self", discord.abc.GuildChannel)
         if channel.type.value == discord.ChannelType.text.value:
             delete_channel(channel)
-        if channel.type.value == discord.ChannelType.category.value:
+        if isinstance(channel, discord.CategoryChannel):
             for sub_channel in channel.text_channels:
                 delete_channel(sub_channel)
             delete_channel(channel)
@@ -163,21 +214,21 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def start_private_message(self, user_id: Snowflake) -> _types.channel.DMChannel:
         locs = _get_higher_locs(1)
-        user = locs["self"]
+        user = locs.get_checked("self", discord.User)
 
         await callbacks.dispatch_event(CallbackEvent.start_private_message, user)
 
         return facts.make_dm_channel_dict(user)
 
-    async def send_message(
+    async def send_message(  # type: ignore[explicit-any]
             self,
             channel_id: Snowflake,
             *,
             params: dhttp.MultipartParameters
     ) -> _types.message.Message:
         locs = _get_higher_locs(1)
-        channel = locs["channel"]
-        poll = locs["poll"]
+        channel: _types.AnyChannel = cast(_types.AnyChannel, locs["channel"])
+        poll = locs.get_checked("poll", (discord.Poll, type(None)))
 
         payload = params.payload
 
@@ -209,8 +260,12 @@ class FakeHttp(dhttp.HTTPClient):
             attachments = list(map(lambda x: make_attachment(*x), paths))
 
         user = self.state.user
-        if channel.guild:
-            perm = channel.permissions_for(channel.guild.get_member(user.id))
+        if isinstance(channel, (discord.abc.GuildChannel, discord.Thread)):
+            mem = channel.guild.get_member(user.id)
+            if mem is None:
+                raise ValueError(f"User sending a message to a guild they're not in. "
+                                 f"User: {user.id}, Guild: {channel.guild.id}")
+            perm = channel.permissions_for(mem)
         else:
             perm = channel.permissions_for(user)
         if not (perm.send_messages or perm.administrator):
@@ -237,16 +292,16 @@ class FakeHttp(dhttp.HTTPClient):
     async def delete_message(self, channel_id: Snowflake, message_id: Snowflake, *,
                              reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        message = locs["self"]
+        message = locs.get_checked("self", discord.Message)
 
         await callbacks.dispatch_event(CallbackEvent.delete_message, message.channel, message, reason=reason)
 
         delete_message(message)
 
-    async def edit_message(self, channel_id: Snowflake, message_id: Snowflake,
+    async def edit_message(self, channel_id: Snowflake, message_id: Snowflake,  # type: ignore[explicit-any]
                            **fields: dhttp.MultipartParameters) -> _types.message.Message:  # noqa: E501
         locs = _get_higher_locs(1)
-        message = locs["self"]
+        message = locs.get_checked("self", discord.Message)
 
         await callbacks.dispatch_event(CallbackEvent.edit_message, message.channel, message, fields)
 
@@ -255,10 +310,10 @@ class FakeHttp(dhttp.HTTPClient):
     async def add_reaction(self, channel_id: Snowflake, message_id: Snowflake,
                            emoji: str) -> None:
         locs = _get_higher_locs(1)
-        message = locs["self"]
+        message = locs.get_checked("self", discord.Message)
         # normally only the connected user can add a reaction, but for testing purposes we want to be able to force
         # the call from a specific user.
-        user = locs.get("member", self.state.user)
+        user = locs.get_checked("member", ty=discord.Member, default=self.state.user)
 
         emoji = emoji  # TODO: Turn this back into class?
 
@@ -270,8 +325,8 @@ class FakeHttp(dhttp.HTTPClient):
                               emoji: str,
                               member_id: Snowflake) -> None:
         locs = _get_higher_locs(1)
-        message = locs["self"]
-        member = locs["member"]
+        message = locs.get_checked("self", discord.Message)
+        member = locs.get_checked("member", discord.Member)
 
         await callbacks.dispatch_event(CallbackEvent.remove_reaction, message, emoji, member)
 
@@ -280,8 +335,8 @@ class FakeHttp(dhttp.HTTPClient):
     async def remove_own_reaction(self, channel_id: Snowflake, message_id: Snowflake,
                                   emoji: str) -> None:
         locs = _get_higher_locs(1)
-        message = locs["self"]
-        member = locs["member"]
+        message = locs.get_checked("self", discord.Message)
+        member = locs.get_checked("member", discord.Member)
 
         await callbacks.dispatch_event(CallbackEvent.remove_own_reaction, message, emoji, member)
 
@@ -289,7 +344,7 @@ class FakeHttp(dhttp.HTTPClient):
 
     async def clear_reactions(self, channel_id: Snowflake, message_id: Snowflake) -> None:
         locs = _get_higher_locs(1)
-        message = locs["self"]
+        message = locs.get_checked("self", discord.Message)
         clear_reactions(message)
 
     async def get_message(self, channel_id: Snowflake,
@@ -335,8 +390,8 @@ class FakeHttp(dhttp.HTTPClient):
     async def kick(self, user_id: Snowflake, guild_id: Snowflake,
                    reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        guild = locs["self"]
-        member = locs["user"]
+        guild = locs.get_checked("self", discord.Guild)
+        member = locs.get_checked("user", discord.Member)
 
         await callbacks.dispatch_event(CallbackEvent.kick, guild, member, reason=reason)
 
@@ -346,8 +401,8 @@ class FakeHttp(dhttp.HTTPClient):
                   delete_message_days: int = 1,
                   reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        guild = locs["self"]
-        member = locs["user"]
+        guild = locs.get_checked("self", discord.Guild)
+        member = locs.get_checked("user", discord.Member)
 
         await callbacks.dispatch_event(CallbackEvent.ban, guild, member, delete_message_days, reason=reason)
 
@@ -363,7 +418,7 @@ class FakeHttp(dhttp.HTTPClient):
     async def change_my_nickname(self, guild_id: Snowflake, nickname: str, *,
                                  reason: str | None = None) -> _types.member.Nickname:
         locs = _get_higher_locs(1)
-        me = locs["self"]
+        me = locs.get_checked("self", discord.Member)
 
         me.nick = nickname
 
@@ -375,32 +430,34 @@ class FakeHttp(dhttp.HTTPClient):
                           reason: str | None = None,
                           **fields: Any) -> _types.member.MemberWithUser:
         locs = _get_higher_locs(1)
-        member = locs["self"]
+        member = locs.get_checked("self", discord.Member)
 
         await callbacks.dispatch_event(CallbackEvent.edit_member, fields, member, reason=reason)
         member = update_member(member, nick=fields.get('nick'), roles=fields.get('roles'))
-        return facts.dict_from_object(member)
+        return facts.dict_from_object(member, user=True)
 
     async def get_members(
         self, guild_id: Snowflake, limit: int, after: Snowflake | None
     ) -> list[member.MemberWithUser]:
         locs = _get_higher_locs(1)
-        guild = locs["self"]
+        guild = locs.get_checked("self", discord.Guild)
         return list(map(facts.dict_from_object, guild.members))
 
     async def get_member(self, guild_id: Snowflake,
                          member_id: Snowflake) -> _types.member.MemberWithUser:
         locs = _get_higher_locs(1)
-        guild = locs["self"]
+        guild = locs.get_checked("self", discord.Guild)
         member = discord.utils.get(guild.members, id=member_id)
+        if member is None:
+            raise ValueError(f"Member {member_id} not in guild {guild_id}")
 
-        return facts.dict_from_object(member)
+        return facts.dict_from_object(member, user=True)
 
     async def edit_role(self, guild_id: Snowflake, role_id: Snowflake, *,
                         reason: str | None = None,
                         **fields: Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
-        role = locs["self"]
+        role = locs.get_checked("self", discord.Role)
         guild = role.guild
 
         await callbacks.dispatch_event(CallbackEvent.edit_role, guild, role, fields, reason=reason)
@@ -411,7 +468,7 @@ class FakeHttp(dhttp.HTTPClient):
     async def delete_role(self, guild_id: Snowflake, role_id: Snowflake, *,
                           reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        role = locs["self"]
+        role = locs.get_checked("self", discord.Role)
         guild = role.guild
 
         await callbacks.dispatch_event(CallbackEvent.delete_role, guild, role, reason=reason)
@@ -421,7 +478,7 @@ class FakeHttp(dhttp.HTTPClient):
     async def create_role(self, guild_id: Snowflake, *, reason: str | None = None,
                           **fields: Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
-        guild = locs["self"]
+        guild = locs.get_checked("self", discord.Guild)
         role = make_role(guild=guild, **fields)
 
         await callbacks.dispatch_event(CallbackEvent.create_role, guild, role, reason=reason)
@@ -432,20 +489,20 @@ class FakeHttp(dhttp.HTTPClient):
                                  positions: list[_types.guild.RolePositionUpdate], *,
                                  reason: str | None = None) -> list[_types.role.Role]:
         locs = _get_higher_locs(1)
-        role = locs["self"]
+        role = locs.get_checked("self", discord.Role)
         guild = role.guild
 
         await callbacks.dispatch_event(CallbackEvent.move_role, guild, role, positions, reason=reason)
 
         for pair in positions:
-            guild._roles[pair["id"]].position = pair["position"]
-        return list(guild._roles.values())
+            guild._roles[int(pair["id"])].position = int(pair["position"]) if pair["position"] else 0
+        return list(map(facts.dict_from_object, guild._roles.values()))
 
     async def add_role(self, guild_id: Snowflake, user_id: Snowflake,
                        role_id: Snowflake, *, reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        member = locs["self"]
-        role = locs["role"]
+        member = locs.get_checked("self", discord.Member)
+        role = locs.get_checked("role", discord.Role)
 
         await callbacks.dispatch_event(CallbackEvent.add_role, member, role, reason=reason)
 
@@ -456,8 +513,8 @@ class FakeHttp(dhttp.HTTPClient):
                           role_id: Snowflake, *,
                           reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        member = locs["self"]
-        role = locs["role"]
+        member = locs.get_checked("self", discord.Member)
+        role = locs.get_checked("role", discord.Role)
 
         await callbacks.dispatch_event(CallbackEvent.remove_role, member, role, reason=reason)
 
@@ -490,8 +547,8 @@ class FakeHttp(dhttp.HTTPClient):
                                          target_id: Snowflake, *,
                                          reason: str | None = None) -> None:
         locs = _get_higher_locs(1)
-        channel: discord.TextChannel = locs["self"]
-        target = locs["target"]
+        channel = locs.get_checked("self", discord.TextChannel)
+        target = locs.get_checked("target", (discord.Member, discord.Role, discord.Object))
 
         user = self.state.user
         member = channel.guild.get_member(user.id)
@@ -514,8 +571,8 @@ class FakeHttp(dhttp.HTTPClient):
             reason: str | None = None
     ) -> None:
         locs = _get_higher_locs(1)
-        channel: discord.TextChannel = locs["self"]
-        target = locs["target"]
+        channel = locs.get_checked("self", discord.TextChannel)
+        target = locs.get_checked("target", (discord.Member, discord.Role, discord.Object))
 
         user = self.state.user
         member = channel.guild.get_member(user.id)
@@ -538,9 +595,11 @@ class FakeHttp(dhttp.HTTPClient):
     async def get_user(self, user_id: Snowflake) -> _types.user.User:
         # return self.request(Route('GET', '/users/{user_id}', user_id=user_id))
         locs = _get_higher_locs(1)
-        client = locs["self"]
+        client = locs.get_checked("self", discord.Client)
         guild = client.guilds[0]
         member = discord.utils.get(guild.members, id=user_id)
+        if member is None:
+            raise ValueError(f"Client user not in any guilds, so can't retrieve a user for them")
         return facts.dict_from_object(member._user)
 
     async def pin_message(self, channel_id: Snowflake, message_id: Snowflake,
@@ -586,7 +645,7 @@ class FakeHttp(dhttp.HTTPClient):
         # return self.request(Route('GET', '/guilds/{guild_id}', guild_id=guild_id))
         # TODO: Respect with_counts
         locs = _get_higher_locs(1)
-        client: discord.Client = locs["self"]
+        client = locs.get_checked("self", discord.Client)
         guild = discord.utils.get(client.guilds, id=guild_id)
         if guild is None:
             raise RuntimeError(f"Couldn't find guild with ID {guild_id} in test client")
@@ -613,7 +672,7 @@ def get_config() -> BackendState:
 def make_guild(
         name: str,
         members: list[discord.Member] | None = None,
-        channels: list[_types.AnyChannel] | None = None,
+        channels: list[discord.abc.GuildChannel] | None = None,
         roles: list[_types.role.Role] | None = None,
         owner: bool = False,
         id_num: int = -1,
@@ -643,8 +702,10 @@ def make_guild(
 
     owner_id = state.user.id if owner else 0
 
+    data_channels: list[_types.guild.GuildChannel] = [facts.dict_from_object(channel) for channel in channels]  # type: ignore[misc]
+    data_members = [facts.dict_from_object(member) for member in members]
     data: _types.gateway.Guild = facts.make_guild_dict(
-        name, owner_id, roles, id_num=id_num, member_count=member_count, members=members, channels=channels
+        name, owner_id, roles, id_num=id_num, member_count=member_count, members=data_members, channels=data_channels
     )
 
     state.parse_guild_create(data)
@@ -780,14 +841,16 @@ def make_text_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: _types.channel.PermissionOverwrite | None = None,
+        permission_overwrites: list[_types.channel.PermissionOverwrite] | None = None,
         parent_id: int | None = None,
 ) -> discord.TextChannel:
     if position == -1:
         position = len(guild.channels) + 1
+    if permission_overwrites is None:
+        permission_overwrites = []
 
-    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id,
-                                          permission_overwrites=permission_overwrites, parent_id=parent_id)
+    c_dict = facts.make_text_channel_dict(name, id_num, position=position, guild_id=guild.id, parent_id=parent_id,
+                                          permission_overwrites=permission_overwrites)
 
     state = get_state()
     state.parse_channel_create(c_dict)
@@ -800,10 +863,12 @@ def make_category_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: _types.channel.PermissionOverwrite | None = None,
+        permission_overwrites: list[_types.channel.PermissionOverwrite] | None = None,
 ) -> discord.CategoryChannel:
     if position == -1:
         position = len(guild.categories) + 1
+    if permission_overwrites is None:
+        permission_overwrites = []
     c_dict = facts.make_category_channel_dict(name, id_num, position=position, guild_id=guild.id,
                                               permission_overwrites=permission_overwrites)
     state = get_state()
@@ -817,7 +882,7 @@ def make_voice_channel(
         guild: discord.Guild,
         position: int = -1,
         id_num: int = -1,
-        permission_overwrites: _types.channel.PermissionOverwrite | None = None,
+        permission_overwrites: list[_types.channel.PermissionOverwrite] | None = None,
         parent_id: int | None = None,
         bitrate: int = 192,
         user_limit: int = 0
@@ -825,6 +890,8 @@ def make_voice_channel(
 ) -> discord.VoiceChannel:
     if position == -1:
         position = len(guild.voice_channels) + 1
+    if permission_overwrites is None:
+        permission_overwrites = []
     c_dict = facts.make_voice_channel_dict(name, id_num, position=position, guild_id=guild.id,
                                            permission_overwrites=permission_overwrites, parent_id=parent_id,
                                            bitrate=bitrate, user_limit=user_limit)
@@ -835,7 +902,10 @@ def make_voice_channel(
 
 
 def delete_channel(channel: discord.abc.GuildChannel) -> None:
-    c_dict = facts.make_text_channel_dict(channel.name, id_num=channel.id, guild_id=channel.guild.id)
+    c_dict = {
+        'id': channel.id,
+        'type': channel.type.value,
+    }
 
     state = get_state()
     state.parse_channel_delete(c_dict)
@@ -880,9 +950,13 @@ def make_member(user: discord.user.BaseUser, guild: discord.Guild,
         roles = []
     role_ids: list[Snowflake] = list(map(lambda x: x.id, roles))
 
+    kwargs: facts.MemberKwargs = {}
+    if nick is not None:
+        kwargs['nick'] = nick
+
     data: _types.gateway.GuildMemberAddEvent = {
         'guild_id': guild.id,
-        **facts.make_member_dict(user, role_ids, nick=nick),
+        **facts.make_member_dict(user, role_ids, **kwargs),
     }
 
     state = get_state()
@@ -923,20 +997,20 @@ def make_message(
         id_num: int = -1,
 ) -> discord.Message:
     guild = channel.guild if hasattr(channel, "guild") else None
-    guild_id = guild.id if guild else None
 
     mentions = find_member_mentions(content, guild)
     role_mentions = find_role_mentions(content, guild)
     channel_mentions = find_channel_mentions(content, guild)
 
-    kwargs: dict[str, Any] = {}
+    kwargs: MessageKwargs = {}
     if nonce is not None:
         kwargs["nonce"] = nonce
+    if poll is not None:
+        kwargs["poll"] = facts.dict_from_object(poll)
 
     data = facts.make_message_dict(
         channel, author, id_num, content=content, mentions=mentions, tts=tts, embeds=embeds, attachments=attachments,
-        poll=facts.dict_from_object(poll) if poll else None, mention_roles=role_mentions,
-        mention_channels=channel_mentions, guild_id=guild_id, **kwargs
+        mention_roles=role_mentions, mention_channels=channel_mentions, **kwargs
     )
 
     state = get_state()
@@ -950,7 +1024,7 @@ def make_message(
     return state._get_message(int(data["id"]))  # type: ignore[return-value]
 
 
-def edit_message(
+def edit_message(  # type: ignore[explicit-any]
         message: discord.Message, **fields: dhttp.MultipartParameters
 ) -> _types.message.Message:
     data = facts.dict_from_object(message)
@@ -1055,7 +1129,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
         data["guild_id"] = message.guild.id
     # when reactions are added by something other than the bot client, we want the user to end up in the payload.
     if isinstance(user, discord.Member):
-        data["member"] = facts.dict_from_object(user)
+        data["member"] = facts.dict_from_object(user, user=True)
 
     state = get_state()
     state.parse_message_reaction_add(data)

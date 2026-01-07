@@ -5,6 +5,7 @@
 
 import asyncio
 from asyncio import Future
+from collections.abc import Callable
 from typing import TypeVar, ParamSpec, Any, Literal, overload
 
 import discord
@@ -50,7 +51,7 @@ class FakeState(dstate.ConnectionState):
 
         real_disp = self.dispatch
 
-        def dispatch(*args: Any, **kwargs: Any) -> T | None:
+        def dispatch(*args: object, **kwargs: object) -> T | None:
             if not self._do_dispatch:
                 return None
             return real_disp(*args, **kwargs)
