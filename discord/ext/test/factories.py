@@ -168,7 +168,7 @@ def make_user_dict(username: str, discrim: str | int, avatar: str | None, id_num
 
 def make_member_dict(
         user: discord.user.BaseUser,
-        roles: list[_types.gateway.Snowflake],
+        roles: list[_types.snowflake.Snowflake],
         joined: str | None = None,
         deaf: bool = False,
         mute: bool = False,
@@ -244,9 +244,9 @@ class DictFromObject(Protocol):
     def __call__(self, obj: discord.Sticker) -> _types.sticker.Sticker: ...
 
     @overload
-    def __call__(self, obj: discord.StageInstance) -> _types.guild.StageInstance: ...
+    def __call__(self, obj: discord.StageInstance) -> _types.channel.StageInstance: ...
     @overload
-    def __call__(self, obj: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent: ...
+    def __call__(self, obj: discord.ScheduledEvent) -> _types.scheduled_event.GuildScheduledEvent: ...
     @overload
     def __call__(self, obj: discord.Guild) -> _types.guild.Guild: ...
 
@@ -527,7 +527,7 @@ def _from_stage_instance(stage_instance: discord.StageInstance) -> _types.channe
 
 
 @dict_from_object.register(discord.ScheduledEvent)
-def _from_scheduled_event(event: discord.ScheduledEvent) -> _types.guild.GuildScheduledEvent:
+def _from_scheduled_event(event: discord.ScheduledEvent) -> _types.scheduled_event.GuildScheduledEvent:
     if event.entity_type == discord.EntityType.stage_instance:
         stage: _types.scheduled_event.StageInstanceScheduledEvent = {
             'id': event.id,
@@ -795,7 +795,7 @@ def make_message_dict(
         tts: bool = False,
         mention_everyone: bool = False,
         mentions: list[discord.User | discord.Member] | None = None,
-        mention_roles: list[_types.gateway.Snowflake] | None = None,
+        mention_roles: list[_types.snowflake.Snowflake] | None = None,
         mention_channels: list[_types.AnyChannel] | None = None,
         attachments: list[discord.Attachment] | None = None,
         embeds: list[discord.Embed] | None = None,

@@ -647,7 +647,7 @@ def make_guild(
 
     owner_id = state.user.id if owner else 0
 
-    data: _types.gateway.Guild = facts.make_guild_dict(
+    data: _types.guild.Guild = facts.make_guild_dict(
         name, owner_id, roles, id_num=id_num, member_count=member_count, members=members, channels=channels
     )
 
@@ -1037,7 +1037,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
                  emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
-        partial: _types.message.PartialEmoji = {
+        partial: _types.emoji.PartialEmoji = {
             "id": temp[0],
             "name": temp[1]
         }
@@ -1098,7 +1098,7 @@ def add_reaction(message: discord.Message, user: discord.user.BaseUser | discord
 def remove_reaction(message: discord.Message, user: discord.abc.Snowflake, emoji: str) -> None:
     if ":" in emoji:
         temp = emoji.split(":")
-        partial: _types.message.PartialEmoji = {
+        partial: _types.emoji.PartialEmoji = {
             "id": temp[0],
             "name": temp[1]
         }

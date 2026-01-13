@@ -37,8 +37,9 @@ undefined: Literal[Undef.undefined] = Undef.undefined
 
 if typing.TYPE_CHECKING:
     from discord.types import (
-        role, gateway, appinfo, user, guild, emoji, channel, message, sticker, snowflake,  # noqa: F401
-        scheduled_event, member, poll  # noqa: F401
+        role as role, gateway as gateway, appinfo as appinfo, user as user, guild as guild,  # noqa: F401
+        emoji as emoji, channel as channel, message as message, sticker as sticker,  # noqa: F401
+        snowflake as snowflake, scheduled_event as scheduled_event, member as member, poll as poll  # noqa: F401
     )
 
     AnyChannelJson = channel.VoiceChannel | channel.TextChannel | channel.DMChannel | channel.CategoryChannel
