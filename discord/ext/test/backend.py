@@ -21,7 +21,7 @@ import urllib.request
 
 from discord.types import member
 from requests import Response
-from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable, reveal_type
+from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable
 
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 from ._types import Undef, undefined
