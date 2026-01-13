@@ -50,7 +50,7 @@ class FakeState(dstate.ConnectionState):
 
         real_disp = self.dispatch
 
-        def dispatch(*args: Any, **kwargs: Any) -> T | None:
+        def dispatch(*args: Any, **kwargs: Any) -> Any | None:
             if not self._do_dispatch:
                 return None
             return real_disp(*args, **kwargs)

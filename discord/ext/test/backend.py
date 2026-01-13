@@ -21,7 +21,7 @@ import urllib.request
 
 from discord.types import member
 from requests import Response
-from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable
+from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable, reveal_type
 
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 from ._types import Undef, undefined
@@ -391,8 +391,10 @@ class FakeHttp(dhttp.HTTPClient):
     async def get_member(self, guild_id: Snowflake,
                          member_id: Snowflake) -> _types.member.MemberWithUser:
         locs = _get_higher_locs(1)
-        guild = locs["self"]
+        guild: discord.Guild = locs["self"]
         member = discord.utils.get(guild.members, id=member_id)
+        if member is None:
+            raise ValueError(f"No member {member_id} in guild {guild_id}")
 
         return facts.dict_from_object(member)
 
@@ -400,7 +402,7 @@ class FakeHttp(dhttp.HTTPClient):
                         reason: str | None = None,
                         **fields: Any) -> _types.role.Role:
         locs = _get_higher_locs(1)
-        role = locs["self"]
+        role: discord.Role = locs["self"]
         guild = role.guild
 
         await callbacks.dispatch_event(CallbackEvent.edit_role, guild, role, fields, reason=reason)
@@ -538,9 +540,11 @@ class FakeHttp(dhttp.HTTPClient):
     async def get_user(self, user_id: Snowflake) -> _types.user.User:
         # return self.request(Route('GET', '/users/{user_id}', user_id=user_id))
         locs = _get_higher_locs(1)
-        client = locs["self"]
+        client: discord.Client = locs["self"]
         guild = client.guilds[0]
         member = discord.utils.get(guild.members, id=user_id)
+        if member is None:
+            raise ValueError(f"Failed to locate user {user_id} in test state")
         return facts.dict_from_object(member._user)
 
     async def pin_message(self, channel_id: Snowflake, message_id: Snowflake,

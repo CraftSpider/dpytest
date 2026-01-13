@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import collections
 from typing import TypeVar
 
 import discord
@@ -80,10 +81,12 @@ class PeekableQueue(asyncio.Queue[T]):
         internal artifacts
     """
 
+    _queue: collections.deque[T]
+
     def peek(self) -> T:
         """
             Peek the current last value in the queue, or raise an exception if there are no values
 
         :return: Last value in the queue, assuming there are any
         """
-        return self._queue[-1]  # type: ignore[attr-defined]
+        return self._queue[-1]
