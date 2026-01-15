@@ -19,9 +19,8 @@ import pathlib
 import urllib.parse
 import urllib.request
 
-from discord.types import member
 from requests import Response
-from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable
+from typing import NamedTuple, Any, ClassVar, NoReturn, Literal, Pattern, overload, Sequence, Iterable, Optional
 
 from . import factories as facts, state as dstate, callbacks, websocket, _types
 from ._types import Undef, undefined
@@ -168,6 +167,23 @@ class FakeHttp(dhttp.HTTPClient):
         await callbacks.dispatch_event(CallbackEvent.start_private_message, user)
 
         return facts.make_dm_channel_dict(user)
+
+    async def start_thread_with_message(
+            self,
+            channel_id: Snowflake,
+            message_id: Snowflake,
+            *,
+            name: str,
+            auto_archive_duration: _types.threads.ThreadArchiveDuration,
+            rate_limit_per_user: Optional[int] = None,
+            reason: Optional[str] = None,
+    ) -> _types.threads.Thread:
+        locs = _get_higher_locs(1)
+        message = locs["self"]
+        owner = get_state().user.id
+        await callbacks.dispatch_event(CallbackEvent.start_thread_with_message, message)
+
+        return facts.make_thread_dict(message, owner, name)
 
     async def send_message(
             self,

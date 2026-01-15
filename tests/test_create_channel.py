@@ -26,3 +26,15 @@ async def test_make_voice_channel(bot: discord.Client) -> None:
     assert channel.guild == guild
     assert channel.bitrate == bitrate
     assert channel.user_limit == user_limit
+
+
+@pytest.mark.asyncio
+async def test_make_thread(bot: discord.Client) -> None:
+    msg: discord.Message = await dpytest.message("Hello World!")
+    thread = await msg.create_thread(name="My Cool Thread")
+    assert thread.name == "My Cool Thread"
+    assert thread.parent_id == msg.channel.id
+
+    msg = await dpytest.message("Thread message", thread)
+    assert msg.content == "Thread message"
+    assert msg.channel.id == thread.id

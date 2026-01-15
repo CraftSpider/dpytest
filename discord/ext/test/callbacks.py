@@ -23,6 +23,7 @@ class CallbackEvent(Enum):
     get_channel = "get_channel"
     presence = "presence"
     start_private_message = "start_private_message"
+    start_thread_with_message = "start_thread_with_message"
     send_message = "send_message"
     send_typing = "send_typing"
     delete_message = "delete_message"

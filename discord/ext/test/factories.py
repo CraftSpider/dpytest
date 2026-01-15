@@ -749,8 +749,17 @@ def make_channel_dict(
 ) -> _types.channel.CategoryChannel: ...
 
 
+@overload
 def make_channel_dict(
-        ctype: Literal[0, 1, 2, 3, 4],
+        ctype: Literal[11],
+        id_num: int = ...,
+        **kwargs: Any,
+
+) -> _types.channel.ThreadChannel: ...
+
+
+def make_channel_dict(
+        ctype: Literal[0, 1, 2, 3, 4, 11],
         id_num: int = -1,
         **kwargs: Any,
 ) -> _types.channel.Channel:
@@ -763,7 +772,8 @@ def make_channel_dict(
     }
     items = ("guild_id", "position", "permission_overwrites", "name", "topic", "nsfw", "last_message_id", "bitrate",
              "user_limit", "rate_limit_per_user", "recipients", "icon", "owner_id", "application_id", "parent_id",
-             "last_pin_timestamp")
+             "last_pin_timestamp", "message_count", "member_count", "total_message_sent", "thread_metadata", "member",
+             "flags", "applied_tags")
     _fill_optional(out, kwargs, items)
     return out  # type: ignore[return-value]
 
@@ -782,6 +792,34 @@ def make_dm_channel_dict(user: discord.User, id_num: int = -1, **kwargs: Any) ->
 
 def make_voice_channel_dict(name: str, id_num: int = -1, **kwargs: Any) -> _types.channel.VoiceChannel:
     return make_channel_dict(discord.ChannelType.voice.value, id_num, name=name, **kwargs)
+
+
+def make_thread_channel_dict(parent: discord.abc.Snowflake, id_num: int = -1, **kwargs: Any) -> _types.channel.ThreadChannel:
+    return make_channel_dict(discord.ChannelType.public_thread.value, id_num, parent_id=parent.id, **kwargs)
+
+
+def make_thread_dict(parent: discord.Message, owner: int, name: str, id_num: int = -1, **kwargs: Any) -> _types.threads.Thread:
+    out: _types.threads.Thread = {
+        'id': id_num,
+        'guild_id': parent.guild.id if parent.guild else 0,
+        'parent_id': parent.channel.id,
+        'owner_id': 0,
+        'name': name,
+        # TODO: Support non-public threads
+        'type': 11,
+        'member_count': 0,
+        'message_count': 0,
+        'total_message_sent': 0,
+        'rate_limit_per_user': 0,
+        'thread_metadata': {
+            'archived': False,
+            'auto_archive_duration': 1440,
+            'archive_timestamp': "",
+        }
+    }
+    items = ("member", "last_message_id", "last_pin_timestamp", "newly_created", "flags", "applied_tags")
+    _fill_optional(out, kwargs, items)
+    return out
 
 
 # TODO: Convert reactions, activity, and application to a dict.
