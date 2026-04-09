@@ -37,6 +37,7 @@ class BackendState(NamedTuple):
     """
     messages: dict[int, list[_types.message.Message]]
     state: dstate.FakeState
+    owner: _types.user.User | None
 
 
 log = logging.getLogger("discord.ext.tests")
@@ -467,8 +468,8 @@ class FakeHttp(dhttp.HTTPClient):
         update_member(member, roles=roles)
 
     async def application_info(self) -> _types.appinfo.AppInfo:
-        # TODO: make these values configurable
         user = self.state.user
+        owner_data = get_config().owner or facts.make_user_dict("TestOwner", "0001", "")
         data: _types.appinfo.AppInfo = {
             "id": user.id,
             "name": user.name,
@@ -477,7 +478,7 @@ class FakeHttp(dhttp.HTTPClient):
             "rpc_origins": [],
             "bot_public": True,
             "bot_require_code_grant": False,
-            "owner": facts.make_user_dict("TestOwner", "0001", ""),
+            "owner": owner_data,
             "summary": "",
             "verify_key": "",
             "flags": 0,
@@ -595,6 +596,207 @@ class FakeHttp(dhttp.HTTPClient):
         if guild is None:
             raise RuntimeError(f"Couldn't find guild with ID {guild_id} in test client")
         return facts.dict_from_object(guild)
+
+
+def _fake_message_dict(
+        content: str = "",
+        embeds: list[dict[str, Any]] | None = None,
+        edited: bool = False,
+        message_id: int | None = None,
+) -> dict[str, Any]:
+    """Build a minimal fake message payload for webhook adapter returns."""
+    now = str(int(datetime.datetime.now().timestamp()))
+    return {
+        "id": str(message_id or facts.make_id()),
+        "channel_id": "0",
+        "author": facts.make_user_dict("FakeApp", "0001", None),
+        "content": content,
+        "timestamp": now,
+        "edited_timestamp": now if edited else None,
+        "tts": False,
+        "mention_everyone": False,
+        "mentions": [],
+        "mention_roles": [],
+        "attachments": [],
+        "embeds": embeds or [],
+        "pinned": False,
+        "type": 0,
+    }
+
+
+class FakeWebhookAdapter:
+    """
+        A fake webhook adapter that intercepts interaction responses instead of
+        sending them to Discord. Stores responses in the callback system for verification.
+
+        All interaction responses (ephemeral or not) go into the unified ``sent_queue``
+        via ``CallbackEvent.interaction_response``.
+    """
+
+    _original_adapter: Any
+
+    def __init__(self) -> None:
+        self._original_adapter = None
+
+    async def create_interaction_response(
+            self,
+            interaction_id: int,
+            token: str,
+            *,
+            session: Any,
+            proxy: str | None = None,
+            proxy_auth: Any = None,
+            params: Any,
+    ) -> dict[str, Any]:
+        from .runner import InteractionResponse
+
+        payload_data = params.payload or {}
+        response_type = payload_data.get("type", 4)
+
+        ir = InteractionResponse(response_type=response_type, payload=payload_data)
+        await callbacks.dispatch_event(CallbackEvent.interaction_response, ir)
+
+        # Return a valid InteractionCallback dict so discord.py doesn't crash
+        data_section = payload_data.get("data") or {}
+        return {
+            "interaction": {
+                "id": str(interaction_id),
+                "type": 2,  # APPLICATION_COMMAND
+                "response_message_id": str(facts.make_id()),
+                "response_message_loading": False,
+                "response_message_ephemeral": ir.ephemeral,
+            },
+            "resource": {
+                "type": response_type,
+                "message": _fake_message_dict(
+                    content=data_section.get("content", ""),
+                    embeds=data_section.get("embeds", []),
+                ),
+            },
+        }
+
+    async def execute_webhook(
+            self,
+            webhook_id: int,
+            token: str,
+            *,
+            session: Any,
+            proxy: str | None = None,
+            proxy_auth: Any = None,
+            payload: dict[str, Any] | None = None,
+            multipart: Any = None,
+            files: Any = None,
+            thread_id: int | None = None,
+            wait: bool = False,
+            params: dict[str, Any] | None = None,
+            with_components: bool = False,
+    ) -> dict[str, Any]:
+        from .runner import InteractionResponse
+
+        content = (payload or {}).get("content", "")
+        embeds = (payload or {}).get("embeds", [])
+        flags = (payload or {}).get("flags", 0)
+
+        ir = InteractionResponse(
+            response_type=4,
+            payload={"type": 4, "data": {"content": content, "embeds": embeds, "flags": flags}},
+        )
+        await callbacks.dispatch_event(CallbackEvent.interaction_response, ir)
+
+        return _fake_message_dict(content=content, embeds=embeds)
+
+    async def edit_webhook_message(
+            self,
+            webhook_id: int,
+            token: str,
+            message_id: int,
+            *,
+            session: Any,
+            proxy: str | None = None,
+            proxy_auth: Any = None,
+            payload: dict[str, Any] | None = None,
+            multipart: Any = None,
+            files: Any = None,
+            thread_id: int | None = None,
+    ) -> dict[str, Any]:
+        from .runner import InteractionResponse
+
+        content = (payload or {}).get("content", "")
+        embeds = (payload or {}).get("embeds", [])
+
+        ir = InteractionResponse(
+            response_type=7,  # UPDATE_MESSAGE
+            payload={"type": 7, "data": {"content": content, "embeds": embeds}},
+        )
+        await callbacks.dispatch_event(CallbackEvent.interaction_response, ir)
+
+        return _fake_message_dict(content=content, embeds=embeds, edited=True, message_id=message_id)
+
+    async def delete_webhook_message(
+            self,
+            webhook_id: int,
+            token: str,
+            message_id: int,
+            *,
+            session: Any,
+            proxy: str | None = None,
+            proxy_auth: Any = None,
+            thread_id: int | None = None,
+    ) -> None:
+        pass
+
+    async def edit_original_interaction_response(
+            self,
+            application_id: int,
+            token: str,
+            *,
+            session: Any,
+            proxy: str | None = None,
+            proxy_auth: Any = None,
+            payload: dict[str, Any] | None = None,
+            multipart: Any = None,
+            files: Any = None,
+    ) -> dict[str, Any]:
+        from .runner import InteractionResponse
+
+        content = (payload or {}).get("content", "")
+        embeds = (payload or {}).get("embeds", [])
+
+        ir = InteractionResponse(
+            response_type=7,  # UPDATE_MESSAGE
+            payload={"type": 7, "data": {"content": content, "embeds": embeds}},
+        )
+        await callbacks.dispatch_event(CallbackEvent.interaction_response, ir)
+
+        return _fake_message_dict(content=content, embeds=embeds, edited=True)
+
+    async def delete_original_interaction_response(
+            self,
+            application_id: int,
+            token: str,
+            *,
+            session: Any,
+            proxy: str | None = None,
+            proxy_auth: Any = None,
+    ) -> None:
+        pass
+
+    async def get_original_interaction_response(
+            self,
+            application_id: int,
+            token: str,
+            *,
+            session: Any,
+            proxy: str | None = None,
+            proxy_auth: Any = None,
+    ) -> dict[str, Any]:
+        return _fake_message_dict()
+
+    def __getattr__(self, name: str) -> Any:
+        """Fall through to the original adapter for anything we don't handle."""
+        if self._original_adapter is not None:
+            return getattr(self._original_adapter, name)
+        raise AttributeError(f"FakeWebhookAdapter has no attribute '{name}'")
 
 
 def get_state() -> dstate.FakeState:
@@ -976,6 +1178,137 @@ def edit_message(
     return data
 
 
+def make_interaction_data(
+        command_name: str,
+        *,
+        command_type: int = 1,
+        options: list[dict[str, Any]] | None = None,
+        member: discord.Member | None = None,
+        channel: _types.AnyChannel | None = None,
+) -> dict[str, Any]:
+    """
+        Build a valid INTERACTION_CREATE gateway payload dict for an application command.
+        This is fed into ``ConnectionState.parse_interaction_create`` to trigger the full
+        discord.py interaction dispatch pipeline.
+
+    :param command_name: Name of the command (supports "group subcommand" syntax)
+    :param command_type: Application command type (1=CHAT_INPUT, 2=USER, 3=MESSAGE)
+    :param options: List of option dicts with 'name', 'type', 'value' keys
+    :param member: Member invoking the command
+    :param channel: Channel the command is invoked in
+    :return: A dict matching the INTERACTION_CREATE gateway event shape
+    """
+    state = get_state()
+
+    interaction_id = facts.make_id()
+    interaction_token = f"fake-token-{interaction_id}"
+    command_id = facts.make_id()
+    app_id = state.user.id
+
+    guild = None
+    if channel is not None and hasattr(channel, "guild"):
+        guild = channel.guild
+
+    # Build the command data
+    parts = command_name.split()
+    if len(parts) == 1:
+        # Simple command
+        cmd_data: dict[str, Any] = {
+            "id": str(command_id),
+            "name": parts[0],
+            "type": command_type,
+        }
+        if options:
+            cmd_data["options"] = options
+    elif len(parts) == 2:
+        # Subcommand: "group sub"
+        sub_options = options or []
+        cmd_data = {
+            "id": str(command_id),
+            "name": parts[0],
+            "type": command_type,
+            "options": [{
+                "name": parts[1],
+                "type": 1,  # SUB_COMMAND
+                "options": sub_options,
+            }],
+        }
+    else:
+        # Subcommand group: "group sub_group sub"
+        sub_options = options or []
+        cmd_data = {
+            "id": str(command_id),
+            "name": parts[0],
+            "type": command_type,
+            "options": [{
+                "name": parts[1],
+                "type": 2,  # SUB_COMMAND_GROUP
+                "options": [{
+                    "name": parts[2],
+                    "type": 1,  # SUB_COMMAND
+                    "options": sub_options,
+                }],
+            }],
+        }
+
+    if guild is not None:
+        cmd_data["guild_id"] = str(guild.id)
+
+    # Build the member/user data
+    if member is not None:
+        user_data = facts.dict_from_object(member._user)
+        member_data = facts.dict_from_object(member)
+    else:
+        user_data = facts.dict_from_object(state.user)
+        member_data = None
+
+    # Build the channel data
+    channel_data: dict[str, Any] = {}
+    if channel is not None:
+        channel_data = {
+            "id": str(channel.id),
+            "type": channel.type.value,
+            "name": getattr(channel, "name", ""),
+            "permissions": str(discord.Permissions.all().value),
+        }
+
+    payload: dict[str, Any] = {
+        "id": str(interaction_id),
+        "application_id": str(app_id),
+        "type": 2,  # APPLICATION_COMMAND
+        "data": cmd_data,
+        "token": interaction_token,
+        "version": 1,
+        "channel": channel_data,
+        "locale": "en-US",
+        "entitlement_sku_ids": [],
+        "entitlements": [],
+        "authorizing_integration_owners": {"0": str(app_id)},
+        "attachment_size_limit": 26214400,
+    }
+
+    if guild is not None:
+        payload["guild_id"] = str(guild.id)
+        payload["guild"] = {
+            "id": str(guild.id),
+            "locale": "en-US",
+            "features": guild.features,
+        }
+        payload["guild_locale"] = "en-US"
+        payload["app_permissions"] = str(discord.Permissions.all().value)
+
+    if channel is not None:
+        payload["channel_id"] = str(channel.id)
+
+    if member_data is not None:
+        payload["member"] = member_data
+        payload["member"]["permissions"] = str(discord.Permissions.all().value)
+    else:
+        payload["user"] = user_data
+
+    return payload
+
+
 MEMBER_MENTION: Pattern[str] = re.compile(r"<@!?([0-9]{17,21})>", re.MULTILINE)
 ROLE_MENTION: Pattern[str] = re.compile(r"<@&([0-9]{17,21})>", re.MULTILINE)
 CHANNEL_MENTION: Pattern[str] = re.compile(r"<#([0-9]{17,21})>", re.MULTILINE)
@@ -1184,15 +1517,26 @@ def configure(client: discord.Client) -> None: ...
 
 
 @overload
-def configure(client: discord.Client | None, *, use_dummy: bool = ...) -> None: ...
+def configure(
+        client: discord.Client | None,
+        *,
+        use_dummy: bool = ...,
+        owner: _types.user.User | None = ...,
+) -> None: ...
 
 
-def configure(client: discord.Client | None, *, use_dummy: bool = False) -> None:
+def configure(
+        client: discord.Client | None,
+        *,
+        use_dummy: bool = False,
+        owner: _types.user.User | None = None,
+) -> None:
     """
         Configure the backend, optionally with the provided client
 
     :param client: Client to use, or None
     :param use_dummy: Whether to use a dummy if client param is None, or error
+    :param owner: User dict to use as the application owner, or None for a default
     """
     global _cur_config
 
@@ -1219,4 +1563,65 @@ def configure(client: discord.Client | None, *, use_dummy: bool = False) -> None
 
     client._connection = test_state
 
-    _cur_config = BackendState({}, test_state)
+    # Preserve the command tree reference so slash commands dispatch correctly.
+    # Bot.__init__ sets _connection._command_tree = self.tree, but we just replaced _connection.
+    if hasattr(client, 'tree'):
+        test_state._command_tree = client.tree
+
+    # Interaction.__init__ accesses state.http._HTTPClient__session (mangled).
+    # Provide a fake value so it doesn't crash.
+    http._HTTPClient__session = None  # type: ignore[attr-defined]
+
+    # Install the fake webhook adapter so interaction responses are intercepted.
+    # discord.py uses a ContextVar (async_context) to store the webhook adapter.
+    # InteractionResponse.send_message calls adapter.create_interaction_response.
+    from discord.webhook.async_ import async_context
+    fake_adapter = FakeWebhookAdapter()
+    async_context.set(fake_adapter)  # type: ignore[arg-type]
+
+    _cur_config = BackendState({}, test_state, owner)
+
+    # Populate client._application so that bot.application is not None.
+    # This mirrors what Client.login() does after calling application_info().
+    _build_app_info(client, test_state, owner)
+
+
+def _build_app_info(
+        client: discord.Client,
+        test_state: dstate.FakeState,
+        owner: _types.user.User | None = None,
+) -> None:
+    """Build a fake AppInfo and assign it to client._application."""
+    owner_data = owner or facts.make_user_dict("TestOwner", "0001", "")
+    app_data: _types.appinfo.AppInfo = {
+        "id": test_state.user.id,
+        "name": test_state.user.name,
+        "icon": test_state.user.avatar.url if test_state.user.avatar else None,
+        "description": "A test discord application",
+        "rpc_origins": [],
+        "bot_public": True,
+        "bot_require_code_grant": False,
+        "owner": owner_data,
+        "summary": "",
+        "verify_key": "",
+        "flags": 0,
+    }
+    client._application = discord.AppInfo(test_state, app_data)
+    if test_state.application_id is None:
+        test_state.application_id = client._application.id
+
+
+def set_app_owner(client: discord.Client, owner: _types.user.User) -> None:
+    """
+        Update the application owner on the client and backend state.
+        Called by :py:func:`runner.configure` when the owner needs to be resolved
+        after members are created.
+
+    :param client: The configured client
+    :param owner: User dict for the new owner
+    """
+    global _cur_config
+    if _cur_config is None:
+        raise ValueError("Dpytest backend not configured")
+    _cur_config = BackendState(_cur_config.messages, _cur_config.state, owner)
+    _build_app_info(client, _cur_config.state, owner)

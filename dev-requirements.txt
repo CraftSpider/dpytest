@@ -10,3 +10,9 @@ flake8~=7.0.0
 pynacl
 typing-extensions
 mypy
+davey
+requests
+types-Pygments
+types-gunicorn
+types-pexpect
+types-requests

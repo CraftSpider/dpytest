@@ -45,6 +45,7 @@ class CallbackEvent(Enum):
     remove_role = "remove_role"
     app_info = "app_info"
     get_guilds = "get_guilds"
+    interaction_response = "interaction_response"
 
 
 _callbacks: dict[CallbackEvent, Callback] = {}

@@ -15,7 +15,7 @@ from typing import TypeVar, Callable
 
 import discord
 
-from .runner import sent_queue, get_config
+from .runner import sent_queue, get_config, InteractionResponse
 from .utils import embed_eq, activity_eq
 from ._types import Undef, undefined
 
@@ -55,7 +55,7 @@ class VerifyMessage:
         ``assert dpytest.verify().message().content("Hello World!")``
     """
 
-    _used: discord.Message | int | Undef | None
+    _used: discord.Message | InteractionResponse | int | Undef | None
 
     _contains: bool
     _peek: bool
@@ -75,7 +75,7 @@ class VerifyMessage:
         self._attachment = undefined
 
     def __del__(self) -> None:
-        if not self._used:
+        if self._used is undefined:
             import warnings
             warnings.warn("VerifyMessage dropped without being used, did you forget an `assert`?", RuntimeWarning)
 
@@ -93,16 +93,21 @@ class VerifyMessage:
             return sent_queue.qsize() == 0
 
         if self._peek:
-            message: discord.Message = sent_queue.peek()
+            item = sent_queue.peek()
         else:
             try:
-                message = sent_queue.get_nowait()
+                item = sent_queue.get_nowait()
             except asyncio.QueueEmpty:
                 # By now we're expecting a message, not getting one is a failure
                 return False
-        self._used = message
 
-        return self._check_msg(message)
+        if not isinstance(item, discord.Message):
+            # Wrong type at front of queue — expected a Message, got InteractionResponse
+            self._used = item
+            return False
+
+        self._used = item
+        return self._check_msg(item)
 
     def _expectation(self) -> str:
         if self._nothing:
@@ -330,6 +335,209 @@ class VerifyActivity:
         return self
 
 
+class VerifyInteraction:
+    """
+        Builder for interaction response verifications. When done building, should be asserted.
+
+        **Example**:
+        ``assert dpytest.verify().interaction().content("Hello World!")``
+    """
+
+    _used: discord.Message | InteractionResponse | int | Undef | None
+
+    _contains: bool
+    _peek: bool
+    _nothing: bool
+    _content: str | Undef | None
+    _embed: discord.Embed | Undef | None
+    _ephemeral: bool | Undef
+    _deferred: bool | Undef
+
+    def __init__(self) -> None:
+        self._used = undefined
+
+        self._contains = False
+        self._peek = False
+        self._nothing = False
+        self._content = undefined
+        self._embed = undefined
+        self._ephemeral = undefined
+        self._deferred = undefined
+
+    def __del__(self) -> None:
+        if self._used is undefined:
+            import warnings
+            warnings.warn("VerifyInteraction dropped without being used, did you forget an `assert`?", RuntimeWarning)
+
+    def __repr__(self) -> str:
+        if self._used is not undefined:
+            return f"<VerifyInteraction expected=[{self._expectation()}] found=[{self._diff_msg()}]>"
+        else:
+            return f"<VerifyInteraction expected=[{self._expectation()}]>"
+
+    def __bool__(self) -> bool:
+        self._used = None
+
+        if self._nothing:
+            self._used = sent_queue.qsize()
+            return sent_queue.qsize() == 0
+
+        if self._peek:
+            item = sent_queue.peek()
+        else:
+            try:
+                item = sent_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                return False
+
+        if not isinstance(item, InteractionResponse):
+            # Wrong type at front of queue — expected an InteractionResponse, got Message
+            self._used = item
+            return False
+
+        self._used = item
+        return self._check_response(item)
+
+    def _expectation(self) -> str:
+        if self._nothing:
+            return "no interaction responses"
+        else:
+            parts: list[str] = []
+            if self._contains:
+                parts.append("contains")
+            if self._content is not undefined:
+                if self._content is None:
+                    parts.append("content=Empty")
+                else:
+                    parts.append(f'content="{self._content}"')
+            if self._embed is not undefined:
+                if self._embed is None:
+                    parts.append("embed=Empty")
+                else:
+                    parts.append(f"embed={self._embed.to_dict()}")
+            if self._ephemeral is not undefined:
+                parts.append(f"ephemeral={self._ephemeral}")
+            if self._deferred is not undefined:
+                parts.append(f"deferred={self._deferred}")
+            return " ".join(parts) if parts else "any interaction response"
+
+    def _diff_msg(self) -> str:
+        if isinstance(self._used, int):
+            return f"{self._used} interaction responses"
+        elif isinstance(self._used, InteractionResponse):
+            return str(self._used)
+        elif self._used is None:
+            return "no interaction response"
+        return ""
+
+    def _check_response(self, resp: InteractionResponse) -> bool:
+        # Check deferred
+        if self._deferred is not undefined:
+            if self._deferred != resp.is_deferred:
+                return False
+
+        # Check ephemeral
+        if self._ephemeral is not undefined:
+            if self._ephemeral != resp.ephemeral:
+                return False
+
+        # If content is None, check that there is no content
+        if self._content is None and resp.content:
+            return False
+
+        # If content is set (not None, not undefined), check match
+        if self._content is not None and self._content is not undefined:
+            if self._contains and self._content not in (resp.content or ""):
+                return False
+            if not self._contains and self._content != resp.content:
+                return False
+
+        # Check embed
+        _embed = self._embed
+        if _embed is None and resp.embeds:
+            return False
+        if _embed is not None and _embed is not undefined:
+            if self._contains and not any(map(lambda e: embed_eq(_embed, e), resp.embeds)):
+                return False
+            if not self._contains and (len(resp.embeds) != 1 or not embed_eq(_embed, resp.embeds[0])):
+                return False
+
+        return True
+
+    def contains(self) -> 'VerifyInteraction':
+        """
+            Only check whether content/embed list/etc contain the desired input.
+
+        :return: Self for chaining
+        """
+        self._contains = True
+        return self
+
+    def peek(self) -> 'VerifyInteraction':
+        """
+            Don't remove the verified interaction response from the queue.
+
+        :return: Self for chaining
+        """
+        self._peek = True
+        return self
+
+    def nothing(self) -> 'VerifyInteraction':
+        """
+            Check that no interaction response was sent.
+
+        :return: Self for chaining
+        """
+        if self._content is not undefined or self._embed is not undefined:
+            raise ValueError("Verify nothing conflicts with verifying some content or embed")
+        self._nothing = True
+        return self
+
+    def content(self, content: str | None) -> 'VerifyInteraction':
+        """
+            Check that the interaction response content matches the input.
+
+        :param content: Content to match against, or None to ensure no content
+        :return: Self for chaining
+        """
+        if self._nothing:
+            raise ValueError("Verify content conflicts with verifying nothing")
+        self._content = content
+        return self
+
+    def embed(self, embed: discord.Embed | None) -> 'VerifyInteraction':
+        """
+            Check that the interaction response embed matches the input.
+
+        :param embed: Embed to match against, or None to ensure no embed
+        :return: Self for chaining
+        """
+        if self._nothing:
+            raise ValueError("Verify embed conflicts with verifying nothing")
+        self._embed = embed
+        return self
+
+    def ephemeral(self, value: bool = True) -> 'VerifyInteraction':
+        """
+            Check that the interaction response is ephemeral (or not).
+
+        :param value: Whether to check for ephemeral (True) or not (False)
+        :return: Self for chaining
+        """
+        self._ephemeral = value
+        return self
+
+    def deferred(self, value: bool = True) -> 'VerifyInteraction':
+        """
+            Check that the interaction response is a deferred response (or not).
+
+        :param value: Whether to check for deferred (True) or not (False)
+        :return: Self for chaining
+        """
+        self._deferred = value
+        return self
+
+
 class Verify:
     """
         Base for all kinds of verification builders. Used as an
@@ -354,6 +562,14 @@ class Verify:
         :return: Activity verification builder
         """
         return VerifyActivity()
+
+    def interaction(self) -> VerifyInteraction:
+        """
+            Verify an interaction response from the bot
+
+        :return: Interaction verification builder
+        """
+        return VerifyInteraction()
 
 
 def verify() -> Verify:

@@ -29,6 +29,53 @@ from .callbacks import CallbackEvent
 from .utils import PeekableQueue
 
 
+class InteractionResponse:
+    """Container for a captured interaction response from the bot."""
+
+    response_type: int
+    payload: dict[str, Any]
+
+    def __init__(
+        self,
+        response_type: int,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        self.response_type = response_type
+        self.payload = payload or {}
+
+    @property
+    def content(self) -> str | None:
+        data: dict[str, Any] = self.payload.get("data", {})
+        result: str | None = data.get("content")
+        return result
+
+    @property
+    def embeds(self) -> list[discord.Embed]:
+        data = self.payload.get("data", {})
+        raw = data.get("embeds", [])
+        return [discord.Embed.from_dict(e) for e in raw]
+
+    @property
+    def ephemeral(self) -> bool:
+        data = self.payload.get("data", {})
+        flags = data.get("flags", 0)
+        return bool(flags & 64)
+
+    @property
+    def is_deferred(self) -> bool:
+        return self.response_type == 5  # DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE
+
+    def __repr__(self) -> str:
+        parts = [f"type={self.response_type}"]
+        if self.content:
+            parts.append(f'content="{self.content}"')
+        if self.embeds:
+            parts.append(f"embeds={len(self.embeds)}")
+        if self.ephemeral:
+            parts.append("ephemeral=True")
+        return f"InteractionResponse({', '.join(parts)})"
+
+
 class RunnerConfig(NamedTuple):
     """
         Exposed discord test configuration
@@ -43,7 +90,7 @@ class RunnerConfig(NamedTuple):
 
 log = logging.getLogger("discord.ext.tests")
 _cur_config: RunnerConfig | None = None
-sent_queue: PeekableQueue[discord.Message] = PeekableQueue()
+sent_queue: PeekableQueue[discord.Message | InteractionResponse] = PeekableQueue()
 error_queue: PeekableQueue[tuple[
     commands.Context[commands.Bot | commands.AutoShardedBot], CommandError
 ]] = PeekableQueue()
@@ -88,15 +135,23 @@ async def run_all_events() -> None:
         Ensure that all dpy related coroutines have completed or been cancelled. If any dpy coroutines
         are currently running, this will also wait for those.
     """
+    _event_names = {"_run_event", "CommandTree-invoker"}
     while True:
         if sys.version_info[1] >= 7:
             pending = asyncio.all_tasks()
         else:
             pending = asyncio.Task.all_tasks()
-        if not any(map(lambda x: _task_coro_name(x) == "_run_event" and not (x.done() or x.cancelled()), pending)):
+
+        def _is_relevant(t: asyncio.Task[Any]) -> bool:
+            coro_name = _task_coro_name(t)
+            task_name = t.get_name() if hasattr(t, 'get_name') else None
+            return ((coro_name in _event_names or task_name in _event_names)
+                    and not (t.done() or t.cancelled()))
+
+        if not any(map(_is_relevant, pending)):
             break
         for task in pending:
-            if _task_coro_name(task) == "_run_event" and not (task.done() or task.cancelled()):
+            if _is_relevant(task):
                 await task
 
 
@@ -116,16 +171,19 @@ async def finish_on_command_error() -> None:
 
 def get_message(peek: bool = False) -> discord.Message:
     """
-        Allow the user to retrieve the most recent message sent by the bot
+        Allow the user to retrieve the most recent message sent by the bot.
+        Skips any ``InteractionResponse`` items at the front of the queue.
 
     :param peek: If true, message will not be removed from the queue
     :return: Most recent message from the queue
     """
     if peek:
-        message = sent_queue.peek()
+        item = sent_queue.peek()
     else:
-        message = sent_queue.get_nowait()
-    return message
+        item = sent_queue.get_nowait()
+    if not isinstance(item, discord.Message):
+        raise TypeError(f"Expected a discord.Message at the front of the queue, got {type(item).__name__}")
+    return item
 
 
 def get_embed(peek: bool = False) -> discord.Embed:
@@ -145,7 +203,7 @@ def get_embed(peek: bool = False) -> discord.Embed:
 
 async def empty_queue() -> None:
     """
-        Empty the current message queue. Waits for all events to complete to ensure queue
+        Empty the current queue. Waits for all events to complete to ensure queue
         is not immediately added to after running.
     """
     await run_all_events()
@@ -162,6 +220,15 @@ async def _message_callback(message: discord.Message) -> None:
     :param message: Message sent on discord
     """
     await sent_queue.put(message)
+
+
+async def _interaction_response_callback(response: InteractionResponse) -> None:
+    """
+        Internal callback, on an interaction response being sent adds it to the queue
+
+    :param response: InteractionResponse captured from the bot
+    """
+    await sent_queue.put(response)
 
 
 async def _edit_member_callback(fields: Any, member: discord.Member, reason: str | None) -> None:
@@ -362,6 +429,42 @@ async def member_join(
     return member
 
 
+@require_config
+async def interaction(
+        command_name: str,
+        *,
+        options: list[dict[str, Any]] | None = None,
+        channel: _types.AnyChannel | int = 0,
+        member: discord.Member | int = 0,
+) -> None:
+    """
+        Fake an application command interaction being sent by a user.
+        This dispatches through the real discord.py interaction pipeline, meaning
+        all checks, error handlers, and predicates will run.
+
+    :param command_name: Name of the slash command (e.g. "ping" or "group subcommand")
+    :param options: List of option dicts, each with 'name', 'type', 'value' keys
+    :param channel: Channel the interaction is sent in, or index into config list
+    :param member: Member sending the interaction, or index into config list
+    """
+    if isinstance(channel, int):
+        channel = get_config().channels[channel]
+    if isinstance(member, int):
+        member = get_config().members[member]
+
+    payload = back.make_interaction_data(
+        command_name,
+        options=options,
+        member=member,
+        channel=channel,
+    )
+
+    state = back.get_state()
+    state.parse_interaction_create(payload)  # type: ignore[arg-type]
+
+    await run_all_events()
+
+
 def get_config() -> RunnerConfig:
     """
         Get the current runner configuration
@@ -377,7 +480,8 @@ def configure(client: discord.Client,
               guilds: int | list[str] = 1,
               text_channels: int | list[str] = 1,
               voice_channels: int | list[str] = 1,
-              members: int | list[str] = 1) -> None:
+              members: int | list[str] = 1,
+              owner: discord.User | discord.Member | bool = True) -> None:
     """
         Set up the runner configuration. This should be done before any tests are run.
 
@@ -386,6 +490,8 @@ def configure(client: discord.Client,
     :param text_channels: Number or list of names of text channels in each guild to start with. Default is 1
     :param voice_channels: Number or list of names of voice channels in each guild to start with. Default is 1.
     :param members: Number or list of names of members in each guild (other than the client) to start with. Default is 1.
+    :param owner: The application owner. ``True`` (default) sets the first test member as owner. ``False`` uses a
+        generic "TestOwner". A specific :class:`discord.User` or :class:`discord.Member` sets that user as owner.
     """  # noqa: E501
 
     global _cur_config
@@ -395,7 +501,16 @@ def configure(client: discord.Client,
     if isinstance(client, discord.AutoShardedClient):
         raise TypeError("Sharded clients not yet supported")
 
-    back.configure(client)
+    # Resolve the owner user dict for the backend.  True is resolved after members
+    # are created (below), False / None means use the default, a User/Member is
+    # converted immediately.
+    from . import factories as _facts
+    owner_data: _types.user.User | None = None
+    if isinstance(owner, (discord.User, discord.Member)):
+        raw_user = owner._user if isinstance(owner, discord.Member) else owner
+        owner_data = _facts.dict_from_object(raw_user)
+
+    back.configure(client, owner=owner_data)
 
     # Wrap on_error so errors will be reported
     old_error = None
@@ -415,9 +530,11 @@ def configure(client: discord.Client,
 
     client.on_command_error = on_command_error  # type: ignore[attr-defined]
 
+    CBE = CallbackEvent
     # Configure global callbacks
-    callbacks.set_callback(_message_callback, CallbackEvent.send_message)
-    callbacks.set_callback(_edit_member_callback, CallbackEvent.edit_member)
+    callbacks.set_callback(_message_callback, CBE.send_message)
+    callbacks.set_callback(_edit_member_callback, CBE.edit_member)
+    callbacks.set_callback(_interaction_response_callback, CBE.interaction_response)  # type: ignore[call-overload]
 
     back.get_state().stop_dispatch()
 
@@ -471,5 +588,11 @@ def configure(client: discord.Client,
             back.make_member(client_user, guild, nick=f"{client_user.name}_nick")
 
     back.get_state().start_dispatch()
+
+    # Deferred owner resolution: if owner=True, set the first test member as the app owner.
+    # This must happen after members are created above.
+    if owner is True and _members:
+        owner_data = _facts.dict_from_object(_members[0]._user)
+        back.set_app_owner(client, owner_data)
 
     _cur_config = RunnerConfig(client, _guilds, _channels, _members)
